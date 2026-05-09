@@ -290,7 +290,29 @@ input[type=time].meal-time-inp{color:var(--txt)}
 .stat-bar{height:6px;background:rgba(0,0,0,.06);border-radius:20px;overflow:hidden;margin-top:7px}
 .stat-fill{height:100%;background:linear-gradient(90deg,var(--acc),var(--cyn));border-radius:20px;transition:.3s}
 .char-note{font-size:.78rem;color:var(--mut);line-height:1.55}
+.char-level-line{display:flex;align-items:center;justify-content:space-between;gap:10px;margin:12px 0 6px;font-size:.78rem;color:var(--mut);font-weight:700}
+.xp-bar{height:12px;background:rgba(0,0,0,.07);border-radius:20px;overflow:hidden;border:1px solid rgba(9,32,54,.08)}
+.xp-fill{height:100%;background:linear-gradient(90deg,var(--acc),var(--cyn),var(--grn));border-radius:20px;transition:.35s}
+.rank-desc{font-size:.82rem;color:var(--txt);line-height:1.6;margin-top:10px}
+.rank-badge{width:72px;height:72px;border-radius:14px;border:2px solid var(--cyn);background:linear-gradient(135deg,var(--navy),#0e3a5c);color:var(--cyn);display:flex;align-items:center;justify-content:center;font-family:'Playfair Display',serif;font-size:1.1rem;font-weight:700;box-shadow:0 8px 22px rgba(9,32,54,.2);flex-shrink:0}
+.char-metric-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:8px;margin-top:12px}
+.char-metric{border:1px solid var(--bdr);border-radius:8px;padding:9px 10px;background:var(--warm)}
+.char-metric span{display:block;font-size:.68rem;color:var(--mut);font-weight:700;text-transform:uppercase;letter-spacing:.04em}
+.char-metric strong{display:block;font-family:'Playfair Display',serif;color:var(--navy);font-size:1.08rem;margin-top:2px}
+.char-insight-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:10px}
+.char-insight{border:1.5px solid var(--bdr);border-radius:8px;padding:11px;background:var(--sur)}
+.char-insight h3{font-size:.9rem;margin-bottom:5px;color:var(--navy)}
+.char-insight p{font-size:.78rem;color:var(--mut);line-height:1.55}
+.xp-list{display:flex;flex-direction:column;gap:8px}
+.xp-event{border:1px solid var(--bdr);border-radius:8px;padding:9px 10px;background:var(--sur)}
+.xp-event-top{display:flex;justify-content:space-between;gap:10px;align-items:center}
+.xp-event-title{font-weight:700;color:var(--navy);font-size:.82rem}
+.xp-event-xp{font-weight:800;color:var(--acc);font-size:.82rem;white-space:nowrap}
+.xp-event-meta{font-size:.72rem;color:var(--mut);margin-top:3px;line-height:1.45}
+.xp-stat-gains{font-size:.7rem;color:var(--mut);margin-top:5px}
+.char-actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}
 @media(max-width:460px){header h1{font-size:1.4rem}.mlog-grid{grid-template-columns:1fr}}
+@media(max-width:520px){.char-metric-grid,.char-insight-grid{grid-template-columns:1fr}.rank-badge{width:60px;height:60px}}
 @media(max-width:460px){.stat-grid{grid-template-columns:1fr}}
 </style>
 </head>
@@ -377,15 +399,26 @@ input[type=time].meal-time-inp{color:var(--txt)}
 <div id="tab-character" class="tab">
   <div class="card">
     <div class="char-hero">
-      <div class="char-avatar">ML</div>
+      <div class="rank-badge" id="char-rank-badge">R1</div>
       <div class="char-title">
         <h2>Your Character</h2>
         <div class="char-sub" id="char-title-line">Initiate</div>
         <div class="char-pill-row">
           <span class="char-pill" id="char-level-pill">Level 1 / 250</span>
           <span class="char-pill" id="char-rank-pill">Rank 1 / 50</span>
+          <span class="char-pill" id="char-total-xp-pill">0 XP</span>
         </div>
       </div>
+    </div>
+    <div class="rank-desc" id="char-rank-desc"></div>
+    <div class="char-level-line">
+      <span id="char-xp-progress-label">0 / 100 XP</span>
+      <span id="char-xp-remaining">100 XP to next level</span>
+    </div>
+    <div class="xp-bar"><div class="xp-fill" id="char-xp-fill" style="width:0%"></div></div>
+    <div class="char-metric-grid">
+      <div class="char-metric"><span>Role</span><strong id="char-role">Developing Master</strong></div>
+      <div class="char-metric"><span>Balance</span><strong id="char-balance">Just beginning</strong></div>
     </div>
   </div>
   <div class="card">
@@ -397,7 +430,24 @@ input[type=time].meal-time-inp{color:var(--txt)}
     <div class="stat-grid" id="meta-stat-grid"></div>
   </div>
   <div class="card">
-    <div class="char-note">Foundation active. Existing Deep Work, Habits, Body, Meals, Analytics, and Goals data remains unchanged.</div>
+    <h2>Character Insight</h2>
+    <div class="char-insight-grid">
+      <div class="char-insight">
+        <h3>Strongest</h3>
+        <p id="char-strongest">No strongest stat yet.</p>
+      </div>
+      <div class="char-insight">
+        <h3>Next Balance Move</h3>
+        <p id="char-suggestion">Complete one meaningful action to begin training your character.</p>
+      </div>
+    </div>
+    <div class="char-actions" id="char-actions">
+      <button class="btn bp" onclick="importXpFromHistory()">Import XP from existing history</button>
+    </div>
+  </div>
+  <div class="card">
+    <h2>Recent XP</h2>
+    <div class="xp-list" id="xp-event-list"></div>
   </div>
 </div>
 
@@ -791,19 +841,89 @@ const MEAL_LABELS = ['Breakfast','Morning Snack','Lunch','Afternoon Snack','Dinn
 const APP_SCHEMA_VERSION = 1;
 const LIFE_STAT_LABELS = ['Intelligence','Health','Strength','Wealth','Connection','Purpose'];
 const META_STAT_LABELS = ['Consistency','Resolve'];
+const CHARACTER_STAT_KEYS = ['intelligence','health','strength','wealth','connection','purpose','consistency','resolve'];
+const MAIN_STAT_KEYS = ['intelligence','health','strength','wealth','connection','purpose'];
+const STAT_DESCRIPTIONS = {
+  intelligence:'Study, reading, thinking, research, writing, and focused learning.',
+  health:'Meals, cardio, recovery, weight awareness, and general bodily care.',
+  strength:'Resistance training, physical power, and progressive overload.',
+  wealth:'Budgeting, saving, finance reviews, and resource stewardship.',
+  connection:'Friendship, family, gratitude, repair, and meaningful social effort.',
+  purpose:'Goals, planning, reflection, values, and long-term direction.',
+  consistency:'Showing up repeatedly, returning, and protecting planned action.',
+  resolve:'Doing what is difficult, avoided, or uncomfortable but necessary.'
+};
+
+const RANKS = [
+  {range:'1-5',minLevel:1,maxLevel:5,title:'Awakening',description:'You have noticed that life can be shaped instead of merely endured. This is the first spark of intentional change.'},
+  {range:'6-10',minLevel:6,maxLevel:10,title:'First Steps',description:'You are beginning to act, even if the steps are small. The important thing is that movement has started.'},
+  {range:'11-15',minLevel:11,maxLevel:15,title:'The First Spark',description:'The first fragments of structure are appearing in your days. You are discovering that repeated action can create stability.'},
+  {range:'16-20',minLevel:16,maxLevel:20,title:'Habit Apprentice',description:'You are learning how habits are built: imperfectly, through trial, failure, and return. Consistency is still fragile, but real.'},
+  {range:'21-25',minLevel:21,maxLevel:25,title:'Momentum Seeker',description:'You are searching for rhythm. Motivation comes and goes, but you are beginning to understand the value of continuing anyway.'},
+  {range:'26-30',minLevel:26,maxLevel:30,title:'Discipline Builder',description:'You are learning to do what matters even when it is uncomfortable. Discipline is becoming a skill, not a fantasy.'},
+  {range:'31-35',minLevel:31,maxLevel:35,title:'Attention Keeper',description:'Your attention is becoming more deliberate. You are starting to choose what deserves your energy and what does not.'},
+  {range:'36-40',minLevel:36,maxLevel:40,title:'Consistency Crafter',description:'You are shaping your progress through repeated action. Your identity begins to shift from "trying" to "showing up."'},
+  {range:'41-45',minLevel:41,maxLevel:45,title:'Order Restorer',description:'You are bringing order back into neglected parts of life. Chaos still appears, but it no longer has complete authority.'},
+  {range:'46-50',minLevel:46,maxLevel:50,title:'Path Planner',description:'You are learning to prepare before acting. Plans are becoming tools that protect you from confusion and wasted effort.'},
+  {range:'51-55',minLevel:51,maxLevel:55,title:'Task Shaper',description:'You are getting better at turning big problems into clear actions. Progress becomes easier when the next step is visible.'},
+  {range:'56-60',minLevel:56,maxLevel:60,title:'Clarity Seeker',description:'You are exploring what truly matters. Instead of chasing every demand, you begin to search for meaningful direction.'},
+  {range:'61-65',minLevel:61,maxLevel:65,title:'Routine Keeper',description:'You can now maintain basic structures more reliably. Your routines are no longer experiments; they are becoming anchors.'},
+  {range:'66-70',minLevel:66,maxLevel:70,title:'Energy Steward',description:'You are learning that growth depends on energy, not just willpower. Sleep, rest, food, movement, and pacing start to matter more.'},
+  {range:'71-75',minLevel:71,maxLevel:75,title:'Progress Guardian',description:'You are protecting your gains from relapse and distraction. Your main task is no longer only starting, but preserving momentum.'},
+  {range:'76-80',minLevel:76,maxLevel:80,title:'System Builder',description:'You understand that good systems beat random effort. You begin shaping your environment so better choices become easier.'},
+  {range:'81-85',minLevel:81,maxLevel:85,title:'Life Architect',description:'You are no longer only managing tasks; you are designing a way of living. Goals, routines, values, and identity begin to align.'},
+  {range:'86-90',minLevel:86,maxLevel:90,title:'Priority Keeper',description:'You are learning to decide what comes first. Your strength is not doing everything, but directing your effort wisely.'},
+  {range:'91-95',minLevel:91,maxLevel:95,title:'Focus Guardian',description:'You defend your attention more seriously. Distractions still appear, but you are becoming harder to pull away from your path.'},
+  {range:'96-100',minLevel:96,maxLevel:100,title:'Momentum Master',description:'You can generate progress even after setbacks. You know how to restart, rebuild, and keep moving through resistance.'},
+  {range:'101-105',minLevel:101,maxLevel:105,title:'Discipline Bearer',description:'You now act before emotion fully catches up. Action becomes your way of creating motivation, not waiting for it.'},
+  {range:'106-110',minLevel:106,maxLevel:110,title:'Standard Keeper',description:'You have become a committed defender of your own growth. You protect your routines, boundaries, and future self.'},
+  {range:'111-115',minLevel:111,maxLevel:115,title:'Balance Weaver',description:'You are learning to connect pressure with sustainability. Growth, rest, relationships, health, and purpose begin to support each other.'},
+  {range:'116-120',minLevel:116,maxLevel:120,title:'Wise Mover',description:'You combine action with judgment. You know when to push, when to pause, and where your effort has the highest return.'},
+  {range:'121-125',minLevel:121,maxLevel:125,title:'Depth Seeker',description:'You can enter more serious states of concentration and presence. Your best work comes from protecting depth, silence, and focused time.'},
+  {range:'126-130',minLevel:126,maxLevel:130,title:'Goalforged',description:'Your goals are no longer vague wishes; they have shaped your habits and character. You are being forged by what you pursue.'},
+  {range:'131-135',minLevel:131,maxLevel:135,title:'Direction Keeper',description:'You guard your direction against confusion, impulse, and outside noise. You return faster to what matters.'},
+  {range:'136-140',minLevel:136,maxLevel:140,title:'Rhythm Adept',description:'Your systems are becoming smoother and more skillful. You operate with rhythm, precision, and growing confidence across multiple domains.'},
+  {range:'141-145',minLevel:141,maxLevel:145,title:'Resilience Bearer',description:'You can withstand disruption without losing yourself. Stress, mistakes, and bad weeks become obstacles, not endings.'},
+  {range:'146-150',minLevel:146,maxLevel:150,title:'System Master',description:'You have developed a refined structure for life. Your habits, planning, review, and environment begin to work together as one system.'},
+  {range:'151-155',minLevel:151,maxLevel:155,title:'Order Holder',description:'You possess real authority over your daily structure. Life is not perfectly controlled, but you are no longer ruled by disorder.'},
+  {range:'156-160',minLevel:156,maxLevel:160,title:'Mindful Builder',description:'You act with both awareness and intention. You are not only doing more; you are becoming more conscious of why and how you act.'},
+  {range:'161-165',minLevel:161,maxLevel:165,title:'Purpose Pathfinder',description:'You are connecting effort to meaning. Your actions increasingly serve a larger direction rather than only short-term achievement.'},
+  {range:'166-170',minLevel:166,maxLevel:170,title:'Discipline Rooted',description:'Discipline has become a stable force in your life. You no longer need constant inspiration to uphold your standards.'},
+  {range:'171-175',minLevel:171,maxLevel:175,title:'Flow Walker',description:'You are learning to work with rhythm instead of brute force. When conditions are right, effort becomes smoother and more natural.'},
+  {range:'176-180',minLevel:176,maxLevel:180,title:'Lifecraft Paragon',description:'You are crafting your life as a whole, not optimizing isolated habits. Work, health, relationships, resources, and purpose become one design.'},
+  {range:'181-185',minLevel:181,maxLevel:185,title:'Alignment Master',description:'Your choices increasingly match your values. There is less friction between what you say matters and how you actually live.'},
+  {range:'186-190',minLevel:186,maxLevel:190,title:'Self-Sovereign',description:'You act from inner authority rather than impulse, pressure, or chaos. Your standards feel self-owned and deeply integrated.'},
+  {range:'191-195',minLevel:191,maxLevel:195,title:'Pattern Knower',description:'You understand your own patterns with unusual clarity. You can anticipate what helps you thrive and what leads you off course.'},
+  {range:'196-200',minLevel:196,maxLevel:200,title:'Excellence Architect',description:'You are building excellence deliberately. Your systems are not only functional, but refined toward mastery.'},
+  {range:'201-205',minLevel:201,maxLevel:205,title:'Limit Breaker',description:'You are entering the legendary zone of long-term growth. Limits still exist, but you meet them with creativity, patience, and courage.'},
+  {range:'206-210',minLevel:206,maxLevel:210,title:'Life Strategist',description:'You can think across years, domains, and consequences. Your life is guided more by intention than reaction.'},
+  {range:'211-215',minLevel:211,maxLevel:215,title:'Vision Executor',description:'You turn high-level vision into action. You are not lost in planning; you execute with power and direction.'},
+  {range:'216-220',minLevel:216,maxLevel:220,title:'Diamond Will',description:'Your will has been strengthened through pressure. You have become more durable, clear, and difficult to derail.'},
+  {range:'221-225',minLevel:221,maxLevel:225,title:'Harmony Keeper',description:'Your systems reach a rare level of harmony. Life feels less like constant repair and more like orchestration.'},
+  {range:'226-230',minLevel:226,maxLevel:230,title:'Mythic Architect',description:'You are designing life at an almost legendary level. Your routines and values express a coherent personal philosophy.'},
+  {range:'231-235',minLevel:231,maxLevel:235,title:'Renewal Master',description:'You have learned the art of return. Even after fatigue, failure, or disruption, you know how to restore movement.'},
+  {range:'236-240',minLevel:236,maxLevel:240,title:'Balance Master',description:'You understand that mastery requires integration. Ambition, recovery, relationships, meaning, health, and resources are held in balance.'},
+  {range:'241-245',minLevel:241,maxLevel:245,title:'Integrated Self',description:'You are no longer merely improving habits; you are embodying a higher form of self-direction. Your life reflects chosen principles.'},
+  {range:'246-249',minLevel:246,maxLevel:249,title:'Life Ascendant',description:'You stand at the edge of complete integration. Discipline, clarity, energy, purpose, connection, and balance have become deeply unified.'},
+  {range:'250',minLevel:250,maxLevel:250,title:'Master of Life',description:'The final pinnacle. You have transformed productivity into life mastery: not endless busyness, but integrated command of attention, energy, purpose, relationships, health, resources, and meaning.'}
+];
 
 function defaultCharacter(){
   return {
     name:'Your Character',
-    title:'Initiate',
+    title:'Awakening',
+    totalXp:0,
     xp:0,
     level:1,
     maxLevel:250,
     rank:1,
     maxRank:50,
-    rankName:'Initiate',
-    stats:{intelligence:0,health:0,strength:0,wealth:0,connection:0,purpose:0},
+    maxRanks:50,
+    rankName:'Awakening',
+    stats:{intelligence:0,health:0,strength:0,wealth:0,connection:0,purpose:0,consistency:0,resolve:0},
     meta:{consistency:0,resolve:0},
+    xpEvents:[],
+    rewarded:{},
     badges:[]
   };
 }
@@ -836,9 +956,18 @@ function ensureCharacter(){
   const base=defaultCharacter();
   D.schemaVersion=D.schemaVersion||APP_SCHEMA_VERSION;
   D.character={...base,...(D.character||{})};
-  D.character.stats={...base.stats,...(D.character.stats||{})};
-  D.character.meta={...base.meta,...(D.character.meta||{})};
+  D.character.stats={...base.stats,...(D.character.stats||{}),...(D.character.meta||{})};
+  D.character.meta={consistency:D.character.stats.consistency||0,resolve:D.character.stats.resolve||0};
+  D.character.totalXp=Number(D.character.totalXp ?? D.character.xp ?? 0)||0;
+  D.character.xp=D.character.totalXp;
+  D.character.maxLevel=250;
+  D.character.maxRank=50;
+  D.character.maxRanks=50;
+  if(!Array.isArray(D.character.xpEvents)) D.character.xpEvents=[];
+  if(!D.character.rewarded||typeof D.character.rewarded!=='object'||Array.isArray(D.character.rewarded)) D.character.rewarded={};
   if(!Array.isArray(D.character.badges)) D.character.badges=[];
+  CHARACTER_STAT_KEYS.forEach(k=>{D.character.stats[k]=Number(D.character.stats[k])||0;});
+  recalculateCharacterFromEvents();
 }
 
 function applyCoreData(data){
@@ -1089,6 +1218,378 @@ function renCharacter(){
 // ══════════════════════════════════════════
 // TAG COLORS & DROPDOWN
 // ══════════════════════════════════════════
+// Phase 2 XP and progression helpers override the small Phase 1 character renderer above.
+function escapeHtml(str){
+  return String(str??'').replace(/[&<>"']/g,ch=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]));
+}
+function capStat(k){return k.charAt(0).toUpperCase()+k.slice(1);}
+function dateStamp(ts=Date.now()){
+  const d=new Date(ts);
+  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+}
+function rewardDateKey(ts=Date.now()){return dkey(new Date(ts));}
+function getCharacter(){ensureCharacter();return D.character;}
+function saveCharacterIfNeeded(){ensureCharacter();sv();renderCharacter();}
+
+function xpRequiredForLevel(level){
+  const lvl=Math.max(1,Math.min(249,Math.floor(level)||1));
+  return Math.round(100*Math.pow(lvl,1.35));
+}
+function totalXpRequiredForLevel(level){
+  const lvl=Math.max(1,Math.min(250,Math.floor(level)||1));
+  let total=0;
+  for(let l=1;l<lvl;l++) total+=xpRequiredForLevel(l);
+  return total;
+}
+function calculateLevel(totalXp){
+  const xp=Math.max(0,Number(totalXp)||0);
+  let level=1,needed=0;
+  while(level<250){
+    const next=xpRequiredForLevel(level);
+    if(xp<needed+next) break;
+    needed+=next;level++;
+  }
+  return level;
+}
+function calculateRank(level){
+  const lvl=Math.max(1,Math.min(250,Math.floor(level)||1));
+  if(lvl>=250) return 50;
+  return Math.max(1,Math.min(50,Math.ceil(lvl/5)));
+}
+function getRankInfo(level){
+  const lvl=Math.max(1,Math.min(250,Math.floor(level)||1));
+  const info=RANKS.find(r=>lvl>=r.minLevel&&lvl<=r.maxLevel)||RANKS[0];
+  return {...info,rankNumber:calculateRank(lvl)};
+}
+function getLevelProgress(totalXp){
+  const xp=Math.max(0,Number(totalXp)||0);
+  const level=calculateLevel(xp);
+  const rank=calculateRank(level);
+  if(level>=250) return{level,rank,currentLevelXp:0,xpForNextLevel:0,progressPercent:100,xpIntoCurrentLevel:0,xpRemaining:0};
+  const currentLevelXp=totalXpRequiredForLevel(level);
+  const xpForNextLevel=xpRequiredForLevel(level);
+  const xpIntoCurrentLevel=Math.max(0,xp-currentLevelXp);
+  const xpRemaining=Math.max(0,xpForNextLevel-xpIntoCurrentLevel);
+  const progressPercent=Math.max(0,Math.min(100,Math.round((xpIntoCurrentLevel/xpForNextLevel)*100)));
+  return{level,rank,currentLevelXp,xpForNextLevel,progressPercent,xpIntoCurrentLevel,xpRemaining};
+}
+
+function qualityFromFocus(focus){
+  const f=Number(focus)||3;
+  if(f<=2) return 'low';
+  if(f===3) return 'normal';
+  if(f===4) return 'good';
+  return 'excellent';
+}
+function qualityModifier(q){return({low:.75,normal:1,good:1.15,excellent:1.3})[q]||1;}
+function difficultyModifier(difficulty){return({easy:1,normal:1,some:1.1,'some resistance':1.1,hard:1.25,'hard to start':1.25,veryHard:1.4,'very hard':1.4,heroic:1.6})[difficulty]||1;}
+function customTaskXp(size){return({tiny:5,small:15,medium:35,large:75,epic:150})[size]||15;}
+function existingCategoryMinutes(date,category){
+  const events=D.character?.xpEvents||[];
+  return events.filter(e=>e.date===date&&e.category===category).reduce((a,e)=>a+(Number(e.durationMinutes)||0),0);
+}
+function applyDiminishingReturns(minutes,{date=dateStamp(),category='general'}={}){
+  let remaining=Math.max(0,Number(minutes)||0);
+  let used=existingCategoryMinutes(date,category);
+  let effective=0;
+  const bands=[{limit:180,mult:1},{limit:360,mult:.8},{limit:540,mult:.6},{limit:Infinity,mult:.3}];
+  for(const band of bands){
+    if(!remaining) break;
+    const room=Math.max(0,band.limit-used);
+    const take=Math.min(remaining,room);
+    effective+=take*band.mult;
+    remaining-=take;
+    used+=take;
+  }
+  return effective;
+}
+function calculateTimedXp(minutes,rate,quality='normal',difficulty='easy',opts={}){
+  const effective=applyDiminishingReturns(minutes,opts);
+  return Math.max(0,Math.round(effective*rate*qualityModifier(quality)*difficultyModifier(difficulty)));
+}
+function calculateFixedXp(amount,difficulty='easy'){return Math.max(0,Math.round((Number(amount)||0)*difficultyModifier(difficulty)));}
+
+function hasRewardBeenGranted(key){ensureCharacter();return !!D.character.rewarded[key];}
+function markRewardGranted(key){ensureCharacter();D.character.rewarded[key]=true;}
+function makeXpEvent({type,sourceSection,label,linkedEntityId,rewardKey,generalXp=0,statXp={},primaryStat='',secondaryStat='',durationMinutes=0,quality='normal',difficulty='easy',notes='',timestamp=Date.now(),category='general'}){
+  const cleanStats={};
+  CHARACTER_STAT_KEYS.forEach(k=>{if(statXp[k]) cleanStats[k]=Math.round(statXp[k]);});
+  return{
+    id:'xp_'+timestamp+'_'+Math.random().toString(36).slice(2,8),
+    date:dateStamp(timestamp),timestamp,type,sourceSection,
+    label:String(label||type||'Action'),
+    linkedEntityId:linkedEntityId||rewardKey||'',
+    rewardKey:rewardKey||'',
+    generalXp:Math.max(0,Math.round(generalXp)||0),
+    statXp:cleanStats,
+    primaryStat,secondaryStat,
+    durationMinutes:Math.round(Number(durationMinutes)||0),
+    quality,difficulty,category,
+    notes:String(notes||'')
+  };
+}
+function addXpEvent(event,{showToast=false}={}){
+  ensureCharacter();
+  if(!event||!event.rewardKey||hasRewardBeenGranted(event.rewardKey)) return false;
+  D.character.xpEvents.push(event);
+  markRewardGranted(event.rewardKey);
+  recalculateCharacterFromEvents();
+  if(showToast&&event.generalXp) toast(`+${event.generalXp} XP`);
+  if(document.getElementById('tab-character')?.classList.contains('on')) renderCharacter();
+  return true;
+}
+function calculateStatsFromEvents(events){
+  const stats={};CHARACTER_STAT_KEYS.forEach(k=>stats[k]=0);
+  (events||[]).forEach(e=>{Object.entries(e.statXp||{}).forEach(([k,v])=>{if(k in stats) stats[k]+=Number(v)||0;});});
+  return stats;
+}
+function recalculateCharacterFromEvents(){
+  const c=D.character;if(!c)return;
+  const events=Array.isArray(c.xpEvents)?c.xpEvents:[];
+  if(events.length){
+    c.totalXp=events.reduce((a,e)=>a+(Number(e.generalXp)||0),0);
+    c.stats=calculateStatsFromEvents(events);
+  } else {
+    c.totalXp=Number(c.totalXp ?? c.xp ?? 0)||0;
+    c.stats={...defaultCharacter().stats,...(c.stats||{}),...(c.meta||{})};
+  }
+  c.xp=c.totalXp;
+  CHARACTER_STAT_KEYS.forEach(k=>{c.stats[k]=Number(c.stats[k])||0;});
+  c.meta={consistency:c.stats.consistency||0,resolve:c.stats.resolve||0};
+  const progress=getLevelProgress(c.totalXp);
+  const rankInfo=getRankInfo(progress.level);
+  c.level=progress.level;c.rank=rankInfo.rankNumber;c.rankName=rankInfo.title;c.title=rankInfo.title;
+  c.maxLevel=250;c.maxRank=50;c.maxRanks=50;
+}
+
+function getTopStats(stats,keys=MAIN_STAT_KEYS){
+  return keys.map(k=>({key:k,value:Number(stats[k])||0})).sort((a,b)=>b.value-a.value||a.key.localeCompare(b.key));
+}
+function getStrongestWeakestStats(stats){
+  const all=CHARACTER_STAT_KEYS.map(k=>({key:k,value:Number(stats[k])||0}));
+  return{strongest:[...all].sort((a,b)=>b.value-a.value)[0]||{key:'intelligence',value:0},weakest:[...all].sort((a,b)=>a.value-b.value)[0]||{key:'intelligence',value:0}};
+}
+function generateRole(stats){
+  const main=MAIN_STAT_KEYS.map(k=>Number(stats[k])||0);
+  const highest=Math.max(...main),lowest=Math.min(...main);
+  if(highest>0&&lowest>0&&(highest-lowest)<=highest*.2) return 'Renaissance Soul';
+  const top=getTopStats(stats).slice(0,2);
+  if(!top.length||top[0].value<=0) return 'Developing Master';
+  if(top[0].key==='intelligence'&&top[0].value>=40&&(Number(stats.health)||0)<=top[0].value*.25) return 'Overloaded Scholar';
+  if(top[0].key==='strength'&&top[0].value>=40&&(Number(stats.purpose)||0)<=top[0].value*.25) return 'Unanchored Warrior';
+  if(top[0].key==='wealth'&&top[0].value>=40&&(Number(stats.connection)||0)<=top[0].value*.25) return 'Isolated Achiever';
+  if(top[0].key==='purpose'&&top[0].value>=40&&(Number(stats.wealth)||0)<=top[0].value*.25) return 'Dreamer Without Ground';
+  const pair=[top[0].key,top[1]?.key||''].sort().join('+');
+  return({
+    'intelligence+purpose':'Philosopher','intelligence+wealth':'Strategist','intelligence+strength':'Warrior-Scholar',
+    'health+intelligence':'Optimized Scholar','connection+intelligence':'Mentor','health+strength':'Athlete',
+    'purpose+strength':'Ascetic Warrior','strength+wealth':'Ambitious Builder','connection+strength':'Protector',
+    'purpose+wealth':'Steward','connection+wealth':'Networker','connection+purpose':'Guide',
+    'connection+health':'Harmonizer','health+purpose':'Grounded Seeker'
+  })[pair]||'Developing Master';
+}
+function generateSuggestion(stats){
+  const weakest=getStrongestWeakestStats(stats).weakest.key;
+  return({
+    intelligence:'Intelligence is your least trained area. Do one focused 25-minute learning session.',
+    health:'Health is your least trained area. Log a meal, take a 20-minute walk, or do one small recovery action.',
+    strength:'Strength is your least trained area. Complete one short resistance workout.',
+    wealth:'Wealth is your least trained area. A 10-minute expense or budget review would bring balance.',
+    connection:'Connection is your least trained area. Send one genuine message to someone you care about.',
+    purpose:'Purpose is your least trained area. Write one sentence about what matters this week.',
+    consistency:'Consistency is your least trained area. Complete one tiny habit today.',
+    resolve:'Resolve is your least trained area. Do one thing you have been avoiding.'
+  })[weakest]||'Complete one meaningful action to keep building your character.';
+}
+
+function renStatGrid(id,labels,values){
+  const el=document.getElementById(id);if(!el)return;
+  const keys=labels.map(statKey);
+  const max=Math.max(1,...keys.map(k=>Number(values[k])||0));
+  el.innerHTML=labels.map(label=>{
+    const key=statKey(label);
+    const val=Math.max(0,Math.round(Number(values[key])||0));
+    const pct=val?Math.max(4,Math.round(val/max*100)):0;
+    return`<div class="stat-row">
+      <div class="stat-top"><span>${label}</span><span class="stat-val">${val}</span></div>
+      <div class="stat-bar"><div class="stat-fill" style="width:${pct}%"></div></div>
+      <div style="font-size:.68rem;color:var(--mut);line-height:1.4;margin-top:6px">${STAT_DESCRIPTIONS[key]||''}</div>
+    </div>`;
+  }).join('');
+}
+function renderRecentXp(events){
+  const el=document.getElementById('xp-event-list');if(!el)return;
+  const recent=[...(events||[])].sort((a,b)=>(b.timestamp||0)-(a.timestamp||0)).slice(0,10);
+  if(!recent.length){el.innerHTML='<p style="font-size:.8rem;color:var(--mut)">No XP events yet. Complete a study session, habit, meal, goal, cardio log, or weight log to begin.</p>';return;}
+  el.innerHTML=recent.map(e=>{
+    const gains=Object.entries(e.statXp||{}).map(([k,v])=>`${capStat(k)} +${Math.round(v)}`).join(' - ');
+    return`<div class="xp-event">
+      <div class="xp-event-top"><span class="xp-event-title">${escapeHtml(e.label)}</span><span class="xp-event-xp">+${Math.round(e.generalXp||0)} XP</span></div>
+      <div class="xp-event-meta">${escapeHtml(e.date||dateStamp(e.timestamp))} - ${escapeHtml(e.type||'action')}</div>
+      <div class="xp-stat-gains">${escapeHtml(gains)}</div>
+    </div>`;
+  }).join('');
+}
+function renderCharacter(){
+  ensureCharacter();
+  const c=D.character;
+  const progress=getLevelProgress(c.totalXp);
+  const rankInfo=getRankInfo(progress.level);
+  const role=generateRole(c.stats);
+  const sw=getStrongestWeakestStats(c.stats);
+  const totalMain=MAIN_STAT_KEYS.reduce((a,k)=>a+(Number(c.stats[k])||0),0);
+  document.getElementById('char-title-line').textContent=`${role} - ${rankInfo.title}`;
+  document.getElementById('char-level-pill').textContent=`Level ${progress.level} / 250`;
+  document.getElementById('char-rank-pill').textContent=`Rank ${rankInfo.rankNumber} / 50 - ${rankInfo.title}`;
+  document.getElementById('char-total-xp-pill').textContent=`${Math.round(c.totalXp)} XP`;
+  document.getElementById('char-rank-desc').textContent=rankInfo.description;
+  document.getElementById('char-rank-badge').textContent=progress.level>=250?'ML':`R${rankInfo.rankNumber}`;
+  document.getElementById('char-xp-fill').style.width=`${progress.progressPercent}%`;
+  document.getElementById('char-xp-progress-label').textContent=progress.level>=250?'Max Level':`${progress.xpIntoCurrentLevel} / ${progress.xpForNextLevel} XP`;
+  document.getElementById('char-xp-remaining').textContent=progress.level>=250?'Master of Life achieved':`${progress.xpRemaining} XP to next level`;
+  document.getElementById('char-role').textContent=role;
+  document.getElementById('char-balance').textContent=totalMain?'Training in progress':'Just beginning';
+  document.getElementById('char-strongest').textContent=sw.strongest.value?`${capStat(sw.strongest.key)} leads with ${sw.strongest.value} stat XP. ${capStat(sw.weakest.key)} is ready for attention.`:'Your first stat will appear after your next rewarded action.';
+  document.getElementById('char-suggestion').textContent=generateSuggestion(c.stats);
+  const actions=document.getElementById('char-actions');
+  if(actions) actions.style.display=(c.xpEvents.length<5)?'flex':'none';
+  renStatGrid('life-stat-grid',LIFE_STAT_LABELS,c.stats);
+  renStatGrid('meta-stat-grid',META_STAT_LABELS,c.stats);
+  renderRecentXp(c.xpEvents);
+}
+function renCharacter(){renderCharacter();}
+
+function stableTextKey(str){
+  return String(str||'item').toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'').slice(0,70)||'item';
+}
+function timestampFromLooseDateKey(key){
+  const p=String(key||'').split('-').map(Number);
+  if(p.length===3&&p.every(n=>Number.isFinite(n))) return new Date(p[0],p[1],p[2],12).getTime();
+  return Date.now();
+}
+function timestampFromIsoDate(date){
+  const ts=Date.parse(String(date||'')+'T12:00:00');
+  return Number.isFinite(ts)?ts:Date.now();
+}
+function normalizeDifficulty(value){
+  const n=Number(value);
+  if(n>=6) return 'veryHard';
+  if(n>=5) return 'hard';
+  if(n>=4) return 'some';
+  return 'easy';
+}
+function studyRewardKey(s){
+  return `study_session:${s.id||[s.ts||'',stableTextKey(s.tag),stableTextKey(s.h20)].join(':')}`;
+}
+function guessHabitPrimaryStat(h){
+  const text=`${h?.name||''} ${h?.id2||''} ${h?.sk||''} ${h?.tm||''}`.toLowerCase();
+  if(/gym|lift|strength|calisthenic|push|pull|squat|deadlift|bench|muscle/.test(text)) return 'strength';
+  if(/meal|food|sleep|walk|cardio|run|weight|health|body|water|recovery|stretch/.test(text)) return 'health';
+  if(/study|read|write|learn|course|research|paper|language|lecture|note/.test(text)) return 'intelligence';
+  if(/money|finance|budget|expense|saving|income|debt|invest/.test(text)) return 'wealth';
+  if(/friend|family|partner|message|call|social|gratitude|help|conversation/.test(text)) return 'connection';
+  if(/goal|purpose|plan|reflect|value|meaning|vision|pray|meditat/.test(text)) return 'purpose';
+  return 'consistency';
+}
+function maybeAwardStudyXp(session,{showToast=false}={}){
+  if(!session) return false;
+  const ts=Number(session.ts)||Date.now();
+  const minutes=Math.max(1,Math.round((Number(session.hours)||1)*60));
+  const quality=qualityFromFocus(session.focus);
+  const generalXp=calculateTimedXp(minutes,1.5,quality,'easy',{date:dateStamp(ts),category:'study'});
+  const hasReflection=String(session.recall||'').trim().length>=20;
+  const statXp=hasReflection
+    ? {intelligence:Math.round(generalXp*.72),consistency:Math.round(generalXp*.18),purpose:Math.round(generalXp*.10)}
+    : {intelligence:Math.round(generalXp*.8),consistency:Math.round(generalXp*.2)};
+  return addXpEvent(makeXpEvent({
+    type:'study_session',sourceSection:'getSmarter',label:session.h20||session.tag||'Study session',
+    linkedEntityId:session.id||String(session.ts||''),rewardKey:studyRewardKey(session),
+    generalXp,statXp,primaryStat:'intelligence',secondaryStat:hasReflection?'purpose':'consistency',
+    durationMinutes:minutes,quality,difficulty:'easy',timestamp:ts,category:'study'
+  }),{showToast});
+}
+function maybeAwardHabitXp(h,dateKey,{showToast=false}={}){
+  if(!h||!dateKey) return false;
+  const primary=guessHabitPrimaryStat(h);
+  const statXp=primary==='consistency'?{consistency:10}:{[primary]:2,consistency:8};
+  return addXpEvent(makeXpEvent({
+    type:'habit_completion',sourceSection:'habits',label:h.name||h.id2||'Habit completed',
+    linkedEntityId:h.id||stableTextKey(h.id2||h.name),rewardKey:`habit:${h.id||stableTextKey(h.id2||h.name)}:${dateKey}`,
+    generalXp:10,statXp,primaryStat:primary,secondaryStat:'consistency',
+    timestamp:timestampFromLooseDateKey(dateKey),quality:'normal',difficulty:'easy'
+  }),{showToast});
+}
+function maybeAwardMealXp(idx,dateKey,{showToast=false}={}){
+  const slots=D.meals?.[dateKey]||[];
+  const label=slots[idx]?.label||MEAL_LABELS[idx]||`Meal ${idx+1}`;
+  return addXpEvent(makeXpEvent({
+    type:'meal_completed',sourceSection:'meals',label:`${label} completed`,
+    linkedEntityId:`${dateKey}:${idx}`,rewardKey:`meal:${dateKey}:${idx}`,
+    generalXp:8,statXp:{health:6,consistency:2},primaryStat:'health',secondaryStat:'consistency',
+    timestamp:timestampFromLooseDateKey(dateKey),quality:'normal',difficulty:'easy'
+  }),{showToast});
+}
+function maybeAwardCardioXp(entry,{showToast=false}={}){
+  if(!entry) return false;
+  const ts=entry.ts||timestampFromIsoDate(entry.date);
+  const minutes=Number(entry.duration)||0;
+  const difficulty=normalizeDifficulty(entry.difficulty);
+  const generalXp=minutes>0?calculateTimedXp(minutes,1.3,'normal',difficulty,{date:dateStamp(ts),category:'cardio'}):25;
+  return addXpEvent(makeXpEvent({
+    type:'cardio_logged',sourceSection:'body',label:`Cardio ${minutes||''} min`.trim(),
+    linkedEntityId:String(entry.ts||`${entry.date}:${minutes}`),rewardKey:`cardio:${entry.ts||`${entry.date}:${minutes}`}`,
+    generalXp,statXp:{health:Math.round(generalXp*.8),consistency:Math.round(generalXp*.2)},
+    primaryStat:'health',secondaryStat:'consistency',durationMinutes:minutes||null,
+    timestamp:ts,quality:'normal',difficulty,category:'cardio'
+  }),{showToast});
+}
+function maybeAwardWeightXp(entry,{showToast=false}={}){
+  if(!entry?.date) return false;
+  return addXpEvent(makeXpEvent({
+    type:'weight_logged',sourceSection:'body',label:'Weight logged',
+    linkedEntityId:entry.date,rewardKey:`weight:${entry.date}`,
+    generalXp:5,statXp:{health:3,consistency:2},primaryStat:'health',secondaryStat:'consistency',
+    timestamp:timestampFromIsoDate(entry.date),quality:'normal',difficulty:'easy'
+  }),{showToast});
+}
+function maybeAwardGoalXp(type,goal,{showToast=false}={}){
+  if(!goal) return false;
+  const monthly=type==='monthly';
+  return addXpEvent(makeXpEvent({
+    type:`${type}_goal_completed`,sourceSection:'goals',label:goal.text||`${monthly?'Monthly':'Weekly'} goal completed`,
+    linkedEntityId:goal.id||String(goal.added||stableTextKey(goal.text)),rewardKey:`goal:${type}:${goal.id||goal.added||stableTextKey(goal.text)}`,
+    generalXp:monthly?100:40,statXp:monthly?{purpose:80,consistency:20}:{purpose:30,consistency:10},
+    primaryStat:'purpose',secondaryStat:'consistency',timestamp:goal.doneAt||Date.now(),quality:'normal',difficulty:'easy'
+  }),{showToast});
+}
+function maybeAwardReflectionXp(reflection,index,{showToast=false}={}){
+  if(!reflection) return false;
+  const text=typeof reflection==='string'?reflection:(reflection.text||reflection.note||reflection.recall||'Reflection');
+  const ts=reflection.ts||reflection.added||Date.now();
+  return addXpEvent(makeXpEvent({
+    type:'reflection_added',sourceSection:'goals',label:text||'Reflection added',
+    linkedEntityId:reflection.id||String(index||ts),rewardKey:`reflection:${reflection.id||ts||index}`,
+    generalXp:25,statXp:{purpose:15,intelligence:7,consistency:3},
+    primaryStat:'purpose',secondaryStat:'intelligence',timestamp:ts,quality:'normal',difficulty:'easy'
+  }),{showToast});
+}
+function importXpFromHistory(){
+  ensureCharacter();
+  let count=0;
+  (D.sessions||[]).forEach(s=>{if(maybeAwardStudyXp(s)) count++;});
+  (D.habits||[]).forEach(h=>Object.entries(h.log||{}).forEach(([k,v])=>{if(v&&maybeAwardHabitXp(h,k)) count++;}));
+  Object.entries(D.meals||{}).forEach(([k,slots])=>(slots||[]).forEach((slot,i)=>{if(slot?.eaten&&maybeAwardMealXp(i,k)) count++;}));
+  ensureBody();
+  (D.body.weightLog||[]).forEach(e=>{if(maybeAwardWeightXp(e)) count++;});
+  (D.body.cardioLog||[]).forEach(e=>{if(maybeAwardCardioXp(e)) count++;});
+  ensureGoalsStructure();
+  (D.goals.weekly||[]).forEach(g=>{if(g.done&&maybeAwardGoalXp('weekly',g)) count++;});
+  (D.goals.monthly||[]).forEach(g=>{if(g.done&&maybeAwardGoalXp('monthly',g)) count++;});
+  (D.reflections||[]).forEach((r,i)=>{if(maybeAwardReflectionXp(r,i)) count++;});
+  sv();renderCharacter();
+  toast(count?`Imported ${count} XP event${count!==1?'s':''}.`:'No new history XP to import.');
+}
+
 const TAG_PALETTE=['#14CEFF','#2EED00','#F21B1B','#f5a000','#a855f7','#06b6d4','#f59e0b','#10b981','#e11d48',
   '#3b82f6','#ec4899','#84cc16','#14b8a6','#fb923c','#8b5cf6','#22d3ee','#facc15','#4ade80','#f87171','#c084fc',
   '#60a5fa','#34d399','#fb7185','#a3e635','#38bdf8','#e879f9','#fbbf24','#6ee7b7','#93c5fd','#fca5a5'];
@@ -1509,7 +2010,10 @@ function selFocus(v){
   document.querySelectorAll('#focus-sel .fstar').forEach(b=>b.classList.toggle('on',parseInt(b.dataset.val)===v));
 }
 function logSess(tag,h20,recall,hours,focus,ts,manual=false){
-  D.sessions.push({tag,h20,recall,hours:hours||1,focus:focus||3,ts:ts||Date.now(),manual});
+  const sessionTs=ts||Date.now();
+  const session={id:`s${sessionTs}_${D.sessions.length}`,tag,h20,recall,hours:hours||1,focus:focus||3,ts:sessionTs,manual};
+  D.sessions.push(session);
+  maybeAwardStudyXp(session,{showToast:true});
   sv();renSCnt();renSlog();
 }
 function renSCnt(){
@@ -1734,7 +2238,12 @@ function moveHabit(i,dir){
   [D.habits[i],D.habits[j]]=[D.habits[j],D.habits[i]];
   sv();renHabits();renCal();
 }
-function togH(i){const k=tdk();D.habits[i].log[k]=!D.habits[i].log[k];sv();renHabits();renCal();}
+function togH(i){
+  const k=tdk(),h=D.habits[i],was=!!h.log[k];
+  h.log[k]=!was;
+  if(!was) maybeAwardHabitXp(h,k,{showToast:true});
+  sv();renHabits();renCal();
+}
 
 function showEditHabit(i){
   const h=D.habits[i];
@@ -1824,7 +2333,10 @@ function calClk(d){
   const n=new Date();if(d>n.getDate())return;
   const k=`${n.getFullYear()}-${n.getMonth()}-${d}`;
   const h=D.habits[D.ahi];if(!h)return;
-  h.log[k]=!h.log[k];sv();renCal();renHabits();
+  const was=!!h.log[k];
+  h.log[k]=!was;
+  if(!was) maybeAwardHabitXp(h,k,{showToast:true});
+  sv();renCal();renHabits();
 }
 
 // ══════════════════════════════════════════
@@ -1861,7 +2373,13 @@ function renMeals(){
     </div>`;
   }).join('');
 }
-function togMeal(idx){const k=mealKey(D.mealDate);getMealDay(D.mealDate);D.meals[k][idx].eaten=!D.meals[k][idx].eaten;sv();renMeals();renMealsCal();}
+function togMeal(idx){
+  const k=mealKey(D.mealDate);getMealDay(D.mealDate);
+  const was=!!D.meals[k][idx].eaten;
+  D.meals[k][idx].eaten=!was;
+  if(!was) maybeAwardMealXp(idx,k,{showToast:true});
+  sv();renMeals();renMealsCal();
+}
 function setMealTime(idx,val){
   const k=mealKey(D.mealDate);getMealDay(D.mealDate);
   D.meals[k][idx].time=val;
@@ -2101,7 +2619,8 @@ function addGoal(type){
   if(!text){inp.focus();return;}
   ensureGoalsStructure();
   const goals=type==='weekly'?D.goals.weekly:D.goals.monthly;
-  goals.push({text,done:false,added:Date.now()});
+  const added=Date.now();
+  goals.push({id:`g${added}_${goals.length}`,text,done:false,added});
   inp.value='';sv();renGoalList(type);
   const tot=document.getElementById('goals-total-badge');
   if(tot) tot.textContent=`${D.goals.totalDone||0} goal${(D.goals.totalDone||0)!==1?'s':''} completed`;
@@ -2112,7 +2631,11 @@ function togGoal(type,i){
   const goals=type==='weekly'?D.goals.weekly:D.goals.monthly;
   const wasDone=goals[i].done;
   goals[i].done=!goals[i].done;
-  if(!wasDone) D.goals.totalDone=(D.goals.totalDone||0)+1;
+  if(!wasDone){
+    goals[i].doneAt=Date.now();
+    D.goals.totalDone=(D.goals.totalDone||0)+1;
+    maybeAwardGoalXp(type,goals[i],{showToast:true});
+  }
   else D.goals.totalDone=Math.max(0,(D.goals.totalDone||1)-1);
   sv();renGoalList(type);
   const tot=document.getElementById('goals-total-badge');
@@ -2165,9 +2688,11 @@ function addWeightLog(){
   if(!dateVal||isNaN(wVal)||wVal<=0){toast('Enter a valid date and weight.');return;}
   // Remove existing entry for same date
   D.body.weightLog=D.body.weightLog.filter(e=>e.date!==dateVal);
-  D.body.weightLog.push({date:dateVal,weight:wVal});
+  const entry={date:dateVal,weight:wVal};
+  D.body.weightLog.push(entry);
   D.body.weightLog.sort((a,b)=>a.date.localeCompare(b.date));
   document.getElementById('wlog-val').value='';
+  maybeAwardWeightXp(entry,{showToast:true});
   sv();renWeightLog();renWeightChart();toast('Weight logged ✓');
 }
 
@@ -2259,12 +2784,14 @@ function addCardioLog(){
   const resthr=parseInt(document.getElementById('cardio-resthr').value);
   const diff=_cardioDiff;
   if(!date||isNaN(dur)||dur<=0){toast('Enter at least date and duration.');return;}
-  D.body.cardioLog.push({date,duration:dur,avgHR:avghr||null,restingHR:resthr||null,difficulty:diff,ts:Date.now()});
+  const entry={date,duration:dur,avgHR:avghr||null,restingHR:resthr||null,difficulty:diff,ts:Date.now()};
+  D.body.cardioLog.push(entry);
   D.body.cardioLog.sort((a,b)=>b.date.localeCompare(a.date));
   // Clear inputs
   document.getElementById('cardio-dur').value='';
   document.getElementById('cardio-avghr').value='';
   document.getElementById('cardio-resthr').value='';
+  maybeAwardCardioXp(entry,{showToast:true});
   sv();renCardioTable();toast('Cardio session logged ✓');
 }
 
