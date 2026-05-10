@@ -53,6 +53,7 @@ try {
 // ══════════════════════════════════════════
 const MEAL_LABELS = ['Breakfast','Morning Snack','Lunch','Afternoon Snack','Dinner'];
 const APP_SCHEMA_VERSION = 1;
+const FINANCE_CATEGORIES = ['Groceries','Rent','Bills','Transport','Health','Learning','Entertainment','Other'];
 const LIFE_STAT_LABELS = ['Intelligence','Health','Strength','Wealth','Connection','Purpose'];
 const META_STAT_LABELS = ['Consistency','Resolve'];
 const CHARACTER_STAT_KEYS = ['intelligence','health','strength','wealth','connection','purpose','consistency','resolve'];
@@ -168,6 +169,7 @@ const D = {
   alarmOn: true,
   mealLockedTimes: [null, null, null, null, null],
   body: { weightLog: [], cardioLog: [] },
+  finance: { income: [], expenses: [], recurring: [], categories: FINANCE_CATEGORIES },
 };
 
 function ensureCharacter(){
@@ -189,6 +191,25 @@ function ensureCharacter(){
   recalculateCharacterFromEvents();
 }
 
+function ensureHabitData(){
+  if(!Array.isArray(D.habits)) D.habits=[];
+  D.habits.forEach((h,i)=>{
+    if(!h.log||typeof h.log!=='object'||Array.isArray(h.log)) h.log={};
+    if(!h.added) h.added=Date.now();
+    if(typeof h.startTime!=='string') h.startTime='';
+  });
+  if(D.habits.length) D.habits[D.habits.length-1].stackedToNext=false;
+}
+
+function ensureFinance(){
+  const base={income:[],expenses:[],recurring:[],categories:FINANCE_CATEGORIES};
+  D.finance={...base,...(D.finance||{})};
+  if(!Array.isArray(D.finance.income)) D.finance.income=[];
+  if(!Array.isArray(D.finance.expenses)) D.finance.expenses=[];
+  if(!Array.isArray(D.finance.recurring)) D.finance.recurring=[];
+  if(!Array.isArray(D.finance.categories)||!D.finance.categories.length) D.finance.categories=FINANCE_CATEGORIES;
+}
+
 function applyCoreData(data){
   D.schemaVersion = data.schemaVersion || D.schemaVersion || APP_SCHEMA_VERSION;
   D.character   = data.character   || D.character;
@@ -202,10 +223,15 @@ function applyCoreData(data){
   D.goals       = data.goals       || {weekly:[],monthly:[]};
   D.mealLockedTimes = data.mealLockedTimes || [null,null,null,null,null];
   D.body        = data.body        || {weightLog:[],cardioLog:[]};
+  D.finance     = data.finance     || D.finance;
+  ensureHabitData();
+  ensureFinance();
   ensureCharacter();
 }
 
 function coreSaveData(){
+  ensureHabitData();
+  ensureFinance();
   ensureCharacter();
   return {
     schemaVersion:D.schemaVersion,
@@ -219,7 +245,8 @@ function coreSaveData(){
     profiles:D.profiles,
     goals:D.goals,
     mealLockedTimes:D.mealLockedTimes,
-    body:D.body
+    body:D.body,
+    finance:D.finance
   };
 }
 
@@ -374,15 +401,22 @@ let appInited = false;
 function initApp() {
   if (appInited) { refreshCurrentTab(); return; }
   appInited = true;
+  ensureHabitData();
+  ensureFinance();
   ensureCharacter();
+  setupMobileMenuDismiss();
   initSlogFilter();
   renTags(); renSCnt(); renSlog(); renProfilesMini();
   // Set today's date on body inputs
   const today = new Date().toISOString().split('T')[0];
   const wd = document.getElementById('wlog-date');
   const cd = document.getElementById('cardio-date');
+  const fid = document.getElementById('fin-income-date');
+  const fed = document.getElementById('fin-expense-date');
   if(wd) wd.value = today;
   if(cd) cd.value = today;
+  if(fid) fid.value = today;
+  if(fed) fed.value = today;
   // Init cardio difficulty to 3
   selCardioDiff(3);
   refreshCurrentTab();
@@ -415,6 +449,7 @@ function refreshTab(id){
   if(ids.includes('reflect')) { renGoals(); renStats(); }
   if(ids.includes('work')) { renTags(); renSCnt(); renSlog(); renProfilesMini(); }
   if(ids.includes('body')) renBody();
+  if(ids.includes('wealth')) renWealth();
   if(ids.includes('settings')) renSettings();
 }
 function refreshCurrentTab() {
@@ -441,6 +476,17 @@ function navigateToTab(id){
 }
 function toggleMobileMenu(){
   document.getElementById('main-nav')?.classList.toggle('open');
+}
+let mobileMenuDismissBound=false;
+function setupMobileMenuDismiss(){
+  if(mobileMenuDismissBound) return;
+  mobileMenuDismissBound=true;
+  document.addEventListener('click',e=>{
+    const nav=document.getElementById('main-nav');
+    if(!nav?.classList.contains('open')) return;
+    if(nav.contains(e.target)||e.target.closest('.mobile-menu-btn')) return;
+    nav.classList.remove('open');
+  });
 }
 function updateMobileHeader(){
   ensureCharacter();
@@ -873,6 +919,27 @@ function maybeAwardReflectionXp(reflection,index,{showToast=false}={}){
     linkedEntityId:reflection.id||String(index||ts),rewardKey:`reflection:${reflection.id||ts||index}`,
     generalXp:25,statXp:{purpose:15,intelligence:7,consistency:3},
     primaryStat:'purpose',secondaryStat:'intelligence',timestamp:ts,quality:'normal',difficulty:'easy'
+  }),{showToast});
+}
+function financeIncomeRewardKey(item){return item?.id?`finance_income:${item.id}`:'';}
+function financeExpenseRewardKey(item){return item?.id?`finance_expense:${item.id}`:'';}
+function maybeAwardFinanceXp(kind,item,{showToast=false}={}){
+  if(!item) return false;
+  const income=kind==='income';
+  return addXpEvent(makeXpEvent({
+    type:income?'finance_income_logged':'finance_expense_logged',
+    sourceSection:'wealth',
+    label:income?`Income: ${item.source||'Income'}`:`Expense: ${item.category||'Expense'}`,
+    linkedEntityId:item.id,
+    rewardKey:income?financeIncomeRewardKey(item):financeExpenseRewardKey(item),
+    generalXp:8,
+    statXp:{wealth:6,consistency:2},
+    primaryStat:'wealth',
+    secondaryStat:'consistency',
+    timestamp:item.createdAt||Date.now(),
+    quality:'normal',
+    difficulty:'easy',
+    category:'finance'
   }),{showToast});
 }
 function importXpFromHistory(){
@@ -1530,7 +1597,7 @@ function todayXpGained(){
 function habitIsDueToday(h){
   return isPlannedDay(h,new Date())||habitIsDoneToday(h);
 }
-function buildHabitChains(){
+function buildHabitGroups({onlyToday=false}={}){
   const labels=['Morning Flow','Midday Flow','Evening Flow','Habit Flow'];
   const chains=[];
   const loose=[];
@@ -1542,18 +1609,64 @@ function buildHabitChains(){
       i++;
       items.push({habit:D.habits[i],index:i});
     }
-    const todayItems=items.filter(item=>habitIsDueToday(item.habit));
-    if(!todayItems.length){i++;continue;}
+    const visibleItems=onlyToday?items.filter(item=>habitIsDueToday(item.habit)):items;
+    if(!visibleItems.length){i++;continue;}
     if(items.length>1){
       const label=labels[Math.min(chains.length,labels.length-1)];
-      chains.push({id:`chain-${start}`,title:label,items:todayItems});
+      chains.push({id:`chain:${items[0].habit.id||start}`,title:label,items:visibleItems});
     } else {
-      loose.push(todayItems[0]);
+      loose.push(visibleItems[0]);
     }
     i++;
   }
-  if(loose.length) chains.push({id:'chain-today',title:'Today',items:loose});
+  if(loose.length) chains.push({id:'loose',title:'Today',items:loose});
   return chains;
+}
+function buildHabitChains(){return buildHabitGroups({onlyToday:true});}
+function buildHabitGroupsAll(){return buildHabitGroups({onlyToday:false});}
+function rebuildHabitsFromGroups(groups){
+  const next=[];
+  groups.filter(g=>g.items.length).forEach(g=>{
+    g.items.forEach((item,pos)=>{
+      item.habit.stackedToNext=g.id!=='loose'&&pos<g.items.length-1;
+      next.push(item.habit);
+    });
+  });
+  D.habits=next;
+  if(D.ahi>=D.habits.length) D.ahi=Math.max(0,D.habits.length-1);
+  ensureHabitData();
+}
+function moveHabitToGroup(fromIndex,targetGroupId,insertAt=null){
+  const groups=buildHabitGroupsAll();
+  let moving=null,source=null,sourcePos=-1;
+  groups.forEach(g=>{
+    const pos=g.items.findIndex(item=>item.index===fromIndex);
+    if(pos>-1){source=g;sourcePos=pos;moving=g.items.splice(pos,1)[0];}
+  });
+  if(!moving) return;
+  let target=groups.find(g=>g.id===targetGroupId);
+  if(!target){
+    target={id:'loose',title:'Today',items:[]};
+    groups.push(target);
+  }
+  let pos=insertAt===null||insertAt===undefined?target.items.length:Number(insertAt);
+  if(source&&source.id===target.id&&sourcePos<pos) pos--;
+  pos=Math.max(0,Math.min(target.items.length,pos));
+  target.items.splice(pos,0,moving);
+  rebuildHabitsFromGroups(groups);
+  sv();renHabits();renCal();
+}
+function moveHabitOutOfChain(index){moveHabitToGroup(index,'loose');}
+function moveHabitWithinGroup(index,dir){
+  const groups=buildHabitGroupsAll();
+  const group=groups.find(g=>g.items.some(item=>item.index===index));
+  if(!group) return;
+  const pos=group.items.findIndex(item=>item.index===index);
+  const next=pos+dir;
+  if(next<0||next>=group.items.length) return;
+  [group.items[pos],group.items[next]]=[group.items[next],group.items[pos]];
+  rebuildHabitsFromGroups(groups);
+  sv();renHabits();renCal();
 }
 function firstActiveHabit(chains=buildHabitChains()){
   for(const chain of chains){
@@ -1600,10 +1713,13 @@ function habitDetailBlock(h,i,chain,position){
     <div><strong>Frequency</strong><span>${escapeHtml(freqLabel(h))}</span></div>
     <div><strong>Rhythm</strong><span>${str>0?`${str} day streak`:'Ready to start today'}</span></div>
     <div><strong>Stack</strong><span>${chain.items.length>1?`Step ${position+1} of ${chain.items.length}`:'Standalone habit'}</span></div>
+    <div><strong>Start time</strong><span>${escapeHtml(h.startTime||'No start time')}</span></div>
+    <div><strong>Move to</strong><span><select class="habit-chain-select" onchange="moveHabitToGroup(${i},this.value)">${renderChainMoveOptions(chain.id)}</select></span></div>
     <div class="habit-design-actions">
       <button class="btn bs" onclick="showEditHabit(${i})">Edit</button>
       <button class="habit-move-btn" onclick="moveHabit(${i},-1)" ${i===0?'disabled':''} title="Move up">▲</button>
       <button class="habit-move-btn" onclick="moveHabit(${i},1)" ${i===D.habits.length-1?'disabled':''} title="Move down">▼</button>
+      <button class="btn bs" onclick="moveHabitOutOfChain(${i})">Move out</button>
       ${stacked?`<button class="btn bs" onclick="toggleStack(${i})">${h.stackedToNext?'Unstack':'Stack next'}</button>`:''}
     </div>
   </div>`;
@@ -1615,12 +1731,35 @@ function renderFlowSegments(chain,activeIndex){
     return`<span class="${state}"></span>`;
   }).join('')}</div>`;
 }
+let habitDragIndex=null;
+function startHabitDrag(e,index){
+  habitDragIndex=index;
+  e.dataTransfer?.setData('text/plain',String(index));
+  e.dataTransfer?.setDragImage?.(e.currentTarget,20,20);
+  e.currentTarget.classList.add('habit-dragging');
+}
+function endHabitDrag(e){
+  habitDragIndex=null;
+  e.currentTarget?.classList.remove('habit-dragging');
+}
+function allowHabitDrop(e){e.preventDefault();}
+function dropHabitOnGroup(e,groupId,position=null){
+  e.preventDefault();
+  e.stopPropagation();
+  const idx=habitDragIndex??Number(e.dataTransfer?.getData('text/plain'));
+  if(!Number.isFinite(idx)) return;
+  moveHabitToGroup(idx,groupId,position);
+  habitDragIndex=null;
+}
+function renderChainMoveOptions(currentGroupId){
+  return buildHabitGroupsAll().map(g=>`<option value="${g.id}" ${g.id===currentGroupId?'selected':''}>${escapeHtml(g.title)}</option>`).join('');
+}
 function renderHabitRow(item,chain,position,active=false,primary=false){
   const h=item.habit,i=item.index,done=habitIsDoneToday(h);
   const name=escapeHtml(habitDisplayName(h));
   const subline=escapeHtml(compactHabitSubline(h));
   if(active){
-    return`<div class="active-habit-card ${primary?'primary-focus':''}" id="hi-${i}">
+    return`<div class="active-habit-card habit-draggable ${primary?'primary-focus':''}" id="hi-${i}" draggable="true" ondragstart="startHabitDrag(event,${i})" ondragend="endHabitDrag(event)" ondragover="allowHabitDrop(event)" ondrop="dropHabitOnGroup(event,'${chain.id}',${position})">
       <div class="active-kicker">${primary?'Do this now':'Current step'}</div>
       <h3>${name}</h3>
       <div class="tiny-action">${escapeHtml(h.tm||'Do the smallest honest version now.')}</div>
@@ -1632,7 +1771,7 @@ function renderHabitRow(item,chain,position,active=false,primary=false){
       ${todayDesignMode?habitDetailBlock(h,i,chain,position):''}
     </div>`;
   }
-  return`<details class="habit-row-wrap ${done?'done':'upcoming'}" id="hi-${i}">
+  return`<details class="habit-row-wrap habit-draggable ${done?'done':'upcoming'}" id="hi-${i}" draggable="true" ondragstart="startHabitDrag(event,${i})" ondragend="endHabitDrag(event)" ondragover="allowHabitDrop(event)" ondrop="dropHabitOnGroup(event,'${chain.id}',${position})">
     <summary class="compact-habit-row">
       <button class="mini-check ${done?'on':''}" onclick="event.preventDefault();event.stopPropagation();togH(${i},event.currentTarget)">${done?'✓':''}</button>
       <span>${name}</span>
@@ -1647,8 +1786,11 @@ function renderHabitChain(chain){
   const activeIndex=chain.items.findIndex(x=>!habitIsDoneToday(x.habit));
   const identity=chain.items[activeIndex>=0?activeIndex:0]?.habit?.id2||'Every action is a vote for the person you wish to become.';
   const primary=firstActiveHabit()?.chain?.id===chain.id;
+  const fullChain=buildHabitGroupsAll().find(g=>g.id===chain.id);
+  const startTime=fullChain?.items?.[0]?.habit?.startTime||chain.items[0]?.habit?.startTime||'';
   if(doneCount===chain.items.length){
-    return`<details class="routine-card routine-complete completed-routine">
+    return`<details class="routine-card routine-complete completed-routine" ondragover="allowHabitDrop(event)" ondrop="dropHabitOnGroup(event,'${chain.id}')">
+      ${startTime?`<div class="chain-time-badge">Starts ${escapeHtml(startTime)}</div>`:''}
       <summary>
         <span>${escapeHtml(chain.title)} ✓ ${doneCount}/${chain.items.length}</span>
         <small>Complete</small>
@@ -1659,7 +1801,8 @@ function renderHabitChain(chain){
       </div>
     </details>`;
   }
-  return`<div class="card routine-card ${doneCount===chain.items.length?'routine-complete':''}">
+  return`<div class="card routine-card ${doneCount===chain.items.length?'routine-complete':''}" ondragover="allowHabitDrop(event)" ondrop="dropHabitOnGroup(event,'${chain.id}')">
+    ${startTime?`<div class="chain-time-badge">Starts ${escapeHtml(startTime)}</div>`:''}
     <div class="routine-head">
       <div>
         <h2>${escapeHtml(chain.title)}</h2>
@@ -1694,12 +1837,7 @@ function renHabits(){
   renHCsel();
 }
 function toggleStack(i){D.habits[i].stackedToNext=!D.habits[i].stackedToNext;sv();renHabits();}
-function moveHabit(i,dir){
-  const j=i+dir;
-  if(j<0||j>=D.habits.length) return;
-  [D.habits[i],D.habits[j]]=[D.habits[j],D.habits[i]];
-  sv();renHabits();renCal();
-}
+function moveHabit(i,dir){moveHabitWithinGroup(i,dir);}
 function togH(i,targetEl=null){
   const k=tdk(),h=D.habits[i],was=!!h.log[k];
   h.log[k]=!was;
@@ -1721,6 +1859,7 @@ function showEditHabit(i){
     <label>Identity statement</label><input type="text" id="edit-hname" value="${h.id2}" class="mb10">
     <label>Habit stack trigger</label><input type="text" id="edit-hsk" value="${h.sk}" class="mb10">
     <label>2-Minute version</label><input type="text" id="edit-htm" value="${h.tm}" class="mb10">
+    <label>Start time <em>(optional)</em></label><input type="time" id="edit-hstart" value="${h.startTime||''}" class="mb10">
     <div id="edit-freq-wrap">${renderFreqPicker(h,'edit')}</div>
     <div class="brow">
       <button class="btn bp" onclick="saveEditHabit(${i})">Save</button>
@@ -1735,8 +1874,10 @@ function saveEditHabit(i){
   const name=document.getElementById('edit-hname').value.trim();
   const sk=document.getElementById('edit-hsk').value.trim();
   const tm=document.getElementById('edit-htm').value.trim();
+  const startTime=document.getElementById('edit-hstart').value||'';
   if(!name||!sk||!tm){toast('Please fill all fields.');return;}
   D.habits[i].name=nameLabel;D.habits[i].id2=name;D.habits[i].sk=sk;D.habits[i].tm=tm;
+  D.habits[i].startTime=startTime;
   D.habits[i].freq=window._editFreq['edit']||{type:'daily',days:[]};
   sv();closeMod();renHabits();renCal();
 }
@@ -1756,6 +1897,7 @@ function showAddHabit(){
       <label>Habit / action name</label><input type="text" id="mn" placeholder="e.g. Morning workout" class="mb10">
       <label>Tiny executable version</label><input type="text" id="mt" placeholder="Smallest possible start..." class="mb10">
       <label>Cue / trigger</label><input type="text" id="ms" placeholder="After I..., I will..." class="mb10">
+      <label>Start time <em>(optional)</em></label><input type="time" id="mst" class="mb10">
       <label>Chain / flow placement</label>
       <p class="habit-form-hint">Place related habits next to each other, then use Details to stack them into a flow.</p>
     </div>
@@ -1771,11 +1913,109 @@ function showAddHabit(){
 function saveHabit(){
   const n=document.getElementById('mn').value.trim();
   const i=document.getElementById('mi').value.trim(),s=document.getElementById('ms').value.trim(),t=document.getElementById('mt').value.trim();
+  const startTime=document.getElementById('mst')?.value||'';
   if(!i||!s||!t){toast('Please fill identity, trigger, and 2-minute fields.');return;}
-  D.habits.push({id:'h'+Date.now(),name:n,id2:i,sk:s,tm:t,added:Date.now(),log:{},freq:window._editFreq['add']||{type:'daily',days:[]}});
+  D.habits.push({id:'h'+Date.now(),name:n,id2:i,sk:s,tm:t,startTime,added:Date.now(),log:{},freq:window._editFreq['add']||{type:'daily',days:[]}});
   sv();closeMod();renHabits();renCal();
 }
 function closeMod(){document.getElementById('mov').classList.add('hid');}
+
+function todayInputDate(){return new Date().toISOString().split('T')[0];}
+function financeMonthKey(dateStr){
+  const d=dateStr?new Date(dateStr+'T12:00:00'):new Date();
+  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`;
+}
+function money(n){
+  const val=Number(n)||0;
+  const sign=val>0?'+':val<0?'-':'';
+  return `${sign}${Math.abs(val).toLocaleString('pl-PL',{maximumFractionDigits:2})} zł`;
+}
+function renWealth(){
+  ensureFinance();
+  const today=todayInputDate();
+  const incDate=document.getElementById('fin-income-date');
+  const expDate=document.getElementById('fin-expense-date');
+  if(incDate&&!incDate.value) incDate.value=today;
+  if(expDate&&!expDate.value) expDate.value=today;
+  const cat=document.getElementById('fin-expense-category');
+  if(cat&&!cat.options.length) cat.innerHTML=D.finance.categories.map(c=>`<option value="${escapeHtml(c)}">${escapeHtml(c)}</option>`).join('');
+  renderFinanceLists();
+  renderFinanceNet();
+}
+function renderFinanceLists(){
+  const incomeEl=document.getElementById('finance-income-list');
+  const expenseEl=document.getElementById('finance-expense-list');
+  if(incomeEl){
+    const rows=[...D.finance.income].sort((a,b)=>String(b.date).localeCompare(String(a.date))).slice(0,8);
+    incomeEl.innerHTML=rows.length?rows.map(item=>`
+      <div class="finance-row">
+        <div><strong>${escapeHtml(item.source||'Income')}</strong><small>${escapeHtml(item.date||'')}</small></div>
+        <span>${money(item.amount)}</span>
+        <button onclick="deleteFinanceIncome('${item.id}')">Delete</button>
+      </div>`).join(''):'<p class="char-note">No income logged yet.</p>';
+  }
+  if(expenseEl){
+    const rows=[...D.finance.expenses].sort((a,b)=>String(b.date).localeCompare(String(a.date))).slice(0,8);
+    expenseEl.innerHTML=rows.length?rows.map(item=>`
+      <div class="finance-row expense">
+        <div><strong>${escapeHtml(item.category||'Expense')}</strong><small>${escapeHtml(item.date||'')}${item.notes?` - ${escapeHtml(item.notes)}`:''}</small></div>
+        <span>-${money(item.amount).replace(/^[+-]/,'')}</span>
+        <button onclick="deleteFinanceExpense('${item.id}')">Delete</button>
+      </div>`).join(''):'<p class="char-note">No expenses logged yet.</p>';
+  }
+}
+function renderFinanceNet(){
+  const month=financeMonthKey(todayInputDate());
+  const income=D.finance.income.filter(i=>financeMonthKey(i.date)===month).reduce((s,i)=>s+(Number(i.amount)||0),0);
+  const expenses=D.finance.expenses.filter(e=>financeMonthKey(e.date)===month).reduce((s,e)=>s+(Number(e.amount)||0),0);
+  const net=income-expenses;
+  const card=document.getElementById('finance-net-card');
+  const result=document.getElementById('finance-net-result');
+  const detail=document.getElementById('finance-net-detail');
+  if(card){card.classList.toggle('positive',net>=0);card.classList.toggle('negative',net<0);}
+  if(result) result.textContent=net>=0?`Savings this month: ${money(net)}`:`Deficit this month: ${money(net)}`;
+  if(detail) detail.textContent=`Income ${money(income).replace(/^\+/,'')} - Expenses ${money(expenses).replace(/^\+/,'')}`;
+}
+function addFinanceIncome(targetEl=null){
+  ensureFinance();
+  const amount=Number(document.getElementById('fin-income-amount')?.value)||0;
+  const date=document.getElementById('fin-income-date')?.value||todayInputDate();
+  const source=document.getElementById('fin-income-source')?.value.trim()||'Income';
+  const notes=document.getElementById('fin-income-notes')?.value.trim()||'';
+  if(amount<=0){toast('Enter an income amount.');return;}
+  const item={id:'fin_i_'+Date.now(),amount,date,source,notes,createdAt:Date.now()};
+  D.finance.income.push(item);
+  const xp=maybeAwardFinanceXp('income',item,{showToast:true});
+  showXpFloat(targetEl,xp);
+  ['fin-income-amount','fin-income-source','fin-income-notes'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
+  sv();renWealth();
+}
+function addFinanceExpense(targetEl=null){
+  ensureFinance();
+  const amount=Number(document.getElementById('fin-expense-amount')?.value)||0;
+  const date=document.getElementById('fin-expense-date')?.value||todayInputDate();
+  const category=document.getElementById('fin-expense-category')?.value||'Other';
+  const notes=document.getElementById('fin-expense-notes')?.value.trim()||'';
+  if(amount<=0){toast('Enter an expense amount.');return;}
+  const item={id:'fin_e_'+Date.now(),amount,date,category,notes,createdAt:Date.now()};
+  D.finance.expenses.push(item);
+  const xp=maybeAwardFinanceXp('expense',item,{showToast:true});
+  showXpFloat(targetEl,xp);
+  ['fin-expense-amount','fin-expense-notes'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
+  sv();renWealth();
+}
+function deleteFinanceIncome(id){
+  const item=D.finance.income.find(i=>i.id===id);
+  removeXpEventByRewardKey(financeIncomeRewardKey(item),{save:false});
+  D.finance.income=D.finance.income.filter(i=>i.id!==id);
+  sv();renWealth();
+}
+function deleteFinanceExpense(id){
+  const item=D.finance.expenses.find(e=>e.id===id);
+  removeXpEventByRewardKey(financeExpenseRewardKey(item),{save:false});
+  D.finance.expenses=D.finance.expenses.filter(e=>e.id!==id);
+  sv();renWealth();
+}
 
 // ══════════════════════════════════════════
 // HABIT CALENDAR
