@@ -80,11 +80,9 @@
 
 <header class="app-header" style="padding:14px 16px 10px">
   <div class="mobile-header-row">
-    <div>
-      <h1>Masters of Life</h1>
-      <span id="mobile-level-pill">Level 1</span>
-    </div>
-    <button class="mobile-menu-btn" onclick="toggleMobileMenu()">Menu</button>
+    <button class="mobile-menu-btn" onclick="toggleMobileMenu()" aria-label="Open navigation">&#9776;</button>
+    <h1>Masters of Life</h1>
+    <span id="mobile-level-pill">LVL 1</span>
   </div>
   <div class="desktop-brand">
     <div class="brand-mark">ML</div>
@@ -299,8 +297,7 @@
       <p>Follow the current step in each routine.</p>
     </div>
     <div class="today-habit-actions">
-      <button class="btn bs today-design-toggle" id="today-design-toggle" onclick="toggleTodayDesignMode()">Design Mode</button>
-      <button class="btn bs" onclick="showAddHabit()">+ New Habit</button>
+      <button class="btn bp today-new-habit-btn" onclick="showAddHabit()">+ New Habit</button>
     </div>
   </section>
   <div id="hlist"></div>
