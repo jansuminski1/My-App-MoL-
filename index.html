@@ -277,13 +277,45 @@
 
 <!-- ═══ TODAY ═══ -->
 <div id="tab-habits" class="tab on">
-  <div class="card">
-    <div class="fb" style="margin-bottom:8px">
-      <h2>Today’s Path</h2>
+  <div class="card today-hero-card">
+    <div class="today-hero-top">
+      <div>
+        <h2>Today’s Path</h2>
+        <p class="today-hero-sub">Execute the next real action.</p>
+      </div>
+      <div class="today-level-pill" id="today-level-pill">Level 1</div>
+    </div>
+    <div class="today-rank-line" id="today-rank-line">Awakening</div>
+    <div class="char-level-line today-xp-line">
+      <span id="today-xp-gained">0 XP today</span>
+      <span id="today-xp-next">25 XP to next level</span>
+    </div>
+    <div class="xp-bar today-xp-bar"><div class="xp-fill" id="today-xp-fill" style="width:0%"></div></div>
+  </div>
+  <div class="card next-action-card">
+    <div class="today-section-head">
+      <h2>Next Action</h2>
+      <button class="btn bs today-design-toggle" id="today-design-toggle" onclick="toggleTodayDesignMode()">Design Mode</button>
+    </div>
+    <p id="today-next-action" class="next-action-text">Complete one tiny action to keep momentum.</p>
+    <div class="quick-log-row">
+      <button onclick="navigateToTab('mind')">Study</button>
+      <button onclick="navigateToTab('health')">Meal</button>
+      <button onclick="navigateToTab('health')">Cardio</button>
+      <button onclick="navigateToTab('purpose')">Reflection</button>
+    </div>
+  </div>
+  <div class="card today-balance-card">
+    <div class="today-section-head">
+      <h2>Balance Today</h2>
       <button class="btn bs" style="font-size:.72rem;padding:4px 12px" onclick="showAddHabit()">+ New Habit</button>
     </div>
-    <p style="font-size:.78rem;color:var(--mut);margin-bottom:12px">Every action is a vote for the person you wish to become.</p>
-    <div id="hlist"></div>
+    <div class="domain-strip" id="today-domain-strip"></div>
+  </div>
+  <div id="hlist"></div>
+  <div class="card today-xp-feed-card">
+    <h2>XP Today</h2>
+    <div class="today-xp-feed" id="today-xp-feed"></div>
   </div>
   <div class="card">
     <h2>Today’s Streak Calendar — <span id="calml"></span></h2>

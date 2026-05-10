@@ -432,8 +432,11 @@ function showTab(id, btn) {
   document.querySelectorAll('.tab').forEach(t => t.classList.remove('on'));
   document.querySelectorAll('nav button').forEach(b => b.classList.remove('on'));
   resolveTabIds(id).forEach(tabId=>document.getElementById('tab-'+tabId)?.classList.add('on'));
-  btn?.classList.add('on');
+  (btn||document.querySelector(`nav button[data-tab="${id}"]`))?.classList.add('on');
   refreshTab(id);
+}
+function navigateToTab(id){
+  showTab(id,document.querySelector(`nav button[data-tab="${id}"]`));
 }
 function renSettings(){
   const user=document.getElementById('settings-user-email');
@@ -1488,37 +1491,185 @@ function toggleFreqDay(prefix,d){
   if(wrap) wrap.innerHTML=renderFreqPicker({freq:window._editFreq[prefix]},prefix);
 }
 
-function renHabits(){
-  if(!D.habits.length){document.getElementById('hlist').innerHTML='<p style="font-size:.8rem;color:var(--mut)">No habits yet.</p>';renHCsel();return;}
-  let html='';
-  D.habits.forEach((h,i)=>{
-    const str=streak(h),done=h.log[tdk()],two=twoMinActive(h),daysLeft=Math.max(0,7-Math.floor((Date.now()-h.added)/864e5));
-    const displayName=h.name||h.id2.replace(/^I am (someone who )?/i,'');
-    const stacked=!!h.stackedToNext;
-    html+=`<div class="hi" style="${done?'opacity:.6':''}" id="hi-${i}">
-      <div style="display:flex;flex-direction:column;gap:3px;margin-right:4px">
-        <button class="habit-move-btn" onclick="moveHabit(${i},-1)" ${i===0?'disabled style="opacity:.3"':''} title="Move up">▲</button>
-        <button class="habit-move-btn" onclick="moveHabit(${i},1)" ${i===D.habits.length-1?'disabled style="opacity:.3"':''} title="Move down">▼</button>
-      </div>
-      <div style="flex:1">
-        <div class="id"><span style="font-weight:700;font-style:normal;font-size:.95rem">${displayName}</span><button class="edit-btn" onclick="showEditHabit(${i})" title="Edit">✏</button></div>
-        ${h.name?`<div style="font-size:.78rem;color:var(--mut);font-style:italic;margin-top:1px">${h.id2}</div>`:''}
-        <div class="sk">🔗 ${h.sk}</div>
-        <div style="font-size:.7rem;color:var(--acc);margin-top:2px">📅 ${freqLabel(h)}</div>
-        ${two?`<div class="tm">⏱ 2-Min (${daysLeft}d left): ${h.tm}</div>`:''}
-        ${i<D.habits.length-1?`<button onclick="toggleStack(${i})" style="margin-top:5px;font-size:.68rem;padding:2px 8px;border-radius:20px;border:1px solid ${stacked?'var(--acc)':'var(--bdr)'};background:${stacked?'rgba(14,139,186,.1)':'none'};color:${stacked?'var(--acc)':'var(--mut)'};cursor:pointer;font-family:inherit;transition:.15s">⛓ ${stacked?'Stacked to next':'Stack to next'}</button>`:''}
-      </div>
-      <div style="display:flex;flex-direction:column;align-items:flex-end;gap:5px">
-        <span class="sb ${str>=3?'hot':''}">${str>0?'🔥 '+str+'d':'Start'}</span>
-        <button class="btn ${done?'bs':'bp'}" style="font-size:.7rem;padding:3px 10px" onclick="togH(${i},event.currentTarget)">${done?'✓ Done':'Mark Done'}</button>
-      </div>
-    </div>`;
-    // Chain link connector between stacked habits
-    if(stacked && i<D.habits.length-1){
-      html+=`<div class="chain-link"><div class="chain-link-icon">⛓</div></div>`;
+let todayDesignMode=false;
+
+function habitDisplayName(h){
+  return h?.name||String(h?.id2||'Habit').replace(/^I am (someone who )?/i,'');
+}
+function compactCue(h){
+  const cue=String(h?.sk||'').replace(/^after i\s*/i,'After I ').trim();
+  return cue.length>58?cue.slice(0,55).trim()+'...':cue;
+}
+function habitIsDoneToday(h){return !!h?.log?.[tdk()];}
+function getTodayXpEvents(){
+  ensureCharacter();
+  const todayIso=dateStamp();
+  return (D.character.xpEvents||[]).filter(e=>{
+    if(e.date===todayIso) return true;
+    return e.timestamp&&dateStamp(e.timestamp)===todayIso;
+  }).sort((a,b)=>(b.timestamp||0)-(a.timestamp||0));
+}
+function todayXpGained(){
+  return getTodayXpEvents().reduce((sum,e)=>sum+(Number(e.generalXp)||0),0);
+}
+function buildHabitChains(){
+  const labels=['Morning Sequence','Midday Sequence','Evening Sequence','Habit Chain'];
+  const chains=[];
+  let i=0;
+  while(i<D.habits.length){
+    const start=i;
+    const items=[{habit:D.habits[i],index:i}];
+    while(i<D.habits.length-1&&D.habits[i].stackedToNext){
+      i++;
+      items.push({habit:D.habits[i],index:i});
     }
+    const label=items.length>1?labels[Math.min(chains.length,labels.length-1)]:'Solo Action';
+    chains.push({id:`chain-${start}`,title:label,items});
+    i++;
+  }
+  return chains;
+}
+function firstActiveHabit(chains=buildHabitChains()){
+  for(const chain of chains){
+    const item=chain.items.find(x=>!habitIsDoneToday(x.habit));
+    if(item) return {chain,item};
+  }
+  return null;
+}
+function renderTodayHero(){
+  ensureCharacter();
+  const c=D.character;
+  const progress=getLevelProgress(c.totalXp);
+  const rankInfo=getRankInfo(progress.level);
+  const xpToday=todayXpGained();
+  const level=document.getElementById('today-level-pill');
+  const rank=document.getElementById('today-rank-line');
+  const gained=document.getElementById('today-xp-gained');
+  const next=document.getElementById('today-xp-next');
+  const fill=document.getElementById('today-xp-fill');
+  if(level) level.textContent=`Level ${progress.level}`;
+  if(rank) rank.textContent=`${rankInfo.title} · Rank ${rankInfo.rankNumber}/${XP_CURVE_CONFIG.maxRanks}`;
+  if(gained) gained.textContent=`${Math.round(xpToday)} XP today`;
+  if(next) next.textContent=progress.xpRemaining?`${progress.xpRemaining} XP to next level`:'Max Level';
+  if(fill) fill.style.width=`${progress.progressPercent}%`;
+}
+function renderNextAction(chains){
+  const el=document.getElementById('today-next-action');
+  if(!el) return;
+  const next=firstActiveHabit(chains);
+  if(next){
+    const h=next.item.habit;
+    el.innerHTML=`<strong>${escapeHtml(habitDisplayName(h))}</strong><span>${escapeHtml(h.tm||h.sk||'Do the smallest honest version now.')}</span>`;
+    return;
+  }
+  const suggestion=generateSuggestion(D.character?.stats||{});
+  el.innerHTML=suggestion?escapeHtml(suggestion):'Complete one tiny action to keep momentum.';
+}
+function renderDomainStrip(){
+  const el=document.getElementById('today-domain-strip');
+  if(!el) return;
+  const active={};
+  getTodayXpEvents().forEach(e=>{
+    Object.entries(e.statXp||{}).forEach(([k,v])=>{if(MAIN_STAT_KEYS.includes(k)&&Number(v)>0) active[k]=true;});
   });
-  document.getElementById('hlist').innerHTML=html;
+  el.innerHTML=MAIN_STAT_KEYS.map(k=>`<div class="domain-chip ${active[k]?'on':''}"><span>${capStat(k)}</span></div>`).join('');
+}
+function renderTodayXpFeed(){
+  const el=document.getElementById('today-xp-feed');
+  if(!el) return;
+  const events=getTodayXpEvents().slice(0,5);
+  if(!events.length){el.innerHTML='<p class="char-note">No XP earned yet today.</p>';return;}
+  el.innerHTML=events.map(e=>{
+    const time=e.timestamp?new Date(e.timestamp).toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'}):'Today';
+    return`<div class="today-xp-item"><span>${escapeHtml(e.label||'XP gained')}</span><strong>+${Math.round(Number(e.generalXp)||0)} XP</strong><small>${time}</small></div>`;
+  }).join('');
+}
+function toggleTodayDesignMode(){
+  todayDesignMode=!todayDesignMode;
+  renHabits();
+}
+function habitDetailBlock(h,i,chain,position){
+  const str=streak(h);
+  const stacked=i<D.habits.length-1;
+  return`<div class="habit-detail-block">
+    <div><strong>Identity</strong><span>${escapeHtml(h.id2||'No identity statement yet.')}</span></div>
+    <div><strong>Cue</strong><span>${escapeHtml(h.sk||'No cue yet.')}</span></div>
+    <div><strong>Tiny minimum</strong><span>${escapeHtml(h.tm||'No tiny minimum yet.')}</span></div>
+    <div><strong>Frequency</strong><span>${escapeHtml(freqLabel(h))}</span></div>
+    <div><strong>Rhythm</strong><span>${str>0?`${str} day streak`:'Ready to start today'}</span></div>
+    <div><strong>Stack</strong><span>${chain.items.length>1?`Step ${position+1} of ${chain.items.length}`:'Standalone habit'}</span></div>
+    <div class="habit-design-actions">
+      <button class="btn bs" onclick="showEditHabit(${i})">Edit</button>
+      <button class="habit-move-btn" onclick="moveHabit(${i},-1)" ${i===0?'disabled':''} title="Move up">▲</button>
+      <button class="habit-move-btn" onclick="moveHabit(${i},1)" ${i===D.habits.length-1?'disabled':''} title="Move down">▼</button>
+      ${stacked?`<button class="btn bs" onclick="toggleStack(${i})">${h.stackedToNext?'Unstack':'Stack next'}</button>`:''}
+    </div>
+  </div>`;
+}
+function renderHabitRow(item,chain,position,active=false){
+  const h=item.habit,i=item.index,done=habitIsDoneToday(h);
+  const name=escapeHtml(habitDisplayName(h));
+  const cue=escapeHtml(compactCue(h));
+  if(active){
+    return`<div class="active-habit-card" id="hi-${i}">
+      <div class="active-kicker">Active focus</div>
+      <h3>${name}</h3>
+      ${h.sk?`<p class="active-cue">${escapeHtml(h.sk)}</p>`:''}
+      <div class="tiny-action">${escapeHtml(h.tm||'Do the smallest honest version now.')}</div>
+      <button class="complete-action-btn" onclick="togH(${i},event.currentTarget)">Complete this action</button>
+      <details class="habit-more">
+        <summary>Details</summary>
+        ${habitDetailBlock(h,i,chain,position)}
+      </details>
+      ${todayDesignMode?habitDetailBlock(h,i,chain,position):''}
+    </div>`;
+  }
+  return`<details class="habit-row-wrap ${done?'done':'upcoming'}" id="hi-${i}">
+    <summary class="compact-habit-row">
+      <button class="mini-check ${done?'on':''}" onclick="event.preventDefault();event.stopPropagation();togH(${i},event.currentTarget)">${done?'✓':''}</button>
+      <span>${name}</span>
+      ${cue?`<small>${cue}</small>`:''}
+    </summary>
+    ${habitDetailBlock(h,i,chain,position)}
+    ${todayDesignMode?`<div class="habit-design-note">Design mode is on for this routine.</div>`:''}
+  </details>`;
+}
+function renderHabitChain(chain){
+  const doneCount=chain.items.filter(x=>habitIsDoneToday(x.habit)).length;
+  const activeIndex=chain.items.findIndex(x=>!habitIsDoneToday(x.habit));
+  const identity=chain.items[activeIndex>=0?activeIndex:0]?.habit?.id2||'Every action is a vote for the person you wish to become.';
+  return`<div class="card routine-card ${doneCount===chain.items.length?'routine-complete':''}">
+    <div class="routine-head">
+      <div>
+        <h2>${escapeHtml(chain.title)}</h2>
+        <p>${escapeHtml(identity)}</p>
+      </div>
+      <span>${doneCount}/${chain.items.length}</span>
+    </div>
+    <div class="routine-progress"><div style="width:${chain.items.length?Math.round(doneCount/chain.items.length*100):0}%"></div></div>
+    ${doneCount===chain.items.length
+      ? `<div class="chain-complete">Routine complete for today.</div>${chain.items.map((item,pos)=>renderHabitRow(item,chain,pos,false)).join('')}`
+      : chain.items.map((item,pos)=>renderHabitRow(item,chain,pos,pos===activeIndex)).join('')}
+  </div>`;
+}
+
+function renHabits(){
+  renderTodayHero();
+  const toggle=document.getElementById('today-design-toggle');
+  if(toggle){toggle.textContent=todayDesignMode?'Done Designing':'Design Mode';toggle.classList.toggle('on',todayDesignMode);}
+  if(!D.habits.length){
+    document.getElementById('hlist').innerHTML='<div class="card"><p class="char-note">No habits yet. Add one tiny action to begin today.</p></div>';
+    renderNextAction([]);
+    renderDomainStrip();
+    renderTodayXpFeed();
+    renHCsel();
+    return;
+  }
+  const chains=buildHabitChains();
+  document.getElementById('hlist').innerHTML=chains.map(renderHabitChain).join('');
+  renderNextAction(chains);
+  renderDomainStrip();
+  renderTodayXpFeed();
   renHCsel();
 }
 function toggleStack(i){D.habits[i].stackedToNext=!D.habits[i].stackedToNext;sv();renHabits();}
