@@ -286,41 +286,23 @@
 
 <!-- ═══ TODAY ═══ -->
 <div id="tab-habits" class="tab on">
-  <div class="today-hero-card">
-    <div class="today-hero-top">
-      <div>
-        <h2>Today’s Path</h2>
-        <p class="today-hero-sub">Execute the next real action.</p>
-      </div>
-      <div class="today-level-pill" id="today-level-pill">Level 1</div>
+  <section class="today-progress-section">
+    <div class="today-progress-head">
+      <h2>Today's Progress</h2>
+      <span id="today-progress-count">0 / 0 done</span>
     </div>
-    <div class="today-rank-line" id="today-rank-line">Awakening</div>
-    <div class="char-level-line today-xp-line">
-      <span id="today-xp-gained">0 XP today</span>
-      <span id="today-xp-next">25 XP to next level</span>
+    <div class="today-progress-bar"><div id="today-progress-fill" style="width:0%"></div></div>
+  </section>
+  <section class="today-habits-head">
+    <div>
+      <h2>Today's Habits</h2>
+      <p>Follow the current step in each routine.</p>
     </div>
-    <div class="xp-bar today-xp-bar"><div class="xp-fill" id="today-xp-fill" style="width:0%"></div></div>
-  </div>
-  <div class="next-action-card">
-    <div class="today-section-head">
-      <h2>Next Action</h2>
+    <div class="today-habit-actions">
       <button class="btn bs today-design-toggle" id="today-design-toggle" onclick="toggleTodayDesignMode()">Design Mode</button>
+      <button class="btn bs" onclick="showAddHabit()">+ New Habit</button>
     </div>
-    <p id="today-next-action" class="next-action-text">Complete one tiny action to keep momentum.</p>
-    <div class="quick-log-row">
-      <button onclick="navigateToTab('mind')">Study</button>
-      <button onclick="navigateToTab('health')">Meal</button>
-      <button onclick="navigateToTab('health')">Cardio</button>
-      <button onclick="navigateToTab('purpose')">Reflection</button>
-    </div>
-  </div>
-  <div class="today-balance-strip">
-    <div class="today-section-head">
-      <h2>Balance Today</h2>
-      <button class="btn bs" style="font-size:.72rem;padding:4px 12px" onclick="showAddHabit()">+ New Habit</button>
-    </div>
-    <div class="domain-strip" id="today-domain-strip"></div>
-  </div>
+  </section>
   <div id="hlist"></div>
   <details class="today-xp-compact">
     <summary>XP Today</summary>

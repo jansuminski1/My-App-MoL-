@@ -1522,6 +1522,9 @@ function getTodayXpEvents(){
 function todayXpGained(){
   return getTodayXpEvents().reduce((sum,e)=>sum+(Number(e.generalXp)||0),0);
 }
+function habitIsDueToday(h){
+  return isPlannedDay(h,new Date())||habitIsDoneToday(h);
+}
 function buildHabitChains(){
   const labels=['Morning Flow','Midday Flow','Evening Flow','Habit Flow'];
   const chains=[];
@@ -1534,11 +1537,13 @@ function buildHabitChains(){
       i++;
       items.push({habit:D.habits[i],index:i});
     }
+    const todayItems=items.filter(item=>habitIsDueToday(item.habit));
+    if(!todayItems.length){i++;continue;}
     if(items.length>1){
       const label=labels[Math.min(chains.length,labels.length-1)];
-      chains.push({id:`chain-${start}`,title:label,items});
+      chains.push({id:`chain-${start}`,title:label,items:todayItems});
     } else {
-      loose.push(items[0]);
+      loose.push(todayItems[0]);
     }
     i++;
   }
@@ -1552,44 +1557,19 @@ function firstActiveHabit(chains=buildHabitChains()){
   }
   return null;
 }
-function renderTodayHero(){
-  ensureCharacter();
-  const c=D.character;
-  const progress=getLevelProgress(c.totalXp);
-  const rankInfo=getRankInfo(progress.level);
-  const xpToday=todayXpGained();
-  const level=document.getElementById('today-level-pill');
-  const rank=document.getElementById('today-rank-line');
-  const gained=document.getElementById('today-xp-gained');
-  const next=document.getElementById('today-xp-next');
-  const fill=document.getElementById('today-xp-fill');
-  if(level) level.textContent=`Level ${progress.level}`;
-  if(rank) rank.textContent=`${rankInfo.title} · Rank ${rankInfo.rankNumber}/${XP_CURVE_CONFIG.maxRanks}`;
-  if(gained) gained.textContent=`${Math.round(xpToday)} XP today`;
-  if(next) next.textContent=progress.xpRemaining?`${progress.xpRemaining} XP to next level`:'Max Level';
-  if(fill) fill.style.width=`${progress.progressPercent}%`;
+function getTodayHabitProgress(){
+  const habits=(Array.isArray(D.habits)?D.habits:[]).filter(habitIsDueToday);
+  const total=habits.length;
+  const done=habits.filter(habitIsDoneToday).length;
+  return {done,total,percent:total?Math.round((done/total)*100):0};
+}
+function renderTodayProgress(){
+  const progress=getTodayHabitProgress();
+  const count=document.getElementById('today-progress-count');
+  const fill=document.getElementById('today-progress-fill');
+  if(count) count.textContent=`${progress.done} / ${progress.total} done`;
+  if(fill) fill.style.width=`${progress.percent}%`;
   updateMobileHeader();
-}
-function renderNextAction(chains){
-  const el=document.getElementById('today-next-action');
-  if(!el) return;
-  const next=firstActiveHabit(chains);
-  if(next){
-    const h=next.item.habit;
-    el.innerHTML=`<strong>${escapeHtml(habitDisplayName(h))}</strong><span>${escapeHtml(h.tm||h.sk||'Do the smallest honest version now.')}</span>`;
-    return;
-  }
-  const suggestion=generateSuggestion(D.character?.stats||{});
-  el.innerHTML=suggestion?escapeHtml(suggestion):'Complete one tiny action to keep momentum.';
-}
-function renderDomainStrip(){
-  const el=document.getElementById('today-domain-strip');
-  if(!el) return;
-  const active={};
-  getTodayXpEvents().forEach(e=>{
-    Object.entries(e.statXp||{}).forEach(([k,v])=>{if(MAIN_STAT_KEYS.includes(k)&&Number(v)>0) active[k]=true;});
-  });
-  el.innerHTML=MAIN_STAT_KEYS.map(k=>`<div class="domain-chip ${active[k]?'on':''}"><span>${capStat(k)}</span></div>`).join('');
 }
 function renderTodayXpFeed(){
   const el=document.getElementById('today-xp-feed');
@@ -1689,21 +1669,23 @@ function renderHabitChain(chain){
 }
 
 function renHabits(){
-  renderTodayHero();
+  renderTodayProgress();
   const toggle=document.getElementById('today-design-toggle');
   if(toggle){toggle.textContent=todayDesignMode?'Done Designing':'Design Mode';toggle.classList.toggle('on',todayDesignMode);}
   if(!D.habits.length){
     document.getElementById('hlist').innerHTML='<div class="card"><p class="char-note">No habits yet. Add one tiny action to begin today.</p></div>';
-    renderNextAction([]);
-    renderDomainStrip();
     renderTodayXpFeed();
     renHCsel();
     return;
   }
   const chains=buildHabitChains();
+  if(!chains.length){
+    document.getElementById('hlist').innerHTML='<div class="card"><p class="char-note">No habits are scheduled for today.</p></div>';
+    renderTodayXpFeed();
+    renHCsel();
+    return;
+  }
   document.getElementById('hlist').innerHTML=chains.map(renderHabitChain).join('');
-  renderNextAction(chains);
-  renderDomainStrip();
   renderTodayXpFeed();
   renHCsel();
 }
