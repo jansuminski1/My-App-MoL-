@@ -384,17 +384,20 @@ input[type=time].meal-time-inp{color:var(--txt)}
   </div>
   <div class="brand-mark">ML</div>
   <h1>Masters of Life</h1>
-  <p>Deep work · Habits · Health · Goals</p>
+  <p>Build your character across mind, health, purpose, and real life.</p>
 </header>
 
 <nav>
-  <button onclick="showTab('character',this)">Your Character</button>
-  <button class="on" onclick="showTab('work',this)">⏱ Deep Work</button>
-  <button onclick="showTab('habits',this)">⚡ Habits</button>
-  <button onclick="showTab('body',this)">💪 Body</button>
-  <button onclick="showTab('meals',this)">🍽 Daily Meals</button>
-  <button onclick="showTab('analytics',this)">📊 Analytics</button>
-  <button onclick="showTab('reflect',this)">🎯 Goals</button>
+  <button class="on" data-tab="today" onclick="showTab('today',this)">Today</button>
+  <button data-tab="mind" onclick="showTab('mind',this)">Mind</button>
+  <button data-tab="health" onclick="showTab('health',this)">Health</button>
+  <button data-tab="strength" onclick="showTab('strength',this)">Strength</button>
+  <button data-tab="wealth" onclick="showTab('wealth',this)">Wealth</button>
+  <button data-tab="connection" onclick="showTab('connection',this)">Connection</button>
+  <button data-tab="purpose" onclick="showTab('purpose',this)">Purpose</button>
+  <button data-tab="character" onclick="showTab('character',this)">Character</button>
+  <button data-tab="analytics" onclick="showTab('analytics',this)">Analytics</button>
+  <button data-tab="settings" onclick="showTab('settings',this)">Settings</button>
 </nav>
 
 <!-- ═══ YOUR CHARACTER ═══ -->
@@ -453,11 +456,11 @@ input[type=time].meal-time-inp{color:var(--txt)}
   </div>
 </div>
 
-<!-- ═══ DEEP WORK ═══ -->
-<div id="tab-work" class="tab on">
+<!-- ═══ MIND ═══ -->
+<div id="tab-work" class="tab">
   <div class="card">
     <div class="fb" style="margin-bottom:10px">
-      <h2>Deep Work Session</h2>
+      <h2>Get Smarter</h2>
       <span id="sc" style="font-size:.76rem;color:var(--mut)">Today: 0 sessions</span>
     </div>
     <!-- Tag dropdown -->
@@ -560,7 +563,7 @@ input[type=time].meal-time-inp{color:var(--txt)}
     </div>
   </div>
   <div class="card">
-    <div class="fb" style="margin-bottom:10px"><h2>Session Log</h2></div>
+    <div class="fb" style="margin-bottom:10px"><h2>Mind Session History</h2></div>
     <div class="slog-filter">
       <select id="slog-month" onchange="renSlog()">
         <option value="0">January</option><option value="1">February</option><option value="2">March</option>
@@ -575,18 +578,18 @@ input[type=time].meal-time-inp{color:var(--txt)}
   </div>
 </div>
 
-<!-- ═══ HABITS ═══ -->
-<div id="tab-habits" class="tab">
+<!-- ═══ TODAY ═══ -->
+<div id="tab-habits" class="tab on">
   <div class="card">
     <div class="fb" style="margin-bottom:8px">
-      <h2>Habits</h2>
+      <h2>Today’s Path</h2>
       <button class="btn bs" style="font-size:.72rem;padding:4px 12px" onclick="showAddHabit()">+ New Habit</button>
     </div>
     <p style="font-size:.78rem;color:var(--mut);margin-bottom:12px">Every action is a vote for the person you wish to become.</p>
     <div id="hlist"></div>
   </div>
   <div class="card">
-    <h2>Streak Calendar — <span id="calml"></span></h2>
+    <h2>Today’s Streak Calendar — <span id="calml"></span></h2>
     <div id="hcsel" style="display:flex;gap:5px;flex-wrap:wrap;margin-bottom:9px"></div>
     <div class="cgrid" id="chdr">
       <div class="ch">Su</div><div class="ch">Mo</div><div class="ch">Tu</div>
@@ -601,11 +604,19 @@ input[type=time].meal-time-inp{color:var(--txt)}
   </div>
 </div>
 
+<!-- ═══ HEALTH OVERVIEW ═══ -->
+<div id="tab-health-overview" class="tab">
+  <div class="card">
+    <h2>Get Healthier</h2>
+    <p class="char-note">Meals, weight awareness, and cardio live here for now. Sleep and recovery can join this area later without changing your existing logs.</p>
+  </div>
+</div>
+
 <!-- ═══ DAILY MEALS ═══ -->
 <div id="tab-meals" class="tab">
   <div class="card">
     <div class="fb" style="margin-bottom:12px">
-      <h2>Daily Meals</h2>
+      <h2>Meals</h2>
       <span id="meal-today-badge" style="font-size:.72rem;padding:3px 10px;border-radius:20px;background:var(--warm);border:1px solid var(--bdr);color:var(--acc);font-weight:600"></span>
     </div>
     <div class="meal-nav">
@@ -637,7 +648,7 @@ input[type=time].meal-time-inp{color:var(--txt)}
 <div id="tab-analytics" class="tab">
   <div class="card">
     <div class="fb" style="margin-bottom:16px">
-      <h2>Study Analytics</h2>
+      <h2>Life Analytics</h2>
       <div class="an-nav">
         <button onclick="navMonth(-1)">‹</button>
         <span id="an-month-lbl"></span>
@@ -682,10 +693,11 @@ input[type=time].meal-time-inp{color:var(--txt)}
   </div>
 </div>
 
-<!-- ═══ GOALS ═══ -->
+<!-- ═══ PURPOSE ═══ -->
 <div id="tab-reflect" class="tab">
   <!-- All-time total -->
   <div class="card" style="background:var(--warm);padding:12px 16px">
+    <h2 style="margin-bottom:8px">Live With Direction</h2>
     <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px">
       <span style="font-size:.8rem;color:var(--navy);font-weight:600">🏆 All-Time Completed Goals</span>
       <span id="goals-total-badge" style="font-size:1rem;font-weight:700;color:var(--acc)">0</span>
@@ -796,6 +808,49 @@ input[type=time].meal-time-inp{color:var(--txt)}
         <tbody id="cardio-tbody"></tbody>
       </table>
     </div>
+  </div>
+</div>
+
+<!-- ═══ STRENGTH PLACEHOLDER ═══ -->
+<div id="tab-strength" class="tab">
+  <div class="card">
+    <h2>Get Stronger</h2>
+    <p class="char-note">Track strength training, exercises, sets, reps, weight, and progressive overload.</p>
+  </div>
+</div>
+
+<!-- ═══ WEALTH PLACEHOLDER ═══ -->
+<div id="tab-wealth" class="tab">
+  <div class="card">
+    <h2>Know Your Finances</h2>
+    <p class="char-note">Track income, expenses, recurring costs, monthly net result, and financial awareness.</p>
+  </div>
+</div>
+
+<!-- ═══ CONNECTION PLACEHOLDER ═══ -->
+<div id="tab-connection" class="tab">
+  <div class="card">
+    <h2>Build Real Connection</h2>
+    <p class="char-note">Track meaningful contact, social plans, gratitude, repair, and difficult conversations.</p>
+  </div>
+</div>
+
+<!-- ═══ SETTINGS ═══ -->
+<div id="tab-settings" class="tab">
+  <div class="card">
+    <h2>Settings &amp; Data</h2>
+    <div class="char-metric-grid">
+      <div class="char-metric"><span>Account</span><strong id="settings-user-email">Offline</strong></div>
+      <div class="char-metric"><span>Sync</span><strong id="settings-sync-state">Connecting...</strong></div>
+      <div class="char-metric"><span>Firebase</span><strong id="settings-firebase-state">Checking...</strong></div>
+      <div class="char-metric"><span>Storage</span><strong id="settings-storage-state">Local ready</strong></div>
+    </div>
+    <div class="char-actions">
+      <button class="btn bp" onclick="showDiagnostics()">Open Diagnostics</button>
+      <button class="btn bs" onclick="runDiagnostics()">Refresh Diagnostics</button>
+      <button class="btn bs" onclick="doSignOut()">Sign out</button>
+    </div>
+    <p class="char-note" style="margin-top:12px">Firebase sync, diagnostics, account status, and local save checks are managed here. Your existing localStorage and Firestore data shape is unchanged.</p>
   </div>
 </div>
 
@@ -1048,6 +1103,8 @@ function authSkip() {
   document.getElementById('app').classList.remove('hid');
   setSyncStatus('offline', 'Offline mode — data saved locally');
   document.getElementById('user-email-lbl').textContent = 'Offline';
+  const settingsUser=document.getElementById('settings-user-email');
+  if(settingsUser) settingsUser.textContent='Offline';
   document.querySelector('.signout-btn').textContent = 'Exit';
   document.querySelector('.signout-btn').onclick = () => location.reload();
   ldLocal(); initApp();
@@ -1067,6 +1124,8 @@ if (firebaseReady) {
       document.getElementById('auth-overlay').classList.add('hid');
       document.getElementById('app').classList.remove('hid');
       document.getElementById('user-email-lbl').textContent = user.email;
+      const settingsUser=document.getElementById('settings-user-email');
+      if(settingsUser) settingsUser.textContent=user.email;
       setSyncStatus('pending', 'Loading your data...');
       startFirestoreSync(user.uid);
     }
@@ -1081,6 +1140,8 @@ function setSyncStatus(state, msg) {
   const txt = document.getElementById('sync-txt');
   dot.className = 'sync-dot ' + state;
   txt.textContent = msg;
+  const settingsSync=document.getElementById('settings-sync-state');
+  if(settingsSync) settingsSync.textContent=msg;
 }
 
 // ══════════════════════════════════════════
@@ -1162,19 +1223,44 @@ function initApp() {
   if(cd) cd.value = today;
   // Init cardio difficulty to 3
   selCardioDiff(3);
+  refreshCurrentTab();
 }
 
+const TAB_GROUPS={
+  today:['habits'],
+  mind:['work'],
+  health:['health-overview','meals','body'],
+  purpose:['reflect'],
+  character:['character'],
+  analytics:['analytics'],
+  settings:['settings'],
+  strength:['strength'],
+  wealth:['wealth'],
+  connection:['connection'],
+  habits:['habits'],
+  work:['work'],
+  meals:['meals'],
+  body:['body'],
+  reflect:['reflect']
+};
+function resolveTabIds(id){return TAB_GROUPS[id]||[id];}
+function refreshTab(id){
+  const ids=resolveTabIds(id);
+  if(ids.includes('character')) renCharacter();
+  if(ids.includes('habits')) { renHabits(); renCal(); }
+  if(ids.includes('meals')) { renMeals(); renMealsCal(); }
+  if(ids.includes('analytics')) renAnalytics();
+  if(ids.includes('reflect')) { renGoals(); renStats(); }
+  if(ids.includes('work')) { renTags(); renSCnt(); renSlog(); renProfilesMini(); }
+  if(ids.includes('body')) renBody();
+  if(ids.includes('settings')) renSettings();
+}
 function refreshCurrentTab() {
+  const activeNav=document.querySelector('nav button.on');
+  if(activeNav?.dataset.tab){refreshTab(activeNav.dataset.tab);return;}
   const on = document.querySelector('.tab.on');
   if (!on) return;
-  const id = on.id.replace('tab-','');
-  if (id==='character') { renCharacter(); }
-  if (id==='habits') { renHabits(); renCal(); }
-  if (id==='meals')  { renMeals(); renMealsCal(); }
-  if (id==='analytics') { renAnalytics(); }
-  if (id==='reflect') { renGoals(); renStats(); }
-  if (id==='work')   { renTags(); renSCnt(); renSlog(); renProfilesMini(); }
-  if (id==='body')   { renBody(); }
+  refreshTab(on.id.replace('tab-',''));
 }
 
 // ══════════════════════════════════════════
@@ -1183,14 +1269,19 @@ function refreshCurrentTab() {
 function showTab(id, btn) {
   document.querySelectorAll('.tab').forEach(t => t.classList.remove('on'));
   document.querySelectorAll('nav button').forEach(b => b.classList.remove('on'));
-  document.getElementById('tab-'+id).classList.add('on');
-  btn.classList.add('on');
-  if (id==='character'){ renCharacter(); }
-  if (id==='habits')   { renHabits(); renCal(); }
-  if (id==='meals')    { renMeals(); renMealsCal(); }
-  if (id==='analytics'){ renAnalytics(); }
-  if (id==='reflect')  { renGoals(); renStats(); }
-  if (id==='body')     { renBody(); }
+  resolveTabIds(id).forEach(tabId=>document.getElementById('tab-'+tabId)?.classList.add('on'));
+  btn?.classList.add('on');
+  refreshTab(id);
+}
+function renSettings(){
+  const user=document.getElementById('settings-user-email');
+  const sync=document.getElementById('settings-sync-state');
+  const firebase=document.getElementById('settings-firebase-state');
+  const storage=document.getElementById('settings-storage-state');
+  if(user) user.textContent=currentUser?.email||document.getElementById('user-email-lbl')?.textContent||'Offline';
+  if(sync) sync.textContent=document.getElementById('sync-txt')?.textContent||'Offline';
+  if(firebase) firebase.textContent=firebaseReady?'Ready':'Offline only';
+  if(storage) storage.textContent=localStorage.getItem('sce3')?'Saved locally':'No local cache yet';
 }
 
 // ══════════════════════════════════════════
