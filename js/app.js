@@ -1618,13 +1618,11 @@ function renderFlowSegments(chain,activeIndex){
 function renderHabitRow(item,chain,position,active=false,primary=false){
   const h=item.habit,i=item.index,done=habitIsDoneToday(h);
   const name=escapeHtml(habitDisplayName(h));
-  const cue=escapeHtml(compactCue(h));
   const subline=escapeHtml(compactHabitSubline(h));
   if(active){
     return`<div class="active-habit-card ${primary?'primary-focus':''}" id="hi-${i}">
       <div class="active-kicker">${primary?'Do this now':'Current step'}</div>
       <h3>${name}</h3>
-      ${cue?`<p class="active-cue">${cue}</p>`:''}
       <div class="tiny-action">${escapeHtml(h.tm||'Do the smallest honest version now.')}</div>
       <button class="complete-action-btn" onclick="togH(${i},event.currentTarget)">Complete</button>
       <details class="habit-more">
@@ -1653,7 +1651,7 @@ function renderHabitChain(chain){
     return`<details class="routine-card routine-complete completed-routine">
       <summary>
         <span>${escapeHtml(chain.title)} ✓ ${doneCount}/${chain.items.length}</span>
-        <small>Routine complete for today.</small>
+        <small>Complete</small>
       </summary>
       ${renderFlowSegments(chain,-1)}
       <div class="completed-routine-details">
