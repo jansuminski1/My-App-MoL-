@@ -446,7 +446,7 @@ function updateMobileHeader(){
   ensureCharacter();
   const progress=getLevelProgress(D.character.totalXp);
   const el=document.getElementById('mobile-level-pill');
-  if(el) el.textContent=`Level ${progress.level}`;
+  if(el) el.textContent=`LVL ${progress.level}`;
 }
 function renSettings(){
   const user=document.getElementById('settings-user-email');
@@ -1508,7 +1508,12 @@ function habitDisplayName(h){
 }
 function compactCue(h){
   const cue=String(h?.sk||'').replace(/^after i\s*/i,'After I ').trim();
-  return cue.length>58?cue.slice(0,55).trim()+'...':cue;
+  return cue.length>48?cue.slice(0,45).trim()+'...':cue;
+}
+function compactHabitSubline(h){
+  const tiny=String(h?.tm||'').trim();
+  if(tiny) return tiny.length>52?tiny.slice(0,49).trim()+'...':tiny;
+  return compactCue(h);
 }
 function habitIsDoneToday(h){return !!h?.log?.[tdk()];}
 function getTodayXpEvents(){
@@ -1614,13 +1619,14 @@ function renderHabitRow(item,chain,position,active=false,primary=false){
   const h=item.habit,i=item.index,done=habitIsDoneToday(h);
   const name=escapeHtml(habitDisplayName(h));
   const cue=escapeHtml(compactCue(h));
+  const subline=escapeHtml(compactHabitSubline(h));
   if(active){
     return`<div class="active-habit-card ${primary?'primary-focus':''}" id="hi-${i}">
       <div class="active-kicker">${primary?'Do this now':'Current step'}</div>
       <h3>${name}</h3>
-      ${h.sk?`<p class="active-cue">${escapeHtml(h.sk)}</p>`:''}
+      ${cue?`<p class="active-cue">${cue}</p>`:''}
       <div class="tiny-action">${escapeHtml(h.tm||'Do the smallest honest version now.')}</div>
-      <button class="complete-action-btn" onclick="togH(${i},event.currentTarget)">Complete this action</button>
+      <button class="complete-action-btn" onclick="togH(${i},event.currentTarget)">Complete</button>
       <details class="habit-more">
         <summary>Details</summary>
         ${habitDetailBlock(h,i,chain,position)}
@@ -1632,7 +1638,7 @@ function renderHabitRow(item,chain,position,active=false,primary=false){
     <summary class="compact-habit-row">
       <button class="mini-check ${done?'on':''}" onclick="event.preventDefault();event.stopPropagation();togH(${i},event.currentTarget)">${done?'✓':''}</button>
       <span>${name}</span>
-      ${cue?`<small>${cue}</small>`:''}
+      ${subline?`<small>${subline}</small>`:''}
     </summary>
     ${habitDetailBlock(h,i,chain,position)}
     ${todayDesignMode?`<div class="habit-design-note">Design mode is on for this routine.</div>`:''}
@@ -1746,12 +1752,20 @@ function showAddHabit(){
   window._editFreq['add']={type:'daily',days:[]};
   document.getElementById('mod').innerHTML=`
     <h2>New Habit</h2>
-    <p style="font-size:.78rem;color:var(--mut);margin-bottom:12px">First 7 days: only the 2-Minute Version required.</p>
-    <label>Display Name <em>(optional)</em></label><input type="text" id="mn" placeholder="e.g. Morning workout" class="mb10">
-    <label>Identity statement <em>(I am...)</em></label><input type="text" id="mi" placeholder="I am someone who..." class="mb10">
-    <label>Habit stack trigger</label><input type="text" id="ms" placeholder="After I..., I will..." class="mb10">
-    <label>2-Minute version</label><input type="text" id="mt" placeholder="Smallest possible start..." class="mb10">
-    <div id="add-freq-wrap">${renderFreqPicker(null,'add')}</div>
+    <p class="habit-form-intro">Build the smallest repeatable action first.</p>
+    <div class="habit-form-section primary">
+      <div class="habit-form-label">Primary</div>
+      <label>Habit / action name</label><input type="text" id="mn" placeholder="e.g. Morning workout" class="mb10">
+      <label>Tiny executable version</label><input type="text" id="mt" placeholder="Smallest possible start..." class="mb10">
+      <label>Cue / trigger</label><input type="text" id="ms" placeholder="After I..., I will..." class="mb10">
+      <label>Chain / flow placement</label>
+      <p class="habit-form-hint">Place related habits next to each other, then use Details to stack them into a flow.</p>
+    </div>
+    <details class="habit-form-section secondary" open>
+      <summary>Secondary</summary>
+      <label>Identity statement <em>(I am...)</em></label><input type="text" id="mi" placeholder="I am someone who..." class="mb10">
+      <div id="add-freq-wrap">${renderFreqPicker(null,'add')}</div>
+    </details>
     <div class="brow"><button class="btn bp" onclick="saveHabit()">Add Habit</button><button class="btn bs" onclick="closeMod()">Cancel</button></div>`;
   document.getElementById('mov').classList.remove('hid');
   setTimeout(()=>document.getElementById('mn').focus(),50);
