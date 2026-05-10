@@ -541,9 +541,36 @@
 <!-- ═══ WEALTH PLACEHOLDER ═══ -->
 <!-- TODO: Future Wealth module - income, expenses, recurring costs, and monthly net result. -->
 <div id="tab-wealth" class="tab">
-  <div class="card">
+  <div class="card finance-card">
     <h2>Know Your Finances</h2>
-    <p class="char-note">Track income, expenses, recurring costs, monthly net result, and financial awareness.</p>
+    <p class="char-note">Simple monthly awareness: income, expenses, and net result.</p>
+    <div class="finance-section">
+      <h3>Income</h3>
+      <div class="finance-form">
+        <input type="number" id="fin-income-amount" placeholder="Amount" min="0" step="0.01">
+        <input type="date" id="fin-income-date">
+        <input type="text" id="fin-income-source" placeholder="Source/name">
+        <input type="text" id="fin-income-notes" placeholder="Notes (optional)">
+        <button class="btn bp" onclick="addFinanceIncome(event.currentTarget)">Add income</button>
+      </div>
+      <div class="finance-list" id="finance-income-list"></div>
+    </div>
+    <div class="finance-section">
+      <h3>Expenses</h3>
+      <div class="finance-form">
+        <input type="number" id="fin-expense-amount" placeholder="Amount" min="0" step="0.01">
+        <input type="date" id="fin-expense-date">
+        <select id="fin-expense-category"></select>
+        <input type="text" id="fin-expense-notes" placeholder="Notes (optional)">
+        <button class="btn bp" onclick="addFinanceExpense(event.currentTarget)">Add expense</button>
+      </div>
+      <div class="finance-list" id="finance-expense-list"></div>
+    </div>
+    <div class="finance-net-card" id="finance-net-card">
+      <span>Monthly net</span>
+      <strong id="finance-net-result">0 zł</strong>
+      <small id="finance-net-detail">Income 0 zł - Expenses 0 zł</small>
+    </div>
   </div>
 </div>
 
