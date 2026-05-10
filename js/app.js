@@ -433,10 +433,20 @@ function showTab(id, btn) {
   document.querySelectorAll('nav button').forEach(b => b.classList.remove('on'));
   resolveTabIds(id).forEach(tabId=>document.getElementById('tab-'+tabId)?.classList.add('on'));
   (btn||document.querySelector(`nav button[data-tab="${id}"]`))?.classList.add('on');
+  document.getElementById('main-nav')?.classList.remove('open');
   refreshTab(id);
 }
 function navigateToTab(id){
   showTab(id,document.querySelector(`nav button[data-tab="${id}"]`));
+}
+function toggleMobileMenu(){
+  document.getElementById('main-nav')?.classList.toggle('open');
+}
+function updateMobileHeader(){
+  ensureCharacter();
+  const progress=getLevelProgress(D.character.totalXp);
+  const el=document.getElementById('mobile-level-pill');
+  if(el) el.textContent=`Level ${progress.level}`;
 }
 function renSettings(){
   const user=document.getElementById('settings-user-email');
@@ -1513,8 +1523,9 @@ function todayXpGained(){
   return getTodayXpEvents().reduce((sum,e)=>sum+(Number(e.generalXp)||0),0);
 }
 function buildHabitChains(){
-  const labels=['Morning Sequence','Midday Sequence','Evening Sequence','Habit Chain'];
+  const labels=['Morning Flow','Midday Flow','Evening Flow','Habit Flow'];
   const chains=[];
+  const loose=[];
   let i=0;
   while(i<D.habits.length){
     const start=i;
@@ -1523,10 +1534,15 @@ function buildHabitChains(){
       i++;
       items.push({habit:D.habits[i],index:i});
     }
-    const label=items.length>1?labels[Math.min(chains.length,labels.length-1)]:'Solo Action';
-    chains.push({id:`chain-${start}`,title:label,items});
+    if(items.length>1){
+      const label=labels[Math.min(chains.length,labels.length-1)];
+      chains.push({id:`chain-${start}`,title:label,items});
+    } else {
+      loose.push(items[0]);
+    }
     i++;
   }
+  if(loose.length) chains.push({id:'chain-today',title:'Today',items:loose});
   return chains;
 }
 function firstActiveHabit(chains=buildHabitChains()){
@@ -1552,6 +1568,7 @@ function renderTodayHero(){
   if(gained) gained.textContent=`${Math.round(xpToday)} XP today`;
   if(next) next.textContent=progress.xpRemaining?`${progress.xpRemaining} XP to next level`:'Max Level';
   if(fill) fill.style.width=`${progress.progressPercent}%`;
+  updateMobileHeader();
 }
 function renderNextAction(chains){
   const el=document.getElementById('today-next-action');
@@ -1606,13 +1623,20 @@ function habitDetailBlock(h,i,chain,position){
     </div>
   </div>`;
 }
-function renderHabitRow(item,chain,position,active=false){
+function renderFlowSegments(chain,activeIndex){
+  return`<div class="routine-flow-line">${chain.items.map((item,pos)=>{
+    const done=habitIsDoneToday(item.habit);
+    const state=done?'done':pos===activeIndex?'current':'remaining';
+    return`<span class="${state}"></span>`;
+  }).join('')}</div>`;
+}
+function renderHabitRow(item,chain,position,active=false,primary=false){
   const h=item.habit,i=item.index,done=habitIsDoneToday(h);
   const name=escapeHtml(habitDisplayName(h));
   const cue=escapeHtml(compactCue(h));
   if(active){
-    return`<div class="active-habit-card" id="hi-${i}">
-      <div class="active-kicker">Active focus</div>
+    return`<div class="active-habit-card ${primary?'primary-focus':''}" id="hi-${i}">
+      <div class="active-kicker">${primary?'Do this now':'Current step'}</div>
       <h3>${name}</h3>
       ${h.sk?`<p class="active-cue">${escapeHtml(h.sk)}</p>`:''}
       <div class="tiny-action">${escapeHtml(h.tm||'Do the smallest honest version now.')}</div>
@@ -1638,6 +1662,19 @@ function renderHabitChain(chain){
   const doneCount=chain.items.filter(x=>habitIsDoneToday(x.habit)).length;
   const activeIndex=chain.items.findIndex(x=>!habitIsDoneToday(x.habit));
   const identity=chain.items[activeIndex>=0?activeIndex:0]?.habit?.id2||'Every action is a vote for the person you wish to become.';
+  const primary=firstActiveHabit()?.chain?.id===chain.id;
+  if(doneCount===chain.items.length){
+    return`<details class="routine-card routine-complete completed-routine">
+      <summary>
+        <span>${escapeHtml(chain.title)} ✓ ${doneCount}/${chain.items.length}</span>
+        <small>Routine complete for today.</small>
+      </summary>
+      ${renderFlowSegments(chain,-1)}
+      <div class="completed-routine-details">
+        ${chain.items.map((item,pos)=>renderHabitRow(item,chain,pos,false)).join('')}
+      </div>
+    </details>`;
+  }
   return`<div class="card routine-card ${doneCount===chain.items.length?'routine-complete':''}">
     <div class="routine-head">
       <div>
@@ -1646,10 +1683,8 @@ function renderHabitChain(chain){
       </div>
       <span>${doneCount}/${chain.items.length}</span>
     </div>
-    <div class="routine-progress"><div style="width:${chain.items.length?Math.round(doneCount/chain.items.length*100):0}%"></div></div>
-    ${doneCount===chain.items.length
-      ? `<div class="chain-complete">Routine complete for today.</div>${chain.items.map((item,pos)=>renderHabitRow(item,chain,pos,false)).join('')}`
-      : chain.items.map((item,pos)=>renderHabitRow(item,chain,pos,pos===activeIndex)).join('')}
+    ${renderFlowSegments(chain,activeIndex)}
+    ${chain.items.map((item,pos)=>renderHabitRow(item,chain,pos,pos===activeIndex,primary&&pos===activeIndex)).join('')}
   </div>`;
 }
 

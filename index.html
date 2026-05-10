@@ -78,13 +78,22 @@
   </div>
 </div>
 
-<header style="padding:14px 16px 10px">
-  <div class="brand-mark">ML</div>
-  <h1>Masters of Life</h1>
-  <p>Build your character across mind, health, purpose, and real life.</p>
+<header class="app-header" style="padding:14px 16px 10px">
+  <div class="mobile-header-row">
+    <div>
+      <h1>Masters of Life</h1>
+      <span id="mobile-level-pill">Level 1</span>
+    </div>
+    <button class="mobile-menu-btn" onclick="toggleMobileMenu()">Menu</button>
+  </div>
+  <div class="desktop-brand">
+    <div class="brand-mark">ML</div>
+    <h1>Masters of Life</h1>
+    <p>Build your character across mind, health, purpose, and real life.</p>
+  </div>
 </header>
 
-<nav>
+<nav id="main-nav">
   <button class="on" data-tab="today" onclick="showTab('today',this)">Today</button>
   <button data-tab="mind" onclick="showTab('mind',this)">Mind</button>
   <button data-tab="health" onclick="showTab('health',this)">Health</button>
@@ -277,7 +286,7 @@
 
 <!-- ═══ TODAY ═══ -->
 <div id="tab-habits" class="tab on">
-  <div class="card today-hero-card">
+  <div class="today-hero-card">
     <div class="today-hero-top">
       <div>
         <h2>Today’s Path</h2>
@@ -292,7 +301,7 @@
     </div>
     <div class="xp-bar today-xp-bar"><div class="xp-fill" id="today-xp-fill" style="width:0%"></div></div>
   </div>
-  <div class="card next-action-card">
+  <div class="next-action-card">
     <div class="today-section-head">
       <h2>Next Action</h2>
       <button class="btn bs today-design-toggle" id="today-design-toggle" onclick="toggleTodayDesignMode()">Design Mode</button>
@@ -305,7 +314,7 @@
       <button onclick="navigateToTab('purpose')">Reflection</button>
     </div>
   </div>
-  <div class="card today-balance-card">
+  <div class="today-balance-strip">
     <div class="today-section-head">
       <h2>Balance Today</h2>
       <button class="btn bs" style="font-size:.72rem;padding:4px 12px" onclick="showAddHabit()">+ New Habit</button>
@@ -313,11 +322,12 @@
     <div class="domain-strip" id="today-domain-strip"></div>
   </div>
   <div id="hlist"></div>
-  <div class="card today-xp-feed-card">
-    <h2>XP Today</h2>
+  <details class="today-xp-compact">
+    <summary>XP Today</summary>
     <div class="today-xp-feed" id="today-xp-feed"></div>
-  </div>
-  <div class="card">
+  </details>
+  <details class="today-calendar-toggle">
+    <summary>View habit calendar</summary>
     <h2>Today’s Streak Calendar — <span id="calml"></span></h2>
     <div id="hcsel" style="display:flex;gap:5px;flex-wrap:wrap;margin-bottom:9px"></div>
     <div class="cgrid" id="chdr">
@@ -330,7 +340,7 @@
       <div class="cal-leg-item"><div class="cal-leg-dot" style="background:rgba(242,27,27,.5)"></div>Missed</div>
       <div class="cal-leg-item"><div class="cal-leg-dot" style="border:2px solid var(--acc);background:transparent"></div>Today</div>
     </div>
-  </div>
+  </details>
 </div>
 
 <!-- ═══ HEALTH OVERVIEW ═══ -->
