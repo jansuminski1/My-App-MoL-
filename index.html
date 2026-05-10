@@ -891,9 +891,9 @@ try {
 </script>
 
 <script>
-// ══════════════════════════════════════════
-// STATE
-// ══════════════════════════════════════════
+// ==================================================
+// Constants & Config
+// ==================================================
 const MEAL_LABELS = ['Breakfast','Morning Snack','Lunch','Afternoon Snack','Dinner'];
 const APP_SCHEMA_VERSION = 1;
 const LIFE_STAT_LABELS = ['Intelligence','Health','Strength','Wealth','Connection','Purpose'];
@@ -909,6 +909,85 @@ const STAT_DESCRIPTIONS = {
   purpose:'Goals, planning, reflection, values, and long-term direction.',
   consistency:'Showing up repeatedly, returning, and protecting planned action.',
   resolve:'Doing what is difficult, avoided, or uncomfortable but necessary.'
+};
+
+const APP_CONFIG = {
+  schemaVersion: APP_SCHEMA_VERSION,
+  character: {
+    maxLevel: 250,
+    maxRanks: 50,
+    rankSize: 5,
+    xpBase: 100,
+    xpExponent: 1.35
+  },
+  xpRates: {
+    focusedStudy: 1.5,
+    writingResearch: 1.7,
+    learningMedia: .8,
+    cardio: 1.3,
+    strengthTraining: 1.5,
+    walkingRecovery: .6,
+    financeReview: 1.2,
+    socialQualityTime: .8,
+    reflectionPlanning: 1
+  },
+  qualityModifiers: {low:.75,normal:1,good:1.15,excellent:1.3},
+  difficultyModifiers: {easy:1,normal:1,some:1.1,'some resistance':1.1,hard:1.25,'hard to start':1.25,veryHard:1.4,'very hard':1.4,heroic:1.6},
+  taskSizeXp: {tiny:5,small:15,medium:35,large:75,epic:150},
+  statSplits: {
+    study:{intelligence:.8,consistency:.2},
+    studyWithReflection:{intelligence:.72,consistency:.18,purpose:.10},
+    cardio:{health:.8,consistency:.2}
+  },
+  fixedRewards: {
+    habit:{general:10,consistencyOnly:10,primary:2,consistency:8},
+    meal:{general:8,health:6,consistency:2},
+    weight:{general:5,health:3,consistency:2},
+    weeklyGoal:{general:40,purpose:30,consistency:10},
+    monthlyGoal:{general:100,purpose:80,consistency:20},
+    reflection:{general:25,purpose:15,intelligence:7,consistency:3},
+    fallbackCardio:25
+  },
+  diminishingReturnsBands:[
+    {limit:180,mult:1},
+    {limit:360,mult:.8},
+    {limit:540,mult:.6},
+    {limit:Infinity,mult:.3}
+  ],
+  roleMatrix:{
+    'intelligence+purpose':'Philosopher','intelligence+wealth':'Strategist','intelligence+strength':'Warrior-Scholar',
+    'health+intelligence':'Optimized Scholar','connection+intelligence':'Mentor','health+strength':'Athlete',
+    'purpose+strength':'Ascetic Warrior','strength+wealth':'Ambitious Builder','connection+strength':'Protector',
+    'purpose+wealth':'Steward','connection+wealth':'Networker','connection+purpose':'Guide',
+    'connection+health':'Harmonizer','health+purpose':'Grounded Seeker'
+  },
+  suggestions:{
+    intelligence:'Intelligence is your least trained area. Do one focused 25-minute learning session.',
+    health:'Health is your least trained area. Log a meal, take a 20-minute walk, or do one small recovery action.',
+    strength:'Strength is your least trained area. Complete one short resistance workout.',
+    wealth:'Wealth is your least trained area. A 10-minute expense or budget review would bring balance.',
+    connection:'Connection is your least trained area. Send one genuine message to someone you care about.',
+    purpose:'Purpose is your least trained area. Write one sentence about what matters this week.',
+    consistency:'Consistency is your least trained area. Complete one tiny habit today.',
+    resolve:'Resolve is your least trained area. Do one thing you have been avoiding.'
+  },
+  tabs:{
+    today:['habits'],
+    mind:['work'],
+    health:['health-overview','meals','body'],
+    purpose:['reflect'],
+    character:['character'],
+    analytics:['analytics'],
+    settings:['settings'],
+    strength:['strength'],
+    wealth:['wealth'],
+    connection:['connection'],
+    habits:['habits'],
+    work:['work'],
+    meals:['meals'],
+    body:['body'],
+    reflect:['reflect']
+  }
 };
 
 const RANKS = [
@@ -965,17 +1044,21 @@ const RANKS = [
   {range:'250',minLevel:250,maxLevel:250,title:'Master of Life',description:'The final pinnacle. You have transformed productivity into life mastery: not endless busyness, but integrated command of attention, energy, purpose, relationships, health, resources, and meaning.'}
 ];
 
+// ==================================================
+// Default State & Migrations
+// ==================================================
 function defaultCharacter(){
+  const cfg=APP_CONFIG.character;
   return {
     name:'Your Character',
     title:'Awakening',
     totalXp:0,
     xp:0,
     level:1,
-    maxLevel:250,
+    maxLevel:cfg.maxLevel,
     rank:1,
-    maxRank:50,
-    maxRanks:50,
+    maxRank:cfg.maxRanks,
+    maxRanks:cfg.maxRanks,
     rankName:'Awakening',
     stats:{intelligence:0,health:0,strength:0,wealth:0,connection:0,purpose:0,consistency:0,resolve:0},
     meta:{consistency:0,resolve:0},
@@ -1011,15 +1094,16 @@ const D = {
 
 function ensureCharacter(){
   const base=defaultCharacter();
+  const cfg=APP_CONFIG.character;
   D.schemaVersion=D.schemaVersion||APP_SCHEMA_VERSION;
   D.character={...base,...(D.character||{})};
   D.character.stats={...base.stats,...(D.character.stats||{}),...(D.character.meta||{})};
   D.character.meta={consistency:D.character.stats.consistency||0,resolve:D.character.stats.resolve||0};
   D.character.totalXp=Number(D.character.totalXp ?? D.character.xp ?? 0)||0;
   D.character.xp=D.character.totalXp;
-  D.character.maxLevel=250;
-  D.character.maxRank=50;
-  D.character.maxRanks=50;
+  D.character.maxLevel=cfg.maxLevel;
+  D.character.maxRank=cfg.maxRanks;
+  D.character.maxRanks=cfg.maxRanks;
   if(!Array.isArray(D.character.xpEvents)) D.character.xpEvents=[];
   if(!D.character.rewarded||typeof D.character.rewarded!=='object'||Array.isArray(D.character.rewarded)) D.character.rewarded={};
   if(!Array.isArray(D.character.badges)) D.character.badges=[];
@@ -1061,9 +1145,10 @@ function coreSaveData(){
   };
 }
 
-// ══════════════════════════════════════════
-// AUTH
-// ══════════════════════════════════════════
+// ==================================================
+// Persistence & Sync
+// ==================================================
+// Auth, localStorage, Firestore sync, and diagnostics live in this area.
 let authMode = 'signin'; // 'signin' | 'register'
 
 function toggleAuthMode() {
@@ -1208,6 +1293,9 @@ function ldLocal() {
   }
 }
 
+// ==================================================
+// Bootstrap
+// ==================================================
 let appInited = false;
 function initApp() {
   if (appInited) { refreshCurrentTab(); return; }
@@ -1226,34 +1314,36 @@ function initApp() {
   refreshCurrentTab();
 }
 
-const TAB_GROUPS={
-  today:['habits'],
-  mind:['work'],
-  health:['health-overview','meals','body'],
-  purpose:['reflect'],
-  character:['character'],
-  analytics:['analytics'],
-  settings:['settings'],
-  strength:['strength'],
-  wealth:['wealth'],
-  connection:['connection'],
-  habits:['habits'],
-  work:['work'],
-  meals:['meals'],
-  body:['body'],
-  reflect:['reflect']
-};
+// ==================================================
+// Tab System / Navigation
+// ==================================================
+const TAB_GROUPS=APP_CONFIG.tabs;
 function resolveTabIds(id){return TAB_GROUPS[id]||[id];}
+function renderToday(){renHabits();renCal();}
+function renderMind(){renTags();renSCnt();renSlog();renProfilesMini();}
+function renderHealth(){renMeals();renMealsCal();renBody();}
+function renderStrength(){}
+function renderWealth(){}
+function renderConnection(){}
+function renderPurpose(){renGoals();renStats();}
+function renderAnalytics(){renAnalytics();}
+function renderSettings(){renSettings();}
 function refreshTab(id){
   const ids=resolveTabIds(id);
-  if(ids.includes('character')) renCharacter();
-  if(ids.includes('habits')) { renHabits(); renCal(); }
-  if(ids.includes('meals')) { renMeals(); renMealsCal(); }
-  if(ids.includes('analytics')) renAnalytics();
-  if(ids.includes('reflect')) { renGoals(); renStats(); }
-  if(ids.includes('work')) { renTags(); renSCnt(); renSlog(); renProfilesMini(); }
-  if(ids.includes('body')) renBody();
-  if(ids.includes('settings')) renSettings();
+  if(ids.includes('character')) renderCharacter();
+  if(ids.includes('habits')) renderToday();
+  if(ids.includes('work')) renderMind();
+  if(id==='health') renderHealth();
+  else {
+    if(ids.includes('meals')) { renMeals(); renMealsCal(); }
+    if(ids.includes('body')) renBody();
+  }
+  if(ids.includes('analytics')) renderAnalytics();
+  if(ids.includes('reflect')) renderPurpose();
+  if(ids.includes('settings')) renderSettings();
+  if(ids.includes('strength')) renderStrength();
+  if(ids.includes('wealth')) renderWealth();
+  if(ids.includes('connection')) renderConnection();
 }
 function refreshCurrentTab() {
   const activeNav=document.querySelector('nav button.on');
@@ -1284,9 +1374,10 @@ function renSettings(){
   if(storage) storage.textContent=localStorage.getItem('sce3')?'Saved locally':'No local cache yet';
 }
 
-// ══════════════════════════════════════════
-// CHARACTER FOUNDATION
-// ══════════════════════════════════════════
+// ==================================================
+// Render Functions by Tab
+// ==================================================
+// Legacy render function names are preserved because inline handlers call them.
 function statKey(label){return label.toLowerCase();}
 function renStatGrid(id,labels,values){
   const el=document.getElementById(id);if(!el)return;
@@ -1311,7 +1402,10 @@ function renCharacter(){
 // ══════════════════════════════════════════
 // TAG COLORS & DROPDOWN
 // ══════════════════════════════════════════
-// Phase 2 XP and progression helpers override the small Phase 1 character renderer above.
+// ==================================================
+// Utilities
+// ==================================================
+// Small shared helpers used by renderers, XP events, and legacy handlers.
 function escapeHtml(str){
   return String(str??'').replace(/[&<>"']/g,ch=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]));
 }
@@ -1324,20 +1418,26 @@ function rewardDateKey(ts=Date.now()){return dkey(new Date(ts));}
 function getCharacter(){ensureCharacter();return D.character;}
 function saveCharacterIfNeeded(){ensureCharacter();sv();renderCharacter();}
 
+// ==================================================
+// XP & Character Engine
+// ==================================================
 function xpRequiredForLevel(level){
-  const lvl=Math.max(1,Math.min(249,Math.floor(level)||1));
-  return Math.round(100*Math.pow(lvl,1.35));
+  const cfg=APP_CONFIG.character;
+  const lvl=Math.max(1,Math.min(cfg.maxLevel-1,Math.floor(level)||1));
+  return Math.round(cfg.xpBase*Math.pow(lvl,cfg.xpExponent));
 }
 function totalXpRequiredForLevel(level){
-  const lvl=Math.max(1,Math.min(250,Math.floor(level)||1));
+  const cfg=APP_CONFIG.character;
+  const lvl=Math.max(1,Math.min(cfg.maxLevel,Math.floor(level)||1));
   let total=0;
   for(let l=1;l<lvl;l++) total+=xpRequiredForLevel(l);
   return total;
 }
 function calculateLevel(totalXp){
+  const cfg=APP_CONFIG.character;
   const xp=Math.max(0,Number(totalXp)||0);
   let level=1,needed=0;
-  while(level<250){
+  while(level<cfg.maxLevel){
     const next=xpRequiredForLevel(level);
     if(xp<needed+next) break;
     needed+=next;level++;
@@ -1345,20 +1445,23 @@ function calculateLevel(totalXp){
   return level;
 }
 function calculateRank(level){
-  const lvl=Math.max(1,Math.min(250,Math.floor(level)||1));
-  if(lvl>=250) return 50;
-  return Math.max(1,Math.min(50,Math.ceil(lvl/5)));
+  const cfg=APP_CONFIG.character;
+  const lvl=Math.max(1,Math.min(cfg.maxLevel,Math.floor(level)||1));
+  if(lvl>=cfg.maxLevel) return cfg.maxRanks;
+  return Math.max(1,Math.min(cfg.maxRanks,Math.ceil(lvl/cfg.rankSize)));
 }
 function getRankInfo(level){
-  const lvl=Math.max(1,Math.min(250,Math.floor(level)||1));
+  const cfg=APP_CONFIG.character;
+  const lvl=Math.max(1,Math.min(cfg.maxLevel,Math.floor(level)||1));
   const info=RANKS.find(r=>lvl>=r.minLevel&&lvl<=r.maxLevel)||RANKS[0];
   return {...info,rankNumber:calculateRank(lvl)};
 }
 function getLevelProgress(totalXp){
+  const cfg=APP_CONFIG.character;
   const xp=Math.max(0,Number(totalXp)||0);
   const level=calculateLevel(xp);
   const rank=calculateRank(level);
-  if(level>=250) return{level,rank,currentLevelXp:0,xpForNextLevel:0,progressPercent:100,xpIntoCurrentLevel:0,xpRemaining:0};
+  if(level>=cfg.maxLevel) return{level,rank,currentLevelXp:0,xpForNextLevel:0,progressPercent:100,xpIntoCurrentLevel:0,xpRemaining:0};
   const currentLevelXp=totalXpRequiredForLevel(level);
   const xpForNextLevel=xpRequiredForLevel(level);
   const xpIntoCurrentLevel=Math.max(0,xp-currentLevelXp);
@@ -1374,9 +1477,9 @@ function qualityFromFocus(focus){
   if(f===4) return 'good';
   return 'excellent';
 }
-function qualityModifier(q){return({low:.75,normal:1,good:1.15,excellent:1.3})[q]||1;}
-function difficultyModifier(difficulty){return({easy:1,normal:1,some:1.1,'some resistance':1.1,hard:1.25,'hard to start':1.25,veryHard:1.4,'very hard':1.4,heroic:1.6})[difficulty]||1;}
-function customTaskXp(size){return({tiny:5,small:15,medium:35,large:75,epic:150})[size]||15;}
+function qualityModifier(q){return APP_CONFIG.qualityModifiers[q]||1;}
+function difficultyModifier(difficulty){return APP_CONFIG.difficultyModifiers[difficulty]||1;}
+function customTaskXp(size){return APP_CONFIG.taskSizeXp[size]||APP_CONFIG.taskSizeXp.small;}
 function existingCategoryMinutes(date,category){
   const events=D.character?.xpEvents||[];
   return events.filter(e=>e.date===date&&e.category===category).reduce((a,e)=>a+(Number(e.durationMinutes)||0),0);
@@ -1385,8 +1488,7 @@ function applyDiminishingReturns(minutes,{date=dateStamp(),category='general'}={
   let remaining=Math.max(0,Number(minutes)||0);
   let used=existingCategoryMinutes(date,category);
   let effective=0;
-  const bands=[{limit:180,mult:1},{limit:360,mult:.8},{limit:540,mult:.6},{limit:Infinity,mult:.3}];
-  for(const band of bands){
+  for(const band of APP_CONFIG.diminishingReturnsBands){
     if(!remaining) break;
     const room=Math.max(0,band.limit-used);
     const take=Math.min(remaining,room);
@@ -1445,6 +1547,7 @@ function removeXpEventByRewardKey(rewardKey,{save=true}={}){
   if(save) sv();
   return removed;
 }
+function revokeXpReward(rewardKey,opts={}){return removeXpEventByRewardKey(rewardKey,opts);}
 function removeXpEventsByRewardPrefix(prefix,{save=true}={}){
   if(!prefix) return 0;
   ensureCharacter();
@@ -1484,7 +1587,7 @@ function recalculateCharacterFromEvents(){
   const progress=getLevelProgress(c.totalXp);
   const rankInfo=getRankInfo(progress.level);
   c.level=progress.level;c.rank=rankInfo.rankNumber;c.rankName=rankInfo.title;c.title=rankInfo.title;
-  c.maxLevel=250;c.maxRank=50;c.maxRanks=50;
+  c.maxLevel=APP_CONFIG.character.maxLevel;c.maxRank=APP_CONFIG.character.maxRanks;c.maxRanks=APP_CONFIG.character.maxRanks;
 }
 
 function getTopStats(stats,keys=MAIN_STAT_KEYS){
@@ -1505,26 +1608,11 @@ function generateRole(stats){
   if(top[0].key==='wealth'&&top[0].value>=40&&(Number(stats.connection)||0)<=top[0].value*.25) return 'Isolated Achiever';
   if(top[0].key==='purpose'&&top[0].value>=40&&(Number(stats.wealth)||0)<=top[0].value*.25) return 'Dreamer Without Ground';
   const pair=[top[0].key,top[1]?.key||''].sort().join('+');
-  return({
-    'intelligence+purpose':'Philosopher','intelligence+wealth':'Strategist','intelligence+strength':'Warrior-Scholar',
-    'health+intelligence':'Optimized Scholar','connection+intelligence':'Mentor','health+strength':'Athlete',
-    'purpose+strength':'Ascetic Warrior','strength+wealth':'Ambitious Builder','connection+strength':'Protector',
-    'purpose+wealth':'Steward','connection+wealth':'Networker','connection+purpose':'Guide',
-    'connection+health':'Harmonizer','health+purpose':'Grounded Seeker'
-  })[pair]||'Developing Master';
+  return APP_CONFIG.roleMatrix[pair]||'Developing Master';
 }
 function generateSuggestion(stats){
   const weakest=getStrongestWeakestStats(stats).weakest.key;
-  return({
-    intelligence:'Intelligence is your least trained area. Do one focused 25-minute learning session.',
-    health:'Health is your least trained area. Log a meal, take a 20-minute walk, or do one small recovery action.',
-    strength:'Strength is your least trained area. Complete one short resistance workout.',
-    wealth:'Wealth is your least trained area. A 10-minute expense or budget review would bring balance.',
-    connection:'Connection is your least trained area. Send one genuine message to someone you care about.',
-    purpose:'Purpose is your least trained area. Write one sentence about what matters this week.',
-    consistency:'Consistency is your least trained area. Complete one tiny habit today.',
-    resolve:'Resolve is your least trained area. Do one thing you have been avoiding.'
-  })[weakest]||'Complete one meaningful action to keep building your character.';
+  return APP_CONFIG.suggestions[weakest]||'Complete one meaningful action to keep building your character.';
 }
 
 function renStatGrid(id,labels,values){
@@ -1564,8 +1652,8 @@ function renderCharacter(){
   const sw=getStrongestWeakestStats(c.stats);
   const totalMain=MAIN_STAT_KEYS.reduce((a,k)=>a+(Number(c.stats[k])||0),0);
   document.getElementById('char-title-line').textContent=`${role} - ${rankInfo.title}`;
-  document.getElementById('char-level-pill').textContent=`Level ${progress.level} / 250`;
-  document.getElementById('char-rank-pill').textContent=`Rank ${rankInfo.rankNumber} / 50 - ${rankInfo.title}`;
+  document.getElementById('char-level-pill').textContent=`Level ${progress.level} / ${APP_CONFIG.character.maxLevel}`;
+  document.getElementById('char-rank-pill').textContent=`Rank ${rankInfo.rankNumber} / ${APP_CONFIG.character.maxRanks} - ${rankInfo.title}`;
   document.getElementById('char-total-xp-pill').textContent=`${Math.round(c.totalXp)} XP`;
   document.getElementById('char-rank-desc').textContent=rankInfo.description;
   document.getElementById('char-rank-badge').textContent=progress.level>=250?'ML':`R${rankInfo.rankNumber}`;
@@ -1639,11 +1727,12 @@ function maybeAwardStudyXp(session,{showToast=false}={}){
   const ts=Number(session.ts)||Date.now();
   const minutes=Math.max(1,Math.round((Number(session.hours)||1)*60));
   const quality=qualityFromFocus(session.focus);
-  const generalXp=calculateTimedXp(minutes,1.5,quality,'easy',{date:dateStamp(ts),category:'study'});
+  const generalXp=calculateTimedXp(minutes,APP_CONFIG.xpRates.focusedStudy,quality,'easy',{date:dateStamp(ts),category:'study'});
   const hasReflection=String(session.recall||'').trim().length>=20;
+  const split=hasReflection?APP_CONFIG.statSplits.studyWithReflection:APP_CONFIG.statSplits.study;
   const statXp=hasReflection
-    ? {intelligence:Math.round(generalXp*.72),consistency:Math.round(generalXp*.18),purpose:Math.round(generalXp*.10)}
-    : {intelligence:Math.round(generalXp*.8),consistency:Math.round(generalXp*.2)};
+    ? {intelligence:Math.round(generalXp*split.intelligence),consistency:Math.round(generalXp*split.consistency),purpose:Math.round(generalXp*split.purpose)}
+    : {intelligence:Math.round(generalXp*split.intelligence),consistency:Math.round(generalXp*split.consistency)};
   return addXpEvent(makeXpEvent({
     type:'study_session',sourceSection:'getSmarter',label:session.h20||session.tag||'Study session',
     linkedEntityId:session.id||String(session.ts||''),rewardKey:studyRewardKey(session),
@@ -1654,21 +1743,23 @@ function maybeAwardStudyXp(session,{showToast=false}={}){
 function maybeAwardHabitXp(h,dateKey,{showToast=false}={}){
   if(!h||!dateKey) return false;
   const primary=guessHabitPrimaryStat(h);
-  const statXp=primary==='consistency'?{consistency:10}:{[primary]:2,consistency:8};
+  const cfg=APP_CONFIG.fixedRewards.habit;
+  const statXp=primary==='consistency'?{consistency:cfg.consistencyOnly}:{[primary]:cfg.primary,consistency:cfg.consistency};
   return addXpEvent(makeXpEvent({
     type:'habit_completion',sourceSection:'habits',label:h.name||h.id2||'Habit completed',
     linkedEntityId:h.id||stableTextKey(h.id2||h.name),rewardKey:habitRewardKey(h,dateKey),
-    generalXp:10,statXp,primaryStat:primary,secondaryStat:'consistency',
+    generalXp:cfg.general,statXp,primaryStat:primary,secondaryStat:'consistency',
     timestamp:timestampFromLooseDateKey(dateKey),quality:'normal',difficulty:'easy'
   }),{showToast});
 }
 function maybeAwardMealXp(idx,dateKey,{showToast=false}={}){
   const slots=D.meals?.[dateKey]||[];
   const label=slots[idx]?.label||MEAL_LABELS[idx]||`Meal ${idx+1}`;
+  const cfg=APP_CONFIG.fixedRewards.meal;
   return addXpEvent(makeXpEvent({
     type:'meal_completed',sourceSection:'meals',label:`${label} completed`,
     linkedEntityId:`${dateKey}:${idx}`,rewardKey:mealRewardKey(idx,dateKey),
-    generalXp:8,statXp:{health:6,consistency:2},primaryStat:'health',secondaryStat:'consistency',
+    generalXp:cfg.general,statXp:{health:cfg.health,consistency:cfg.consistency},primaryStat:'health',secondaryStat:'consistency',
     timestamp:timestampFromLooseDateKey(dateKey),quality:'normal',difficulty:'easy'
   }),{showToast});
 }
@@ -1677,31 +1768,34 @@ function maybeAwardCardioXp(entry,{showToast=false}={}){
   const ts=entry.ts||timestampFromIsoDate(entry.date);
   const minutes=Number(entry.duration)||0;
   const difficulty=normalizeDifficulty(entry.difficulty);
-  const generalXp=minutes>0?calculateTimedXp(minutes,1.3,'normal',difficulty,{date:dateStamp(ts),category:'cardio'}):25;
+  const split=APP_CONFIG.statSplits.cardio;
+  const generalXp=minutes>0?calculateTimedXp(minutes,APP_CONFIG.xpRates.cardio,'normal',difficulty,{date:dateStamp(ts),category:'cardio'}):APP_CONFIG.fixedRewards.fallbackCardio;
   return addXpEvent(makeXpEvent({
     type:'cardio_logged',sourceSection:'body',label:`Cardio ${minutes||''} min`.trim(),
     linkedEntityId:String(entry.ts||`${entry.date}:${minutes}`),rewardKey:cardioRewardKey(entry),
-    generalXp,statXp:{health:Math.round(generalXp*.8),consistency:Math.round(generalXp*.2)},
+    generalXp,statXp:{health:Math.round(generalXp*split.health),consistency:Math.round(generalXp*split.consistency)},
     primaryStat:'health',secondaryStat:'consistency',durationMinutes:minutes||null,
     timestamp:ts,quality:'normal',difficulty,category:'cardio'
   }),{showToast});
 }
 function maybeAwardWeightXp(entry,{showToast=false}={}){
   if(!entry?.date) return false;
+  const cfg=APP_CONFIG.fixedRewards.weight;
   return addXpEvent(makeXpEvent({
     type:'weight_logged',sourceSection:'body',label:'Weight logged',
     linkedEntityId:entry.date,rewardKey:weightRewardKey(entry),
-    generalXp:5,statXp:{health:3,consistency:2},primaryStat:'health',secondaryStat:'consistency',
+    generalXp:cfg.general,statXp:{health:cfg.health,consistency:cfg.consistency},primaryStat:'health',secondaryStat:'consistency',
     timestamp:timestampFromIsoDate(entry.date),quality:'normal',difficulty:'easy'
   }),{showToast});
 }
 function maybeAwardGoalXp(type,goal,{showToast=false}={}){
   if(!goal) return false;
   const monthly=type==='monthly';
+  const cfg=monthly?APP_CONFIG.fixedRewards.monthlyGoal:APP_CONFIG.fixedRewards.weeklyGoal;
   return addXpEvent(makeXpEvent({
     type:`${type}_goal_completed`,sourceSection:'goals',label:goal.text||`${monthly?'Monthly':'Weekly'} goal completed`,
     linkedEntityId:goal.id||String(goal.added||stableTextKey(goal.text)),rewardKey:goalRewardKey(type,goal),
-    generalXp:monthly?100:40,statXp:monthly?{purpose:80,consistency:20}:{purpose:30,consistency:10},
+    generalXp:cfg.general,statXp:{purpose:cfg.purpose,consistency:cfg.consistency},
     primaryStat:'purpose',secondaryStat:'consistency',timestamp:goal.doneAt||Date.now(),quality:'normal',difficulty:'easy'
   }),{showToast});
 }
@@ -1709,10 +1803,11 @@ function maybeAwardReflectionXp(reflection,index,{showToast=false}={}){
   if(!reflection) return false;
   const text=typeof reflection==='string'?reflection:(reflection.text||reflection.note||reflection.recall||'Reflection');
   const ts=reflection.ts||reflection.added||Date.now();
+  const cfg=APP_CONFIG.fixedRewards.reflection;
   return addXpEvent(makeXpEvent({
     type:'reflection_added',sourceSection:'goals',label:text||'Reflection added',
     linkedEntityId:reflection.id||String(index||ts),rewardKey:`reflection:${reflection.id||ts||index}`,
-    generalXp:25,statXp:{purpose:15,intelligence:7,consistency:3},
+    generalXp:cfg.general,statXp:{purpose:cfg.purpose,intelligence:cfg.intelligence,consistency:cfg.consistency},
     primaryStat:'purpose',secondaryStat:'intelligence',timestamp:ts,quality:'normal',difficulty:'easy'
   }),{showToast});
 }
@@ -1733,6 +1828,12 @@ function importXpFromHistory(){
   toast(count?`Imported ${count} XP event${count!==1?'s':''}.`:'No new history XP to import.');
 }
 
+// ==================================================
+// Module Event Handlers
+// ==================================================
+// Handlers are grouped by domain below and kept global for inline onclick compatibility.
+
+// Tags and study profile controls
 const TAG_PALETTE=['#14CEFF','#2EED00','#F21B1B','#f5a000','#a855f7','#06b6d4','#f59e0b','#10b981','#e11d48',
   '#3b82f6','#ec4899','#84cc16','#14b8a6','#fb923c','#8b5cf6','#22d3ee','#facc15','#4ade80','#f87171','#c084fc',
   '#60a5fa','#34d399','#fb7185','#a3e635','#38bdf8','#e879f9','#fbbf24','#6ee7b7','#93c5fd','#fca5a5'];
@@ -1828,6 +1929,7 @@ function confirmTag(){confirmNewTag();}
 // ══════════════════════════════════════════
 // ALARM SOUND
 // ══════════════════════════════════════════
+// Study / Mind handlers
 function playAlarm(type='work'){
   if(!D.alarmOn) return;
   try{
@@ -2259,6 +2361,7 @@ function saveManualLog(targetEl=null){
 // ══════════════════════════════════════════
 // HABITS
 // ══════════════════════════════════════════
+// Habits / Today handlers
 function dkey(d){return`${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`}
 function tdk(){return dkey(new Date())}
 function twoMinActive(h){return(Date.now()-h.added)<7*864e5;}
@@ -2389,7 +2492,7 @@ function togH(i,targetEl=null){
     const xp=maybeAwardHabitXp(h,k,{showToast:true});
     showXpFloat(targetEl,xp);
   } else {
-    removeXpEventByRewardKey(habitRewardKey(h,k),{save:false});
+    revokeXpReward(habitRewardKey(h,k),{save:false});
   }
   sv();renHabits();renCal();
 }
@@ -2489,7 +2592,7 @@ function calClk(d,targetEl=null){
     const xp=maybeAwardHabitXp(h,k,{showToast:true});
     showXpFloat(targetEl,xp);
   } else {
-    removeXpEventByRewardKey(habitRewardKey(h,k),{save:false});
+    revokeXpReward(habitRewardKey(h,k),{save:false});
   }
   sv();renCal();renHabits();
 }
@@ -2497,6 +2600,7 @@ function calClk(d,targetEl=null){
 // ══════════════════════════════════════════
 // MEALS
 // ══════════════════════════════════════════
+// Meals / Health handlers
 function mealKey(d){return`${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`}
 function getMealDay(d){
   const k=mealKey(d);
@@ -2536,7 +2640,7 @@ function togMeal(idx,targetEl=null){
     const xp=maybeAwardMealXp(idx,k,{showToast:true});
     showXpFloat(targetEl,xp);
   } else {
-    removeXpEventByRewardKey(mealRewardKey(idx,k),{save:false});
+    revokeXpReward(mealRewardKey(idx,k),{save:false});
   }
   sv();renMeals();renMealsCal();
 }
@@ -2591,6 +2695,7 @@ function renMealsCal(){
 // ══════════════════════════════════════════
 const TAG_COLORS=['#14CEFF','#2EED00','#F21B1B','#f5a000','#a855f7','#06b6d4','#f59e0b','#10b981','#e11d48'];
 let chartCombo=null,chartDonut=null,chartYearly=null;
+// Analytics handlers
 function navMonth(d){D.anMonth+=d;if(D.anMonth<0){D.anMonth=11;D.anYear--;}if(D.anMonth>11){D.anMonth=0;D.anYear++;}renAnalytics();}
 function navYear(d){D.anYearView+=d;renAnalytics();}
 function getMonthSessions(y,m){return D.sessions.filter(s=>{const dt=new Date(s.ts);return dt.getFullYear()===y&&dt.getMonth()===m;});}
@@ -2688,6 +2793,7 @@ function weekKey(){
 }
 function monthKey(){const n=new Date();return`${n.getFullYear()}-${n.getMonth()}`;}
 
+// Goals / Reflections / Purpose handlers
 function ensureGoalsStructure(){
   if(!D.goals) D.goals={weekly:[],monthly:[],totalDone:0};
   if(!D.goals.weekly) D.goals.weekly=[];
@@ -2797,7 +2903,7 @@ function togGoal(type,i,targetEl=null){
     const xp=maybeAwardGoalXp(type,goals[i],{showToast:true});
     showXpFloat(targetEl,xp);
   } else {
-    removeXpEventByRewardKey(goalRewardKey(type,goals[i]),{save:false});
+    revokeXpReward(goalRewardKey(type,goals[i]),{save:false});
     delete goals[i].doneAt;
     D.goals.totalDone=Math.max(0,(D.goals.totalDone||1)-1);
   }
@@ -2811,7 +2917,7 @@ function delGoal(type,i){
   const goals=type==='weekly'?D.goals.weekly:D.goals.monthly;
   if(goals[i].done){
     D.goals.totalDone=Math.max(0,(D.goals.totalDone||1)-1);
-    removeXpEventByRewardKey(goalRewardKey(type,goals[i]),{save:false});
+    revokeXpReward(goalRewardKey(type,goals[i]),{save:false});
   }
   goals.splice(i,1);sv();renGoalList(type);
 }
@@ -2829,6 +2935,7 @@ function renStats(){
 let chartWeight = null;
 let _cardioDiff = 3;
 
+// Body / Cardio / Weight handlers
 function ensureBody(){
   if(!D.body) D.body={weightLog:[],cardioLog:[]};
   if(!D.body.weightLog) D.body.weightLog=[];
@@ -2879,7 +2986,7 @@ function renWeightLog(){
 
 function delWeightEntry(date){
   ensureBody();
-  removeXpEventByRewardKey(weightRewardKey(date),{save:false});
+  revokeXpReward(weightRewardKey(date),{save:false});
   D.body.weightLog=D.body.weightLog.filter(e=>e.date!==date);
   sv();renWeightLog();renWeightChart();
 }
@@ -2968,7 +3075,7 @@ function addCardioLog(){
 function delCardioEntry(ts){
   ensureBody();
   const entry=D.body.cardioLog.find(e=>e.ts===ts);
-  removeXpEventByRewardKey(cardioRewardKey(entry),{save:false});
+  revokeXpReward(cardioRewardKey(entry),{save:false});
   D.body.cardioLog=D.body.cardioLog.filter(e=>e.ts!==ts);
   sv();renCardioTable();
 }
@@ -3000,7 +3107,7 @@ let tTO;
 function toast(msg){const el=document.getElementById('toast');el.textContent=msg;el.classList.remove('hid');clearTimeout(tTO);tTO=setTimeout(()=>el.classList.add('hid'),3200);}
 
 // ══════════════════════════════════════════
-// DIAGNOSTICS
+// Persistence & Sync: Diagnostics
 // ══════════════════════════════════════════
 let lastSnapshotTime = null;
 let snapshotCount = 0;
