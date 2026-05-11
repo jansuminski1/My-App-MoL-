@@ -71,6 +71,16 @@ const STAT_DESCRIPTIONS = {
   consistency:'Showing up repeatedly, returning, and protecting planned action.',
   resolve:'Doing what is difficult, avoided, or uncomfortable but necessary.'
 };
+const STAT_UI = {
+  intelligence:{label:'Intelligence',icon:'🧠',color:'#0e8bba'},
+  health:{label:'Health',icon:'💚',color:'#1aaa00'},
+  strength:{label:'Strength',icon:'🏋️',color:'#f5a000'},
+  wealth:{label:'Finances',icon:'💰',color:'#d69a00'},
+  connection:{label:'Connection',icon:'🤝',color:'#8b5cf6'},
+  purpose:{label:'Goals',icon:'🎯',color:'#f21b1b'},
+  consistency:{label:'Consistency',icon:'🔁',color:'#14ceff'},
+  resolve:{label:'Resolve',icon:'🛡️',color:'#092036'}
+};
 
 const RANKS = [
   {range:'1-5',minLevel:1,maxLevel:5,title:'Awakening',description:'You have noticed that life can be shaped instead of merely endured. This is the first spark of intentional change.'},
@@ -523,7 +533,7 @@ function statKey(label){return label.toLowerCase();}
 function escapeHtml(str){
   return String(str??'').replace(/[&<>"']/g,ch=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]));
 }
-function capStat(k){return k.charAt(0).toUpperCase()+k.slice(1);}
+function capStat(k){return STAT_UI[k]?.label||k.charAt(0).toUpperCase()+k.slice(1);}
 function dateStamp(ts=Date.now()){
   const d=new Date(ts);
   return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
@@ -747,10 +757,14 @@ function renStatGrid(id,labels,values){
     const key=statKey(label);
     const val=Math.max(0,Math.round(Number(values[key])||0));
     const pct=val?Math.max(4,Math.round(val/max*100)):0;
-    return`<div class="stat-row">
-      <div class="stat-top"><span>${label}</span><span class="stat-val">${val}</span></div>
-      <div class="stat-bar"><div class="stat-fill" style="width:${pct}%"></div></div>
-      <div style="font-size:.68rem;color:var(--mut);line-height:1.4;margin-top:6px">${STAT_DESCRIPTIONS[key]||''}</div>
+    const ui=STAT_UI[key]||{label,icon:'✦',color:'#0e8bba'};
+    return`<div class="stat-row" style="--stat-color:${ui.color}">
+      <div class="stat-icon">${ui.icon}</div>
+      <div class="stat-body">
+        <div class="stat-top"><span>${ui.label}</span><span class="stat-val">${val}</span></div>
+        <div class="stat-bar"><div class="stat-fill" style="width:${pct}%"></div></div>
+        <div style="font-size:.68rem;color:var(--mut);line-height:1.4;margin-top:6px">${STAT_DESCRIPTIONS[key]||''}</div>
+      </div>
     </div>`;
   }).join('');
 }
@@ -936,7 +950,7 @@ function maybeAwardFinanceXp(kind,item,{showToast=false}={}){
   return addXpEvent(makeXpEvent({
     type:income?'finance_income_logged':'finance_expense_logged',
     sourceSection:'wealth',
-    label:income?`Income: ${item.source||'Income'}`:`Expense: ${item.category||'Expense'}`,
+    label:income?`Income: ${item.source||'Income'}`:`Expense: ${item.name||item.tag||item.category||'Expense'}`,
     linkedEntityId:item.id,
     rewardKey:income?financeIncomeRewardKey(item):financeExpenseRewardKey(item),
     generalXp:8,
@@ -1129,16 +1143,16 @@ function selectProfile(i){
   renProfilesMini();
 }
 function updateStartBtn(){
-  const btn=document.getElementById('start-work-btn');if(!btn)return;
+  const btn=document.getElementById('start-work-btn');
   const focusProfile=document.getElementById('mind-focus-profile');
   const focusTime=document.getElementById('mind-focus-time');
   if(D.activeProfile!==null&&D.profiles[D.activeProfile]){
     const p=D.profiles[D.activeProfile];
-    btn.textContent=`▶ Begin "${p.name}"`;
+    if(btn) btn.textContent=`▶ Begin "${p.name}"`;
     if(focusProfile) focusProfile.textContent=p.name;
     if(focusTime) focusTime.textContent=fmt((Number(p.focusSessions?.[0])||60)*60);
   } else {
-    btn.textContent='▶ Begin 60-min Timer';
+    if(btn) btn.textContent='▶ Begin 60-min Timer';
     if(focusProfile) focusProfile.textContent='Default session';
     if(focusTime) focusTime.textContent=fmt(60*60);
   }
