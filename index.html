@@ -171,7 +171,7 @@
 <div id="tab-work" class="tab">
   <div class="card">
     <div class="fb" style="margin-bottom:10px">
-      <h2>Get Smarter</h2>
+      <h2><span class="section-mini-icon tomato-icon">🍅</span>Get Smarter</h2>
       <span id="sc" style="font-size:.76rem;color:var(--mut)">Today: 0 sessions</span>
     </div>
     <!-- Tag dropdown -->
@@ -355,7 +355,7 @@
 <div id="tab-meals" class="tab">
   <div class="card">
     <div class="section-heading compact-section-heading">
-      <span class="section-icon health-icon">🍽️</span>
+      <span class="section-icon meals-icon">🥗</span>
       <div>
         <h2>Meals</h2>
         <p>Daily nourishment rhythm</p>
@@ -440,7 +440,6 @@
 <div id="tab-reflect" class="tab">
   <!-- All-time total -->
   <div class="card" style="background:var(--warm);padding:12px 16px">
-    <h2 class="section-card-title" style="margin-bottom:8px"><span class="section-mini-icon">🎯</span>Goals</h2>
     <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px">
       <span style="font-size:.8rem;color:var(--navy);font-weight:600">🏆 All-Time Completed Goals</span>
       <span id="goals-total-badge" style="font-size:1rem;font-weight:700;color:var(--acc)">0</span>
@@ -533,6 +532,7 @@
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px">
       <div><label>Date</label><input type="date" id="cardio-date" class="mb10"></div>
       <div><label>Duration (min)</label><input type="number" id="cardio-dur" placeholder="45" min="1" max="600" class="mb10"></div>
+      <div><label>Distance (km)</label><input type="number" id="cardio-distance" placeholder="5.0" min="0" max="500" step="0.01" class="mb10"></div>
       <div><label>Avg HR (bpm)</label><input type="number" id="cardio-avghr" placeholder="145" min="40" max="220" class="mb10"></div>
       <div><label>Resting HR (bpm)</label><input type="number" id="cardio-resthr" placeholder="60" min="30" max="120" class="mb10"></div>
     </div>
@@ -560,6 +560,8 @@
           <tr style="border-bottom:2px solid var(--bdr);text-align:left">
             <th style="padding:7px 8px;color:var(--navy);font-weight:700">Date</th>
             <th style="padding:7px 8px;color:var(--navy)">⏱ Dur</th>
+            <th style="padding:7px 8px;color:var(--navy)">📍 Km</th>
+            <th style="padding:7px 8px;color:var(--navy)">⚡ Km/h</th>
             <th style="padding:7px 8px;color:var(--navy)">❤️ Avg</th>
             <th style="padding:7px 8px;color:var(--navy)">💤 Rest</th>
             <th style="padding:7px 8px;color:var(--navy)">🎚 Diff</th>
@@ -598,7 +600,7 @@
       </div>
     </div>
     <div class="finance-section income">
-      <div class="finance-section-head"><span>↗</span><h3>Income</h3></div>
+      <div class="finance-section-head"><span class="finance-head-icon income-icon">💵</span><h3>Income</h3></div>
       <div class="finance-form">
         <input type="text" id="fin-income-source" placeholder="Source/name">
         <input type="number" id="fin-income-amount" placeholder="Amount" min="0" step="0.01">
@@ -609,7 +611,7 @@
       <div class="finance-list" id="finance-income-list"></div>
     </div>
     <div class="finance-section expense">
-      <div class="finance-section-head"><span>↘</span><h3>Expenses</h3></div>
+      <div class="finance-section-head"><span class="finance-head-icon expense-icon">🧾</span><h3>Expenses</h3></div>
       <div class="finance-form">
         <input type="text" id="fin-expense-name" placeholder="Name">
         <input type="number" id="fin-expense-amount" placeholder="Amount" min="0" step="0.01">
