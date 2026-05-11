@@ -92,16 +92,16 @@
 </header>
 
 <nav id="main-nav">
-  <button class="on" data-tab="today" onclick="showTab('today',this)">Today</button>
-  <button data-tab="mind" onclick="showTab('mind',this)">Mind</button>
-  <button data-tab="health" onclick="showTab('health',this)">Health</button>
-  <button data-tab="strength" onclick="showTab('strength',this)">Strength</button>
-  <button data-tab="wealth" onclick="showTab('wealth',this)">Wealth</button>
-  <button data-tab="connection" onclick="showTab('connection',this)">Connection</button>
-  <button data-tab="purpose" onclick="showTab('purpose',this)">Purpose</button>
-  <button data-tab="character" onclick="showTab('character',this)">Character</button>
-  <button data-tab="analytics" onclick="showTab('analytics',this)">Analytics</button>
-  <button data-tab="settings" onclick="showTab('settings',this)">Settings</button>
+  <button class="on" data-tab="today" onclick="showTab('today',this)"><span class="nav-ico">◎</span>Today</button>
+  <button data-tab="mind" onclick="showTab('mind',this)"><span class="nav-ico">✦</span>Mind</button>
+  <button data-tab="health" onclick="showTab('health',this)"><span class="nav-ico">+</span>Health</button>
+  <button data-tab="strength" onclick="showTab('strength',this)"><span class="nav-ico">▲</span>Strength</button>
+  <button data-tab="wealth" onclick="showTab('wealth',this)"><span class="nav-ico">$</span>Finances</button>
+  <button data-tab="connection" onclick="showTab('connection',this)"><span class="nav-ico">◇</span>Connection</button>
+  <button data-tab="purpose" onclick="showTab('purpose',this)"><span class="nav-ico">✓</span>Goals</button>
+  <button data-tab="character" onclick="showTab('character',this)"><span class="nav-ico">★</span>Character</button>
+  <button data-tab="analytics" onclick="showTab('analytics',this)"><span class="nav-ico">◈</span>Analytics</button>
+  <button data-tab="settings" onclick="showTab('settings',this)"><span class="nav-ico">⚙</span>Settings</button>
 </nav>
 
 <!-- ═══ YOUR CHARACTER ═══ -->
@@ -186,6 +186,15 @@
         <div id="profile-list-mini"></div>
         <div class="brow" style="margin-top:6px">
           <button class="btn bs" style="font-size:.72px;padding:4px 12px" onclick="showProfileManager()">⚙ Manage Profiles</button>
+        </div>
+      </div>
+      <div class="mind-focus-panel" id="mind-focus-panel">
+        <div class="mind-focus-label">Pomodoro Focus</div>
+        <div class="mind-focus-profile" id="mind-focus-profile">Default session</div>
+        <div class="mind-focus-time" id="mind-focus-time">60:00</div>
+        <div class="brow mind-focus-actions">
+          <button class="btn bp" onclick="startWork()">Start</button>
+          <button class="btn bs" onclick="showManualLog()">Log manually</button>
         </div>
       </div>
       <div class="pbox">
@@ -415,7 +424,7 @@
 <div id="tab-reflect" class="tab">
   <!-- All-time total -->
   <div class="card" style="background:var(--warm);padding:12px 16px">
-    <h2 style="margin-bottom:8px">Live With Direction</h2>
+    <h2 style="margin-bottom:8px">Goals</h2>
     <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px">
       <span style="font-size:.8rem;color:var(--navy);font-weight:600">🏆 All-Time Completed Goals</span>
       <span id="goals-total-badge" style="font-size:1rem;font-weight:700;color:var(--acc)">0</span>
@@ -547,9 +556,9 @@
     <div class="finance-section">
       <h3>Income</h3>
       <div class="finance-form">
+        <input type="text" id="fin-income-source" placeholder="Source/name">
         <input type="number" id="fin-income-amount" placeholder="Amount" min="0" step="0.01">
         <input type="date" id="fin-income-date">
-        <input type="text" id="fin-income-source" placeholder="Source/name">
         <input type="text" id="fin-income-notes" placeholder="Notes (optional)">
         <button class="btn bp" onclick="addFinanceIncome(event.currentTarget)">Add income</button>
       </div>
@@ -558,13 +567,24 @@
     <div class="finance-section">
       <h3>Expenses</h3>
       <div class="finance-form">
+        <input type="text" id="fin-expense-name" placeholder="Name">
         <input type="number" id="fin-expense-amount" placeholder="Amount" min="0" step="0.01">
+        <div class="finance-tag-field">
+          <div class="finance-tag-picker" id="fin-expense-tags"></div>
+          <div class="finance-tag-add">
+            <input type="text" id="fin-new-expense-tag" placeholder="New tag">
+            <button class="btn bs" onclick="addFinanceTag()">Add tag</button>
+          </div>
+        </div>
         <input type="date" id="fin-expense-date">
-        <select id="fin-expense-category"></select>
         <input type="text" id="fin-expense-notes" placeholder="Notes (optional)">
         <button class="btn bp" onclick="addFinanceExpense(event.currentTarget)">Add expense</button>
       </div>
-      <div class="finance-list" id="finance-expense-list"></div>
+      <div class="finance-breakdown" id="finance-expense-breakdown"></div>
+      <details class="finance-history">
+        <summary>Expense history</summary>
+        <div class="finance-list" id="finance-expense-list"></div>
+      </details>
     </div>
     <div class="finance-net-card" id="finance-net-card">
       <span>Monthly net</span>
