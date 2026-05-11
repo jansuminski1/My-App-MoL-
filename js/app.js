@@ -53,7 +53,7 @@ try {
 // ══════════════════════════════════════════
 const MEAL_LABELS = ['Breakfast','Morning Snack','Lunch','Afternoon Snack','Dinner'];
 const APP_SCHEMA_VERSION = 1;
-const FINANCE_CATEGORIES = ['Groceries','Rent','Bills','Transport','Health','Learning','Entertainment','Other'];
+const FINANCE_CATEGORIES = ['Groceries','Recurring Bills','Rent','Transport','Health','Learning','Entertainment','Other'];
 const LIFE_STAT_LABELS = ['Intelligence','Health','Strength','Wealth','Connection','Purpose'];
 const META_STAT_LABELS = ['Consistency','Resolve'];
 const CHARACTER_STAT_KEYS = ['intelligence','health','strength','wealth','connection','purpose','consistency','resolve'];
@@ -207,7 +207,14 @@ function ensureFinance(){
   if(!Array.isArray(D.finance.income)) D.finance.income=[];
   if(!Array.isArray(D.finance.expenses)) D.finance.expenses=[];
   if(!Array.isArray(D.finance.recurring)) D.finance.recurring=[];
-  if(!Array.isArray(D.finance.categories)||!D.finance.categories.length) D.finance.categories=FINANCE_CATEGORIES;
+  if(!Array.isArray(D.finance.categories)) D.finance.categories=[];
+  D.finance.expenses.forEach(e=>{
+    if(!e.tag) e.tag=e.category||'Other';
+    if(!e.category) e.category=e.tag;
+    if(!e.name&&e.notes) e.name=e.notes;
+  });
+  const usedTags=D.finance.expenses.map(e=>e.tag||e.category).filter(Boolean);
+  D.finance.categories=[...new Set([...FINANCE_CATEGORIES,...D.finance.categories,...usedTags])];
 }
 
 function applyCoreData(data){
@@ -1123,11 +1130,17 @@ function selectProfile(i){
 }
 function updateStartBtn(){
   const btn=document.getElementById('start-work-btn');if(!btn)return;
+  const focusProfile=document.getElementById('mind-focus-profile');
+  const focusTime=document.getElementById('mind-focus-time');
   if(D.activeProfile!==null&&D.profiles[D.activeProfile]){
     const p=D.profiles[D.activeProfile];
     btn.textContent=`▶ Begin "${p.name}"`;
+    if(focusProfile) focusProfile.textContent=p.name;
+    if(focusTime) focusTime.textContent=fmt((Number(p.focusSessions?.[0])||60)*60);
   } else {
     btn.textContent='▶ Begin 60-min Timer';
+    if(focusProfile) focusProfile.textContent='Default session';
+    if(focusTime) focusTime.textContent=fmt(60*60);
   }
 }
 
@@ -1717,9 +1730,9 @@ function habitDetailBlock(h,i,chain,position){
     <div><strong>Move to</strong><span><select class="habit-chain-select" onchange="moveHabitToGroup(${i},this.value)">${renderChainMoveOptions(chain.id)}</select></span></div>
     <div class="habit-design-actions">
       <button class="btn bs" onclick="showEditHabit(${i})">Edit</button>
-      <button class="habit-move-btn" onclick="moveHabit(${i},-1)" ${i===0?'disabled':''} title="Move up">▲</button>
-      <button class="habit-move-btn" onclick="moveHabit(${i},1)" ${i===D.habits.length-1?'disabled':''} title="Move down">▼</button>
-      <button class="btn bs" onclick="moveHabitOutOfChain(${i})">Move out</button>
+      <button class="habit-move-btn" onclick="moveHabit(${i},-1)" ${position===0?'disabled':''} title="Move up">▲</button>
+      <button class="habit-move-btn" onclick="moveHabit(${i},1)" ${position===chain.items.length-1?'disabled':''} title="Move down">▼</button>
+      <button class="btn bs" onclick="moveHabitOutOfChain(${i})">Move to Today</button>
       ${stacked?`<button class="btn bs" onclick="toggleStack(${i})">${h.stackedToNext?'Unstack':'Stack next'}</button>`:''}
     </div>
   </div>`;
@@ -1741,15 +1754,22 @@ function startHabitDrag(e,index){
 function endHabitDrag(e){
   habitDragIndex=null;
   e.currentTarget?.classList.remove('habit-dragging');
+  document.querySelectorAll('.habit-drop-zone.on').forEach(el=>el.classList.remove('on'));
 }
 function allowHabitDrop(e){e.preventDefault();}
+function enterHabitDrop(e){e.preventDefault();e.currentTarget?.classList.add('on');}
+function leaveHabitDrop(e){e.currentTarget?.classList.remove('on');}
 function dropHabitOnGroup(e,groupId,position=null){
   e.preventDefault();
   e.stopPropagation();
+  e.currentTarget?.classList.remove('on');
   const idx=habitDragIndex??Number(e.dataTransfer?.getData('text/plain'));
   if(!Number.isFinite(idx)) return;
   moveHabitToGroup(idx,groupId,position);
   habitDragIndex=null;
+}
+function renderHabitDropZone(groupId,position){
+  return`<div class="habit-drop-zone" ondragover="enterHabitDrop(event)" ondragenter="enterHabitDrop(event)" ondragleave="leaveHabitDrop(event)" ondrop="dropHabitOnGroup(event,'${groupId}',${position})"></div>`;
 }
 function renderChainMoveOptions(currentGroupId){
   return buildHabitGroupsAll().map(g=>`<option value="${g.id}" ${g.id===currentGroupId?'selected':''}>${escapeHtml(g.title)}</option>`).join('');
@@ -1797,7 +1817,7 @@ function renderHabitChain(chain){
       </summary>
       ${renderFlowSegments(chain,-1)}
       <div class="completed-routine-details">
-        ${chain.items.map((item,pos)=>renderHabitRow(item,chain,pos,false)).join('')}
+        ${chain.items.map((item,pos)=>renderHabitDropZone(chain.id,pos)+renderHabitRow(item,chain,pos,false)).join('')}${renderHabitDropZone(chain.id,chain.items.length)}
       </div>
     </details>`;
   }
@@ -1811,7 +1831,7 @@ function renderHabitChain(chain){
       <span>${doneCount}/${chain.items.length}</span>
     </div>
     ${renderFlowSegments(chain,activeIndex)}
-    ${chain.items.map((item,pos)=>renderHabitRow(item,chain,pos,pos===activeIndex,primary&&pos===activeIndex)).join('')}
+    ${chain.items.map((item,pos)=>renderHabitDropZone(chain.id,pos)+renderHabitRow(item,chain,pos,pos===activeIndex,primary&&pos===activeIndex)).join('')}${renderHabitDropZone(chain.id,chain.items.length)}
   </div>`;
 }
 
@@ -1930,6 +1950,7 @@ function money(n){
   const sign=val>0?'+':val<0?'-':'';
   return `${sign}${Math.abs(val).toLocaleString('pl-PL',{maximumFractionDigits:2})} zł`;
 }
+let selectedFinanceExpenseTag='Other';
 function renWealth(){
   ensureFinance();
   const today=todayInputDate();
@@ -1937,10 +1958,68 @@ function renWealth(){
   const expDate=document.getElementById('fin-expense-date');
   if(incDate&&!incDate.value) incDate.value=today;
   if(expDate&&!expDate.value) expDate.value=today;
-  const cat=document.getElementById('fin-expense-category');
-  if(cat&&!cat.options.length) cat.innerHTML=D.finance.categories.map(c=>`<option value="${escapeHtml(c)}">${escapeHtml(c)}</option>`).join('');
+  if(!D.finance.categories.includes(selectedFinanceExpenseTag)) selectedFinanceExpenseTag=D.finance.categories[0]||'Other';
+  renderFinanceTagPicker();
+  renderFinanceBreakdown();
   renderFinanceLists();
   renderFinanceNet();
+}
+function financeItemTag(item){
+  return item?.tag||item?.category||'Other';
+}
+function renderFinanceTagPicker(){
+  const el=document.getElementById('fin-expense-tags');
+  if(!el) return;
+  el.innerHTML=D.finance.categories.map(tag=>{
+    const encoded=encodeURIComponent(tag);
+    const isDefault=FINANCE_CATEGORIES.includes(tag);
+    const isUsed=D.finance.expenses.some(e=>financeItemTag(e)===tag);
+    const canDelete=!isDefault&&!isUsed;
+    return`<button class="finance-tag ${selectedFinanceExpenseTag===tag?'on':''}" onclick="selectFinanceExpenseTag(decodeURIComponent('${encoded}'))">
+      <span>${escapeHtml(tag)}</span>
+      ${canDelete?`<span class="finance-tag-delete" onclick="event.stopPropagation();deleteFinanceTag(decodeURIComponent('${encoded}'))">×</span>`:''}
+    </button>`;
+  }).join('');
+}
+function selectFinanceExpenseTag(tag){
+  ensureFinance();
+  if(D.finance.categories.includes(tag)) selectedFinanceExpenseTag=tag;
+  renderFinanceTagPicker();
+}
+function addFinanceTag(){
+  ensureFinance();
+  const input=document.getElementById('fin-new-expense-tag');
+  const tag=(input?.value||'').trim();
+  if(!tag){toast('Name the expense tag.');return;}
+  if(D.finance.categories.some(t=>t.toLowerCase()===tag.toLowerCase())){toast('That tag already exists.');return;}
+  D.finance.categories.push(tag);
+  selectedFinanceExpenseTag=tag;
+  if(input) input.value='';
+  sv();renWealth();
+}
+function deleteFinanceTag(tag){
+  ensureFinance();
+  if(FINANCE_CATEGORIES.includes(tag)){toast('Default tags stay available.');return;}
+  if(D.finance.expenses.some(e=>financeItemTag(e)===tag)){toast('This tag is used by expenses.');return;}
+  D.finance.categories=D.finance.categories.filter(t=>t!==tag);
+  if(selectedFinanceExpenseTag===tag) selectedFinanceExpenseTag='Other';
+  sv();renWealth();
+}
+function renderFinanceBreakdown(){
+  const el=document.getElementById('finance-expense-breakdown');
+  if(!el) return;
+  const month=financeMonthKey(todayInputDate());
+  const grouped={};
+  D.finance.expenses.filter(e=>financeMonthKey(e.date)===month).forEach(e=>{
+    const tag=financeItemTag(e);
+    grouped[tag]=(grouped[tag]||0)+(Number(e.amount)||0);
+  });
+  const rows=Object.entries(grouped).sort((a,b)=>b[1]-a[1]);
+  el.innerHTML=rows.length?rows.map(([tag,total])=>`
+    <div class="finance-breakdown-row">
+      <strong>${escapeHtml(tag)}</strong>
+      <span>-${money(total).replace(/^[+-]/,'')}</span>
+    </div>`).join(''):'<p class="finance-empty">No expenses this month yet.</p>';
 }
 function renderFinanceLists(){
   const incomeEl=document.getElementById('finance-income-list');
@@ -1958,7 +2037,7 @@ function renderFinanceLists(){
     const rows=[...D.finance.expenses].sort((a,b)=>String(b.date).localeCompare(String(a.date))).slice(0,8);
     expenseEl.innerHTML=rows.length?rows.map(item=>`
       <div class="finance-row expense">
-        <div><strong>${escapeHtml(item.category||'Expense')}</strong><small>${escapeHtml(item.date||'')}${item.notes?` - ${escapeHtml(item.notes)}`:''}</small></div>
+        <div><strong>${escapeHtml(item.name||financeItemTag(item)||'Expense')}</strong><small>${escapeHtml(financeItemTag(item))} · ${escapeHtml(item.date||'')}${item.notes?` - ${escapeHtml(item.notes)}`:''}</small></div>
         <span>-${money(item.amount).replace(/^[+-]/,'')}</span>
         <button onclick="deleteFinanceExpense('${item.id}')">Delete</button>
       </div>`).join(''):'<p class="char-note">No expenses logged yet.</p>';
@@ -1994,14 +2073,15 @@ function addFinanceExpense(targetEl=null){
   ensureFinance();
   const amount=Number(document.getElementById('fin-expense-amount')?.value)||0;
   const date=document.getElementById('fin-expense-date')?.value||todayInputDate();
-  const category=document.getElementById('fin-expense-category')?.value||'Other';
+  const name=document.getElementById('fin-expense-name')?.value.trim()||'Expense';
+  const tag=selectedFinanceExpenseTag||'Other';
   const notes=document.getElementById('fin-expense-notes')?.value.trim()||'';
   if(amount<=0){toast('Enter an expense amount.');return;}
-  const item={id:'fin_e_'+Date.now(),amount,date,category,notes,createdAt:Date.now()};
+  const item={id:'fin_e_'+Date.now(),amount,date,name,tag,category:tag,notes,createdAt:Date.now()};
   D.finance.expenses.push(item);
   const xp=maybeAwardFinanceXp('expense',item,{showToast:true});
   showXpFloat(targetEl,xp);
-  ['fin-expense-amount','fin-expense-notes'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
+  ['fin-expense-name','fin-expense-amount','fin-expense-notes'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
   sv();renWealth();
 }
 function deleteFinanceIncome(id){
