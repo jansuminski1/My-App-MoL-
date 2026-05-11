@@ -186,19 +186,20 @@
       </div>
       <button class="tag add" style="font-size:.74rem" onclick="showTagAddModal()">+ New tag</button>
     </div>
-    <div id="ph-idle">
-      <div class="mind-focus-panel" id="mind-focus-panel">
-        <button class="mind-focus-ring" onclick="startWork()" aria-label="Start Pomodoro focus timer">
-          <span class="mind-focus-label">Pomodoro Focus</span>
-          <span class="mind-focus-profile" id="mind-focus-profile">Default session</span>
-          <strong class="mind-focus-time" id="mind-focus-time">60:00</strong>
-          <small>Tap to start</small>
-        </button>
-        <div class="brow mind-focus-actions">
-          <button class="btn bp" onclick="startWork()">Start</button>
-          <button class="btn bs" onclick="showManualLog()">Log manually</button>
-        </div>
+    <div class="mind-focus-panel" id="mind-focus-panel">
+      <button class="mind-focus-ring" onclick="handleFocusRingTap()" aria-label="Start Pomodoro focus timer">
+        <span class="mind-focus-label" id="mind-focus-label">Pomodoro Focus</span>
+        <span class="mind-focus-profile" id="mind-focus-profile">Default session</span>
+        <strong class="mind-focus-time" id="mind-focus-time">60:00</strong>
+        <small id="mind-focus-hint">Tap to start</small>
+      </button>
+      <div class="brow mind-focus-actions">
+        <button class="btn bp" id="mind-focus-primary" onclick="handleFocusPrimary()">Start</button>
+        <button class="btn bs" onclick="resetIdle()">Reset</button>
+        <button class="btn bs" onclick="showManualLog()">Log manually</button>
       </div>
+    </div>
+    <div id="ph-idle">
       <!-- Profiles -->
       <div id="profile-section" style="margin-bottom:12px">
         <div style="font-size:.78rem;color:var(--mut);font-weight:600;margin-bottom:7px">Session Profile</div>
@@ -228,7 +229,7 @@
         <button id="alarm-btn" onclick="toggleAlarm()" style="margin-left:auto;background:none;border:1px solid var(--bdr);border-radius:20px;padding:3px 9px;font-size:.72rem;cursor:pointer;color:var(--mut)" title="Toggle alarm">🔔 Alarm</button>
       </div>
       <div class="tdisp">
-        <div class="tring">
+        <div class="tring work-timer-legacy">
           <svg width="154" height="154" viewBox="0 0 154 154">
             <circle cx="77" cy="77" r="67" fill="none" stroke="var(--bdr)" stroke-width="7"/>
             <circle id="wr" cx="77" cy="77" r="67" fill="none" stroke="var(--cyn)" stroke-width="7" stroke-dasharray="421" stroke-dashoffset="0" stroke-linecap="round"/>
@@ -301,14 +302,14 @@
 <div id="tab-habits" class="tab on">
   <section class="today-progress-section">
     <div class="today-progress-head">
-      <h2>Today's Progress</h2>
+      <h2><span class="section-mini-icon">📅</span>Today's Progress</h2>
       <span id="today-progress-count">0 / 0 done</span>
     </div>
     <div class="today-progress-bar"><div id="today-progress-fill" style="width:0%"></div></div>
   </section>
   <section class="today-habits-head">
     <div>
-      <h2>Today's Habits</h2>
+      <h2><span class="section-mini-icon">✅</span>Today's Habits</h2>
       <p>Follow the current step in each routine.</p>
     </div>
     <div class="today-habit-actions">
@@ -317,12 +318,12 @@
   </section>
   <div id="hlist"></div>
   <details class="today-xp-compact">
-    <summary>XP Today</summary>
+    <summary><span class="section-mini-icon">⚡</span>XP Today</summary>
     <div class="today-xp-feed" id="today-xp-feed"></div>
   </details>
   <details class="today-calendar-toggle">
     <summary>View habit calendar</summary>
-    <h2>Today’s Streak Calendar — <span id="calml"></span></h2>
+    <h2 class="section-card-title"><span class="section-mini-icon">🗓</span>Today’s Streak Calendar — <span id="calml"></span></h2>
     <div id="hcsel" style="display:flex;gap:5px;flex-wrap:wrap;margin-bottom:9px"></div>
     <div class="cgrid" id="chdr">
       <div class="ch">Su</div><div class="ch">Mo</div><div class="ch">Tu</div>
@@ -340,8 +341,13 @@
 <!-- ═══ HEALTH OVERVIEW ═══ -->
 <div id="tab-health-overview" class="tab">
   <div class="card">
-    <h2>Get Healthier</h2>
-    <p class="char-note">Meals, weight awareness, and cardio live here for now. Sleep and recovery can join this area later without changing your existing logs.</p>
+    <div class="section-heading">
+      <span class="section-icon health-icon">💚</span>
+      <div>
+        <h2>Get Healthier</h2>
+        <p>Meals, weight awareness, and cardio live here for now. Sleep and recovery can join this area later without changing your existing logs.</p>
+      </div>
+    </div>
   </div>
 </div>
 
@@ -368,7 +374,7 @@
     <div id="meal-slots"></div>
   </div>
   <div class="card">
-    <div class="fb" style="margin-bottom:10px"><h2>Monthly Overview — <span id="meals-cal-lbl"></span></h2></div>
+    <div class="fb" style="margin-bottom:10px"><h2 class="section-card-title"><span class="section-mini-icon">🗓</span>Monthly Overview — <span id="meals-cal-lbl"></span></h2></div>
     <div class="cgrid" style="gap:3px">
       <div class="ch">Su</div><div class="ch">Mo</div><div class="ch">Tu</div>
       <div class="ch">We</div><div class="ch">Th</div><div class="ch">Fr</div><div class="ch">Sa</div>
@@ -385,7 +391,7 @@
 <div id="tab-analytics" class="tab">
   <div class="card">
     <div class="fb" style="margin-bottom:16px">
-      <h2>Life Analytics</h2>
+      <h2 class="section-card-title"><span class="section-mini-icon">📊</span>Life Analytics</h2>
       <div class="an-nav">
         <button onclick="navMonth(-1)">‹</button>
         <span id="an-month-lbl"></span>
@@ -393,7 +399,7 @@
       </div>
     </div>
     <div class="chart-section">
-      <h3>Daily Hours &amp; Focus Level</h3>
+      <h3><span class="section-mini-icon">📈</span>Daily Hours &amp; Focus Level</h3>
       <div class="chart-wrap" style="height:200px"><canvas id="chart-combo"></canvas></div>
       <div class="legend-row">
         <div class="legend-item"><div class="legend-dot" style="background:var(--cyn);border-radius:2px;width:12px;height:9px"></div>Study Hours</div>
@@ -402,8 +408,8 @@
     </div>
     <hr style="border:none;border-top:1px solid var(--bdr);margin:18px 0">
     <div class="chart-section">
-      <h3>Hours by Subject</h3>
-      <div style="display:flex;align-items:center;gap:20px;flex-wrap:wrap">
+      <h3><span class="section-mini-icon">🍩</span>Hours by Subject</h3>
+      <div class="analytics-donut-wrap">
         <div class="chart-wrap" style="width:170px;height:170px;flex-shrink:0"><canvas id="chart-donut"></canvas></div>
         <div id="donut-legend" class="legend-row" style="flex-direction:column;gap:7px"></div>
       </div>
@@ -411,7 +417,7 @@
   </div>
   <div class="card">
     <div class="fb" style="margin-bottom:16px">
-      <h2>Yearly Overview</h2>
+      <h2 class="section-card-title"><span class="section-mini-icon">🗓</span>Yearly Overview</h2>
       <div class="an-nav">
         <button onclick="navYear(-1)">‹</button>
         <span id="an-year-lbl"></span>
@@ -419,7 +425,7 @@
       </div>
     </div>
     <div class="chart-section" style="margin-bottom:0">
-      <h3>Monthly Study Hours</h3>
+      <h3><span class="section-mini-icon">📚</span>Monthly Study Hours</h3>
       <div class="chart-wrap" style="height:180px"><canvas id="chart-yearly"></canvas></div>
     </div>
   </div>
@@ -434,15 +440,33 @@
 <div id="tab-reflect" class="tab">
   <!-- All-time total -->
   <div class="card" style="background:var(--warm);padding:12px 16px">
-    <h2 style="margin-bottom:8px">Goals</h2>
+    <h2 class="section-card-title" style="margin-bottom:8px"><span class="section-mini-icon">🎯</span>Goals</h2>
     <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px">
       <span style="font-size:.8rem;color:var(--navy);font-weight:600">🏆 All-Time Completed Goals</span>
       <span id="goals-total-badge" style="font-size:1rem;font-weight:700;color:var(--acc)">0</span>
     </div>
   </div>
+  <!-- Daily Goals -->
+  <div class="card">
+    <h2 class="section-card-title" style="margin-bottom:4px"><span class="section-mini-icon">✅</span>Daily Goals</h2>
+    <div id="day-label" style="font-size:.75rem;color:var(--mut);margin-bottom:12px;font-style:italic"></div>
+    <div class="goals-progress-wrap">
+      <div style="display:flex;justify-content:space-between;align-items:center">
+        <span style="font-size:.74rem;font-weight:600;color:var(--txt)">Progress</span>
+        <span id="dgoal-pct" style="font-size:.74rem;font-weight:700;color:var(--acc)">0%</span>
+      </div>
+      <div class="goals-progress-bar"><div class="goals-progress-fill" id="dgoal-fill" style="width:0%"></div></div>
+      <div class="goals-progress-label"><span id="dgoal-done-lbl">0 done</span><span id="dgoal-total-lbl">0 total</span></div>
+    </div>
+    <div id="dgoals-list"></div>
+    <div class="goal-add-row">
+      <input class="goal-add-inp" id="dgoal-inp" type="text" placeholder="Add a daily goal..." onkeydown="if(event.key==='Enter')addGoal('daily')">
+      <button class="btn bp" style="padding:7px 14px;font-size:.8rem" onclick="addGoal('daily')">Add</button>
+    </div>
+  </div>
   <!-- Weekly Goals -->
   <div class="card">
-    <h2 style="margin-bottom:4px">📅 Weekly Goals</h2>
+    <h2 class="section-card-title" style="margin-bottom:4px"><span class="section-mini-icon">📅</span>Weekly Goals</h2>
     <div id="week-label" style="font-size:.75rem;color:var(--mut);margin-bottom:12px;font-style:italic"></div>
     <div class="goals-progress-wrap">
       <div style="display:flex;justify-content:space-between;align-items:center">
@@ -460,7 +484,7 @@
   </div>
   <!-- Monthly Goals -->
   <div class="card">
-    <h2 style="margin-bottom:4px">🗓 Monthly Goals</h2>
+    <h2 class="section-card-title" style="margin-bottom:4px"><span class="section-mini-icon">🗓</span>Monthly Goals</h2>
     <div id="month-label" style="font-size:.75rem;color:var(--mut);margin-bottom:12px;font-style:italic"></div>
     <div class="goals-progress-wrap">
       <div style="display:flex;justify-content:space-between;align-items:center">
@@ -477,14 +501,14 @@
     </div>
   </div>
   <!-- Weekly Stats kept -->
-  <div class="card"><h2>Weekly Stats</h2><div id="wstats" style="font-size:.83rem;line-height:1.9;color:var(--mut)"></div></div>
+  <div class="card"><h2 class="section-card-title"><span class="section-mini-icon">📈</span>Weekly Stats</h2><div id="wstats" style="font-size:.83rem;line-height:1.9;color:var(--mut)"></div></div>
 </div>
 
 <!-- ═══ BODY ═══ -->
 <div id="tab-body" class="tab">
   <!-- WEIGHT section -->
   <div class="card">
-    <h2 style="margin-bottom:4px">⚖️ Weight</h2>
+    <h2 class="section-card-title" style="margin-bottom:4px"><span class="section-mini-icon">⚖️</span>Weight</h2>
     <p style="font-size:.78rem;color:var(--mut);margin-bottom:14px">Log your daily weight to track your weekly average trend.</p>
     <!-- Today's weight log row -->
     <div style="display:flex;align-items:center;gap:9px;margin-bottom:14px;flex-wrap:wrap">
@@ -503,7 +527,7 @@
 
   <!-- CARDIO section -->
   <div class="card">
-    <h2 style="margin-bottom:4px">🏃 Cardio</h2>
+    <h2 class="section-card-title" style="margin-bottom:4px"><span class="section-mini-icon">🏃</span>Cardio</h2>
     <p style="font-size:.78rem;color:var(--mut);margin-bottom:14px">Track your cardio sessions and heart rate data.</p>
     <!-- Add cardio row -->
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px">
@@ -552,8 +576,13 @@
 <!-- TODO: Future Strength module - exercises, sets, reps, weight, and progressive overload. -->
 <div id="tab-strength" class="tab">
   <div class="card">
-    <h2>Get Stronger</h2>
-    <p class="char-note">Track strength training, exercises, sets, reps, weight, and progressive overload.</p>
+    <div class="section-heading">
+      <span class="section-icon strength-icon">🏋️</span>
+      <div>
+        <h2>Get Stronger</h2>
+        <p>Track strength training, exercises, sets, reps, weight, and progressive overload.</p>
+      </div>
+    </div>
   </div>
 </div>
 
@@ -595,6 +624,7 @@
         <input type="text" id="fin-expense-notes" placeholder="Notes (optional)">
         <button class="btn bp" onclick="addFinanceExpense(event.currentTarget)">Add expense</button>
       </div>
+      <h4 class="finance-subhead"><span class="section-mini-icon">🏷️</span>Tag breakdown</h4>
       <div class="finance-breakdown" id="finance-expense-breakdown"></div>
       <details class="finance-history">
         <summary>Expense history</summary>
@@ -602,7 +632,7 @@
       </details>
     </div>
     <div class="finance-net-card" id="finance-net-card">
-      <span>Monthly net</span>
+      <span>⚖️ Monthly net</span>
       <strong id="finance-net-result">0 zł</strong>
       <small id="finance-net-detail">Income 0 zł - Expenses 0 zł</small>
     </div>
@@ -613,15 +643,20 @@
 <!-- TODO: Future Connection module - meaningful contact, social plans, gratitude, repair, and difficult conversations. -->
 <div id="tab-connection" class="tab">
   <div class="card">
-    <h2>Build Real Connection</h2>
-    <p class="char-note">Track meaningful contact, social plans, gratitude, repair, and difficult conversations.</p>
+    <div class="section-heading">
+      <span class="section-icon connection-icon">🤝</span>
+      <div>
+        <h2>Build Real Connection</h2>
+        <p>Track meaningful contact, social plans, gratitude, repair, and difficult conversations.</p>
+      </div>
+    </div>
   </div>
 </div>
 
 <!-- ═══ SETTINGS ═══ -->
 <div id="tab-settings" class="tab">
   <div class="card">
-    <h2>Settings &amp; Data</h2>
+    <h2 class="section-card-title"><span class="section-mini-icon">⚙️</span>Settings &amp; Data</h2>
     <div class="char-metric-grid">
       <div class="char-metric"><span>Account</span><strong id="settings-user-email">Offline</strong></div>
       <div class="char-metric"><span>Sync</span><strong id="settings-sync-state">Connecting...</strong></div>

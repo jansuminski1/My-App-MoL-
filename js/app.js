@@ -175,7 +175,7 @@ const D = {
   anMonth:new Date().getMonth(), anYear:new Date().getFullYear(), anYearView:new Date().getFullYear(),
   selFocus:3, meals:{}, mealDate:new Date(),
   profiles:[], activeProfile:null, profileStep:0,
-  goals:{ weekly:[], monthly:[] },
+  goals:{ dailyByDate:{}, weekly:[], monthly:[] },
   alarmOn: true,
   mealLockedTimes: [null, null, null, null, null],
   body: { weightLog: [], cardioLog: [] },
@@ -763,7 +763,7 @@ function renStatGrid(id,labels,values){
       <div class="stat-body">
         <div class="stat-top"><span>${ui.label}</span><span class="stat-val">${val}</span></div>
         <div class="stat-bar"><div class="stat-fill" style="width:${pct}%"></div></div>
-        <div style="font-size:.68rem;color:var(--mut);line-height:1.4;margin-top:6px">${STAT_DESCRIPTIONS[key]||''}</div>
+        <div class="stat-desc">${STAT_DESCRIPTIONS[key]||''}</div>
       </div>
     </div>`;
   }).join('');
@@ -827,7 +827,10 @@ function stableTextKey(str){
 }
 function habitRewardKey(h,dateKey){return `habit:${h?.id||stableTextKey(h?.id2||h?.name)}:${dateKey}`;}
 function mealRewardKey(idx,dateKey){return `meal:${dateKey}:${idx}`;}
-function goalRewardKey(type,goal){return `goal:${type}:${goal?.id||goal?.added||stableTextKey(goal?.text)}`;}
+function goalRewardKey(type,goal){
+  if(type==='daily') return `goal:daily:${goal?.date||dateStamp()}:${goal?.id||goal?.added||stableTextKey(goal?.text)}`;
+  return `goal:${type}:${goal?.id||goal?.added||stableTextKey(goal?.text)}`;
+}
 function weightRewardKey(entryOrDate){const date=typeof entryOrDate==='string'?entryOrDate:entryOrDate?.date;return date?`weight:${date}`:'';}
 function cardioRewardKey(entry){return entry?`cardio:${entry.ts||`${entry.date}:${Number(entry.duration)||0}`}`:'';}
 function habitRewardPrefix(h){return `habit:${h?.id||stableTextKey(h?.id2||h?.name)}:`;}
@@ -923,6 +926,12 @@ function maybeAwardWeightXp(entry,{showToast=false}={}){
 }
 function maybeAwardGoalXp(type,goal,{showToast=false}={}){
   if(!goal) return false;
+  if(type==='daily') return addXpEvent(makeXpEvent({
+    type:'daily_goal_completed',sourceSection:'goals',label:goal.text||'Daily goal completed',
+    linkedEntityId:goal.id||String(goal.added||stableTextKey(goal.text)),rewardKey:goalRewardKey(type,goal),
+    generalXp:20,statXp:{purpose:14,consistency:6},
+    primaryStat:'purpose',secondaryStat:'consistency',timestamp:goal.doneAt||Date.now(),quality:'normal',difficulty:'easy'
+  }),{showToast});
   const monthly=type==='monthly';
   return addXpEvent(makeXpEvent({
     type:`${type}_goal_completed`,sourceSection:'goals',label:goal.text||`${monthly?'Monthly':'Weekly'} goal completed`,
@@ -973,6 +982,7 @@ function importXpFromHistory(){
   (D.body.weightLog||[]).forEach(e=>{if(maybeAwardWeightXp(e)) count++;});
   (D.body.cardioLog||[]).forEach(e=>{if(maybeAwardCardioXp(e)) count++;});
   ensureGoalsStructure();
+  Object.values(D.goals.dailyByDate||{}).flat().forEach(g=>{if(g.done&&maybeAwardGoalXp('daily',g)) count++;});
   (D.goals.weekly||[]).forEach(g=>{if(g.done&&maybeAwardGoalXp('weekly',g)) count++;});
   (D.goals.monthly||[]).forEach(g=>{if(g.done&&maybeAwardGoalXp('monthly',g)) count++;});
   (D.reflections||[]).forEach((r,i)=>{if(maybeAwardReflectionXp(r,i)) count++;});
@@ -1144,18 +1154,49 @@ function selectProfile(i){
 }
 function updateStartBtn(){
   const btn=document.getElementById('start-work-btn');
-  const focusProfile=document.getElementById('mind-focus-profile');
-  const focusTime=document.getElementById('mind-focus-time');
   if(D.activeProfile!==null&&D.profiles[D.activeProfile]){
     const p=D.profiles[D.activeProfile];
     if(btn) btn.textContent=`▶ Begin "${p.name}"`;
-    if(focusProfile) focusProfile.textContent=p.name;
-    if(focusTime) focusTime.textContent=fmt((Number(p.focusSessions?.[0])||60)*60);
   } else {
     if(btn) btn.textContent='▶ Begin 60-min Timer';
-    if(focusProfile) focusProfile.textContent='Default session';
-    if(focusTime) focusTime.textContent=fmt(60*60);
   }
+  updateFocusTimerPanel();
+}
+function selectedFocusProfile(){
+  return D.activeProfile!==null&&D.profiles[D.activeProfile]?D.profiles[D.activeProfile]:null;
+}
+function selectedFocusMinutes(){
+  const p=selectedFocusProfile();
+  return Number(p?.focusSessions?.[0])||60;
+}
+function updateFocusTimerPanel(remSec=null,totalSec=null){
+  const p=selectedFocusProfile();
+  const label=document.getElementById('mind-focus-label');
+  const profile=document.getElementById('mind-focus-profile');
+  const time=document.getElementById('mind-focus-time');
+  const hint=document.getElementById('mind-focus-hint');
+  const primary=document.getElementById('mind-focus-primary');
+  const ring=document.querySelector('.mind-focus-ring');
+  const phase=D.phase||'idle';
+  const running=phase==='work';
+  const seconds=remSec!==null?remSec:selectedFocusMinutes()*60;
+  if(label) label.textContent=running?'Deep Work':'Pomodoro Focus';
+  if(profile) profile.textContent=p?.name||'Default session';
+  if(time) time.textContent=fmt(seconds);
+  if(hint) hint.textContent=running?(D.paused?'Paused':'Tap to pause'):'Tap to start';
+  if(primary) primary.textContent=running?(D.paused?'Resume':'Pause'):'Start';
+  if(ring){
+    ring.classList.toggle('running',running);
+    ring.style.setProperty('--timer-progress',totalSec?`${Math.max(0,Math.min(100,(seconds/totalSec)*100))}%`:'100%');
+  }
+}
+function handleFocusRingTap(){
+  if(D.phase==='work'){pauseResume();return;}
+  if(D.phase==='idle') startWork();
+}
+function handleFocusPrimary(){
+  if(D.phase==='work'){pauseResume();return;}
+  if(D.phase==='idle') startWork();
 }
 
 function showProfileManager(){
@@ -1296,6 +1337,7 @@ function startFocusPhase(mins){
   document.getElementById('ahalf').classList.add('hid');
   document.getElementById('wt').textContent=fmt(totalSec);
   setRing('wr',totalSec,totalSec);
+  updateFocusTimerPanel(totalSec,totalSec);
   document.getElementById('pbtn').textContent='Pause';
   syncTagBtn2();
   clearInterval(D.tmr);
@@ -1310,6 +1352,7 @@ function tickW(totalSec){
   const rem=Math.max(0,totalSec-_wElapsed);
   document.getElementById('wt').textContent=fmt(rem);
   setRing('wr',totalSec,rem);
+  updateFocusTimerPanel(rem,totalSec);
   if(_wElapsed>720) document.getElementById('a12').classList.add('hid');
   if(_wElapsed>=totalSec/2 && _wElapsed<totalSec/2+1) document.getElementById('ahalf').classList.remove('hid');
   if(rem<=0){ clearInterval(D.tmr); playAlarm('work'); enterRecall(); }
@@ -1319,6 +1362,7 @@ function pauseResume(){
   D.paused=!D.paused;
   if(!D.paused) _wLastTick=Date.now(); // reset tick anchor on resume
   document.getElementById('pbtn').textContent=D.paused?'Resume':'Pause';
+  updateFocusTimerPanel(Math.max(0,(_profileSteps[_profileIdx]?.mins||60)*60-_wElapsed),(_profileSteps[_profileIdx]?.mins||60)*60);
 }
 
 function finishEarly(){
@@ -1338,6 +1382,7 @@ function abandon(){
 
 function enterRecall(){
   D.phase='recall'; D.remain=120;
+  updateFocusTimerPanel(120,120);
   _rElapsed=0; _rLastTick=Date.now();
   showPh('recall');
   document.getElementById('rt').textContent='2:00';
@@ -1368,6 +1413,7 @@ function startRest(targetEl=null){
 function startRestPhase(mins){
   const totalSec=mins*60;
   D.phase='rest';
+  updateFocusTimerPanel(totalSec,totalSec);
   _rElapsed=0; _rLastTick=Date.now();
   showPh('rest');
   document.getElementById('rst').textContent=fmt(totalSec);
@@ -1377,6 +1423,7 @@ function startRestPhase(mins){
     const now=Date.now();
     _rElapsed+=(now-_rLastTick)/1000; _rLastTick=now;
     const rem=Math.max(0,totalSec-_rElapsed);
+    updateFocusTimerPanel(rem,totalSec);
     document.getElementById('rst').textContent=fmt(rem);
     setRing('rr',totalSec,rem);
     if(rem<=0){
@@ -1468,6 +1515,7 @@ function resetIdle(){
   document.getElementById('h20').value='';document.getElementById('rct').value='';
   document.getElementById('ahalf').classList.add('hid');showPh('idle');D.selFocus=3;selFocus(3);
   renProfilesMini();
+  updateFocusTimerPanel();
 }
 
 // ══════════════════════════════════════════
@@ -1783,7 +1831,61 @@ function dropHabitOnGroup(e,groupId,position=null){
   habitDragIndex=null;
 }
 function renderHabitDropZone(groupId,position){
-  return`<div class="habit-drop-zone" ondragover="enterHabitDrop(event)" ondragenter="enterHabitDrop(event)" ondragleave="leaveHabitDrop(event)" ondrop="dropHabitOnGroup(event,'${groupId}',${position})"></div>`;
+  return`<div class="habit-drop-zone" data-group-id="${groupId}" data-position="${position}" ondragover="enterHabitDrop(event)" ondragenter="enterHabitDrop(event)" ondragleave="leaveHabitDrop(event)" ondrop="dropHabitOnGroup(event,'${groupId}',${position})"></div>`;
+}
+let habitPointerState=null;
+function isHabitPointerIgnored(target){
+  return !!target.closest('button,input,select,textarea,a,.habit-more summary,.habit-detail-block');
+}
+function startHabitPointer(e,index){
+  if(e.pointerType==='mouse'||isHabitPointerIgnored(e.target)) return;
+  const target=e.currentTarget;
+  habitPointerState={index,target,active:false,zone:null,timer:null};
+  habitPointerState.timer=setTimeout(()=>{
+    habitPointerState.active=true;
+    habitDragIndex=index;
+    target.classList.add('habit-touch-dragging');
+    try{target.setPointerCapture?.(e.pointerId);}catch(_){}
+  },280);
+  window.addEventListener('pointermove',moveHabitPointer,{passive:false});
+  window.addEventListener('pointerup',endHabitPointer,{once:true});
+  window.addEventListener('pointercancel',cancelHabitPointer,{once:true});
+}
+function moveHabitPointer(e){
+  if(!habitPointerState) return;
+  if(!habitPointerState.active) return;
+  e.preventDefault();
+  const zone=document.elementFromPoint(e.clientX,e.clientY)?.closest?.('.habit-drop-zone');
+  if(zone!==habitPointerState.zone){
+    habitPointerState.zone?.classList.remove('on');
+    habitPointerState.zone=zone;
+    zone?.classList.add('on');
+  }
+}
+function endHabitPointer(e){
+  if(!habitPointerState) return;
+  clearTimeout(habitPointerState.timer);
+  window.removeEventListener('pointermove',moveHabitPointer);
+  const state=habitPointerState;
+  habitPointerState=null;
+  state.target?.classList.remove('habit-touch-dragging');
+  if(state.active&&state.zone){
+    e.preventDefault();
+    const groupId=state.zone.dataset.groupId||'loose';
+    const position=Number(state.zone.dataset.position);
+    state.zone.classList.remove('on');
+    moveHabitToGroup(state.index,groupId,Number.isFinite(position)?position:null);
+  }
+  habitDragIndex=null;
+}
+function cancelHabitPointer(){
+  if(!habitPointerState) return;
+  clearTimeout(habitPointerState.timer);
+  window.removeEventListener('pointermove',moveHabitPointer);
+  habitPointerState.target?.classList.remove('habit-touch-dragging');
+  habitPointerState.zone?.classList.remove('on');
+  habitPointerState=null;
+  habitDragIndex=null;
 }
 function renderChainMoveOptions(currentGroupId){
   return buildHabitGroupsAll().map(g=>`<option value="${g.id}" ${g.id===currentGroupId?'selected':''}>${escapeHtml(g.title)}</option>`).join('');
@@ -1793,7 +1895,7 @@ function renderHabitRow(item,chain,position,active=false,primary=false){
   const name=escapeHtml(habitDisplayName(h));
   const subline=escapeHtml(compactHabitSubline(h));
   if(active){
-    return`<div class="active-habit-card habit-draggable ${primary?'primary-focus':''}" id="hi-${i}" draggable="true" ondragstart="startHabitDrag(event,${i})" ondragend="endHabitDrag(event)" ondragover="allowHabitDrop(event)" ondrop="dropHabitOnGroup(event,'${chain.id}',${position})">
+    return`<div class="active-habit-card habit-draggable ${primary?'primary-focus':''}" id="hi-${i}" draggable="true" onpointerdown="startHabitPointer(event,${i})" ondragstart="startHabitDrag(event,${i})" ondragend="endHabitDrag(event)" ondragover="allowHabitDrop(event)" ondrop="dropHabitOnGroup(event,'${chain.id}',${position})">
       <div class="active-kicker">${primary?'Do this now':'Current step'}</div>
       <h3>${name}</h3>
       <div class="tiny-action">${escapeHtml(h.tm||'Do the smallest honest version now.')}</div>
@@ -1805,7 +1907,7 @@ function renderHabitRow(item,chain,position,active=false,primary=false){
       ${todayDesignMode?habitDetailBlock(h,i,chain,position):''}
     </div>`;
   }
-  return`<details class="habit-row-wrap habit-draggable ${done?'done':'upcoming'}" id="hi-${i}" draggable="true" ondragstart="startHabitDrag(event,${i})" ondragend="endHabitDrag(event)" ondragover="allowHabitDrop(event)" ondrop="dropHabitOnGroup(event,'${chain.id}',${position})">
+  return`<details class="habit-row-wrap habit-draggable ${done?'done':'upcoming'}" id="hi-${i}" draggable="true" onpointerdown="startHabitPointer(event,${i})" ondragstart="startHabitDrag(event,${i})" ondragend="endHabitDrag(event)" ondragover="allowHabitDrop(event)" ondrop="dropHabitOnGroup(event,'${chain.id}',${position})">
     <summary class="compact-habit-row">
       <button class="mini-check ${done?'on':''}" onclick="event.preventDefault();event.stopPropagation();togH(${i},event.currentTarget)">${done?'✓':''}</button>
       <span>${name}</span>
@@ -1839,7 +1941,7 @@ function renderHabitChain(chain){
     ${startTime?`<div class="chain-time-badge">Starts ${escapeHtml(startTime)}</div>`:''}
     <div class="routine-head">
       <div>
-        <h2>${escapeHtml(chain.title)}</h2>
+        <h2><span class="section-mini-icon">🔗</span>${escapeHtml(chain.title)}</h2>
         <p>${escapeHtml(identity)}</p>
       </div>
       <span>${doneCount}/${chain.items.length}</span>
@@ -2261,11 +2363,20 @@ function renAnalytics(){
   renComboChart();renDonutChart();renYearlyChart();
 }
 function chartDefaults(){return{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},animation:{duration:350}};}
+function chartScaleMax(values,min=1){
+  const max=Math.max(0,...values.map(v=>Number(v)||0));
+  if(max<=0) return min;
+  if(max<=2) return Math.ceil(max+.75);
+  return Math.ceil(max*1.25);
+}
 function renComboChart(){
   const dim=new Date(D.anYear,D.anMonth+1,0).getDate();
+  const now=new Date();
+  const isCurrentMonth=D.anYear===now.getFullYear()&&D.anMonth===now.getMonth();
+  const visibleDays=isCurrentMonth?now.getDate():dim;
   const sessions=getMonthSessions(D.anYear,D.anMonth);
   const hoursD=[],focusD=[],labels=[];
-  for(let d=1;d<=dim;d++){
+  for(let d=1;d<=visibleDays;d++){
     labels.push(d);
     const ds=sessions.filter(s=>new Date(s.ts).getDate()===d);
     hoursD.push(ds.reduce((a,s)=>a+(s.hours||1),0));
@@ -2280,15 +2391,16 @@ function renComboChart(){
   grad.addColorStop(0,'rgba(242,27,27,.22)');
   grad.addColorStop(1,'rgba(242,27,27,.0)');
   if(chartCombo)chartCombo.destroy();
+  const yMax=chartScaleMax(hoursD,1);
   chartCombo=new Chart(ctx,{type:'bar',data:{labels,datasets:[
-    {type:'bar',label:'Hours',data:hoursD,backgroundColor:'rgba(20,206,255,0.5)',borderRadius:5,yAxisID:'y',borderSkipped:false},
-    {type:'line',label:'Focus',data:focusD,borderColor:'#F21B1B',backgroundColor:grad,tension:.4,yAxisID:'y1',
-     pointRadius:focusD.map(v=>v!==null?4:0),pointHoverRadius:6,
+    {type:'bar',label:'Hours',data:hoursD,backgroundColor:'rgba(20,206,255,0.62)',hoverBackgroundColor:'rgba(20,206,255,.82)',borderRadius:7,barPercentage:.72,categoryPercentage:.72,yAxisID:'y',borderSkipped:false},
+    {type:'line',label:'Focus',data:focusD,borderColor:'#F21B1B',backgroundColor:grad,tension:.34,yAxisID:'y1',
+     pointRadius:focusD.map(v=>v!==null?3.5:0),pointHoverRadius:6,
      pointBackgroundColor:'#F21B1B',pointBorderColor:'#fff',pointBorderWidth:2,
      borderWidth:2.5,spanGaps:shouldConnect,fill:true}
   ]},options:{...chartDefaults(),scales:{
-    x:{grid:{color:'rgba(0,0,0,.04)'},ticks:{font:{size:9},color:'#5a7080',maxTicksLimit:16}},
-    y:{beginAtZero:true,max:Math.max(8,...hoursD)+1,grid:{color:'rgba(0,0,0,.05)'},ticks:{font:{size:9},color:'#14CEFF',stepSize:1},title:{display:true,text:'hrs',font:{size:9},color:'#14CEFF'}},
+    x:{grid:{display:false},ticks:{font:{size:9,weight:'600'},color:'#5a7080',maxTicksLimit:visibleDays>16?12:visibleDays}},
+    y:{beginAtZero:true,max:yMax,grid:{color:'rgba(9,32,54,.055)'},ticks:{font:{size:9},color:'#14CEFF',precision:0},title:{display:true,text:'hrs',font:{size:9},color:'#14CEFF'}},
     y1:{min:0,max:6,position:'right',grid:{drawOnChartArea:false},ticks:{font:{size:9},color:'#F21B1B',stepSize:1,callback:v=>v>0&&v<=5?v:''},title:{display:true,text:'focus',font:{size:9},color:'#F21B1B'}}
   },plugins:{legend:{display:false},tooltip:{mode:'index',intersect:false,backgroundColor:'rgba(9,32,54,.92)',borderColor:'var(--cyn)',borderWidth:1,titleColor:'#e0f2fb',bodyColor:'#b0cfe0',padding:10,callbacks:{title:i=>`Day ${i[0].label}`,label:c=>c.datasetIndex===0?`Hours: ${c.raw}h`:`Focus: ${c.raw}/5`}}}}});
 }
@@ -2314,14 +2426,14 @@ function renDonutChart(){
 function renYearlyChart(){
   const months=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
   const data=months.map((_,m)=>getMonthSessions(D.anYearView,m).reduce((a,s)=>a+(s.hours||1),0));
-  const curM=new Date().getMonth(),maxH=Math.max(...data,4);
+  const curM=new Date().getMonth(),maxH=chartScaleMax(data,2);
   const ctx=document.getElementById('chart-yearly').getContext('2d');
   if(chartYearly)chartYearly.destroy();
   chartYearly=new Chart(ctx,{type:'bar',data:{labels:months,datasets:[{label:'Hours',data,
     backgroundColor:data.map((_,i)=>i===curM&&D.anYearView===new Date().getFullYear()?'rgba(20,206,255,.9)':'rgba(20,206,255,.38)'),borderRadius:5,borderSkipped:false}]},
     options:{...chartDefaults(),scales:{
       x:{grid:{color:'rgba(0,0,0,.04)'},ticks:{font:{size:9},color:'#5a7080'}},
-      y:{beginAtZero:true,max:maxH+2,grid:{color:'rgba(0,0,0,.06)'},ticks:{font:{size:9},color:'#5a7080'},title:{display:true,text:'hours',font:{size:9},color:'#5a7080'}}
+      y:{beginAtZero:true,max:maxH,grid:{color:'rgba(9,32,54,.055)'},ticks:{font:{size:9},color:'#5a7080',precision:0},title:{display:true,text:'hours',font:{size:9},color:'#5a7080'}}
     },plugins:{legend:{display:false},tooltip:{backgroundColor:'#fff',borderColor:'#c5d5e5',borderWidth:1,titleColor:'#0c1a28',bodyColor:'#5a7080',callbacks:{label:c=>`${c.raw}h studied`}}}}});
 }
 function loadDemo(){
@@ -2349,11 +2461,25 @@ function weekKey(){
 function monthKey(){const n=new Date();return`${n.getFullYear()}-${n.getMonth()}`;}
 
 function ensureGoalsStructure(){
-  if(!D.goals) D.goals={weekly:[],monthly:[],totalDone:0};
+  if(!D.goals) D.goals={dailyByDate:{},weekly:[],monthly:[],totalDone:0};
+  if(!D.goals.dailyByDate||typeof D.goals.dailyByDate!=='object'||Array.isArray(D.goals.dailyByDate)) D.goals.dailyByDate={};
   if(!D.goals.weekly) D.goals.weekly=[];
   if(!D.goals.monthly) D.goals.monthly=[];
   if(!D.goals.totalDone) D.goals.totalDone=0;
 }
+
+function todayGoalKey(){return dateStamp();}
+function getGoalsForType(type){
+  ensureGoalsStructure();
+  if(type==='daily'){
+    const key=todayGoalKey();
+    if(!Array.isArray(D.goals.dailyByDate[key])) D.goals.dailyByDate[key]=[];
+    D.goals.dailyByDate[key].forEach(g=>{if(!g.date) g.date=key;});
+    return D.goals.dailyByDate[key];
+  }
+  return type==='weekly'?D.goals.weekly:D.goals.monthly;
+}
+function goalPrefix(type){return type==='daily'?'d':type==='weekly'?'w':'m';}
 
 function carryOverGoals(){
   ensureGoalsStructure();
@@ -2399,10 +2525,13 @@ function renGoals(){
   const months=['January','February','March','April','May','June','July','August','September','October','November','December'];
   const weekStr=`Week of ${mon.toLocaleDateString([],{month:'short',day:'numeric'})} – ${sun.toLocaleDateString([],{month:'short',day:'numeric',year:'numeric'})}`;
   const monthStr=`${months[now.getMonth()]} ${now.getFullYear()}`;
+  const dayStr=now.toLocaleDateString([],{weekday:'long',month:'short',day:'numeric',year:'numeric'});
   // Save labels for carryover reference
   D.goals.weeklyLabel=weekStr; D.goals.monthlyLabel=monthStr;
+  document.getElementById('day-label').textContent=dayStr;
   document.getElementById('week-label').textContent=weekStr;
   document.getElementById('month-label').textContent=monthStr;
+  renGoalList('daily');
   renGoalList('weekly');
   renGoalList('monthly');
   // Total all-time done
@@ -2413,8 +2542,8 @@ function renGoals(){
 }
 
 function renGoalList(type){
-  const goals=type==='weekly'?D.goals.weekly:D.goals.monthly;
-  const prefix=type==='weekly'?'w':'m';
+  const goals=getGoalsForType(type);
+  const prefix=goalPrefix(type);
   const listEl=document.getElementById(`${prefix}goals-list`);
   if(!listEl) return;
   const done=goals.filter(g=>g.done).length;
@@ -2434,13 +2563,13 @@ function renGoalList(type){
 }
 
 function addGoal(type){
-  const inp=document.getElementById(type==='weekly'?'wgoal-inp':'mgoal-inp');
+  const inp=document.getElementById(`${goalPrefix(type)}goal-inp`);
   const text=inp.value.trim();
   if(!text){inp.focus();return;}
   ensureGoalsStructure();
-  const goals=type==='weekly'?D.goals.weekly:D.goals.monthly;
+  const goals=getGoalsForType(type);
   const added=Date.now();
-  goals.push({id:`g${added}_${goals.length}`,text,done:false,added});
+  goals.push({id:`g${added}_${goals.length}`,text,done:false,added,date:type==='daily'?todayGoalKey():undefined});
   inp.value='';sv();renGoalList(type);
   const tot=document.getElementById('goals-total-badge');
   if(tot) tot.textContent=`${D.goals.totalDone||0} goal${(D.goals.totalDone||0)!==1?'s':''} completed`;
@@ -2448,7 +2577,7 @@ function addGoal(type){
 
 function togGoal(type,i,targetEl=null){
   ensureGoalsStructure();
-  const goals=type==='weekly'?D.goals.weekly:D.goals.monthly;
+  const goals=getGoalsForType(type);
   const wasDone=goals[i].done;
   goals[i].done=!goals[i].done;
   if(!wasDone){
@@ -2468,7 +2597,7 @@ function togGoal(type,i,targetEl=null){
 
 function delGoal(type,i){
   ensureGoalsStructure();
-  const goals=type==='weekly'?D.goals.weekly:D.goals.monthly;
+  const goals=getGoalsForType(type);
   if(goals[i].done){
     D.goals.totalDone=Math.max(0,(D.goals.totalDone||1)-1);
     removeXpEventByRewardKey(goalRewardKey(type,goals[i]),{save:false});
