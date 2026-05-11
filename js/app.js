@@ -1941,7 +1941,7 @@ function renderHabitChain(chain){
     ${startTime?`<div class="chain-time-badge">Starts ${escapeHtml(startTime)}</div>`:''}
     <div class="routine-head">
       <div>
-        <h2><span class="section-mini-icon">🔗</span>${escapeHtml(chain.title)}</h2>
+        <h2>${escapeHtml(chain.title)}</h2>
         <p>${escapeHtml(identity)}</p>
       </div>
       <span>${doneCount}/${chain.items.length}</span>
@@ -2622,6 +2622,7 @@ function ensureBody(){
   if(!D.body) D.body={weightLog:[],cardioLog:[]};
   if(!D.body.weightLog) D.body.weightLog=[];
   if(!D.body.cardioLog) D.body.cardioLog=[];
+  D.body.cardioLog.forEach(e=>{if(e.distance===undefined||e.distance===null||Number.isNaN(Number(e.distance))) e.distance=null;});
 }
 
 function renBody(){
@@ -2733,20 +2734,28 @@ function diffColor(v){
   return '#F21B1B';
 }
 function diffLabel(v){return['','Easy','Light','Moderate','Hard','Very Hard','Intense','Max'][v]||v;}
+function cardioAvgSpeed(entry){
+  const distance=Number(entry?.distance)||0;
+  const duration=Number(entry?.duration)||0;
+  if(distance<=0||duration<=0) return null;
+  return distance/(duration/60);
+}
 
 function addCardioLog(){
   ensureBody();
   const date=document.getElementById('cardio-date').value;
   const dur=parseInt(document.getElementById('cardio-dur').value);
+  const distance=parseFloat(document.getElementById('cardio-distance')?.value);
   const avghr=parseInt(document.getElementById('cardio-avghr').value);
   const resthr=parseInt(document.getElementById('cardio-resthr').value);
   const diff=_cardioDiff;
   if(!date||isNaN(dur)||dur<=0){toast('Enter at least date and duration.');return;}
-  const entry={date,duration:dur,avgHR:avghr||null,restingHR:resthr||null,difficulty:diff,ts:Date.now()};
+  const entry={date,duration:dur,distance:(!isNaN(distance)&&distance>0)?distance:null,avgHR:avghr||null,restingHR:resthr||null,difficulty:diff,ts:Date.now()};
   D.body.cardioLog.push(entry);
   D.body.cardioLog.sort((a,b)=>b.date.localeCompare(a.date));
   // Clear inputs
   document.getElementById('cardio-dur').value='';
+  const distEl=document.getElementById('cardio-distance');if(distEl) distEl.value='';
   document.getElementById('cardio-avghr').value='';
   document.getElementById('cardio-resthr').value='';
   const xp=maybeAwardCardioXp(entry,{showToast:true});
@@ -2766,14 +2775,19 @@ function renCardioTable(){
   ensureBody();
   const tbody=document.getElementById('cardio-tbody');if(!tbody)return;
   if(!D.body.cardioLog.length){
-    tbody.innerHTML=`<tr><td colspan="6" style="padding:14px 8px;color:var(--mut);font-style:italic;font-size:.8rem">No cardio sessions logged yet.</td></tr>`;
+    tbody.innerHTML=`<tr><td colspan="8" style="padding:14px 8px;color:var(--mut);font-style:italic;font-size:.8rem">No cardio sessions logged yet.</td></tr>`;
     return;
   }
   tbody.innerHTML=D.body.cardioLog.slice(0,30).map(e=>{
     const dColor=diffColor(e.difficulty);
+    const speed=cardioAvgSpeed(e);
+    const dist=e.distance?Number(e.distance).toFixed(2).replace(/\.00$/,'')+' km':'—';
+    const speedText=speed?speed.toFixed(1)+' km/h':'—';
     return`<tr style="border-bottom:1px solid var(--bdr)">
       <td style="padding:8px 8px;color:var(--txt);white-space:nowrap">${new Date(e.date+'T12:00:00').toLocaleDateString([],{month:'short',day:'numeric',year:'2-digit'})}</td>
       <td style="padding:8px 8px;font-weight:600;color:var(--acc)">${e.duration} min</td>
+      <td style="padding:8px 8px;color:var(--txt)">${dist}</td>
+      <td style="padding:8px 8px;color:var(--acc)">${speedText}</td>
       <td style="padding:8px 8px;color:var(--red)">${e.avgHR?e.avgHR+' bpm':'—'}</td>
       <td style="padding:8px 8px;color:var(--mut)">${e.restingHR?e.restingHR+' bpm':'—'}</td>
       <td style="padding:8px 8px"><span style="display:inline-block;padding:2px 8px;border-radius:20px;background:${dColor}22;color:${dColor};border:1px solid ${dColor}55;font-size:.7rem;font-weight:700">${e.difficulty} – ${diffLabel(e.difficulty)}</span></td>

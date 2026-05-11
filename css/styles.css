@@ -64,6 +64,7 @@ nav button:hover:not(.on){border-color:var(--acc);color:var(--acc)}
 .section-icon.finance-icon{background:linear-gradient(135deg,#fff7df,#e7fff0)}
 .section-icon.character-icon{background:linear-gradient(135deg,#ecf7ff,#fff7df)}
 .section-icon.health-icon{background:linear-gradient(135deg,#ecfff2,#fff)}
+.section-icon.meals-icon{background:linear-gradient(135deg,#f1fff4,#fff8df);color:#1b7f35}
 .section-icon.strength-icon{background:linear-gradient(135deg,#fff7df,#fff)}
 .section-icon.connection-icon{background:linear-gradient(135deg,#f4efff,#fff)}
 .section-card-title{font-family:'Inter',sans-serif!important;font-size:.9rem!important;font-weight:900!important;letter-spacing:.01em;display:flex;align-items:center;gap:7px}
@@ -296,7 +297,9 @@ label{font-size:.79rem;display:block;margin-bottom:4px;color:var(--mut);font-wei
 .finance-section.income{background:linear-gradient(135deg,rgba(46,237,0,.055),#fff)}
 .finance-section.expense{background:linear-gradient(135deg,rgba(242,27,27,.045),#fff)}
 .finance-section-head{display:flex;align-items:center;gap:8px;margin-bottom:10px}
-.finance-section-head span{width:25px;height:25px;border-radius:8px;display:inline-flex;align-items:center;justify-content:center;font-size:.82rem;font-weight:900;background:#fff;border:1px solid rgba(197,213,229,.78)}
+.finance-section-head span{width:25px;height:25px;border-radius:8px;display:inline-flex;align-items:center;justify-content:center;font-size:.9rem;font-weight:900;background:#fff;border:1px solid rgba(197,213,229,.78)}
+.finance-section-head .income-icon{background:rgba(46,237,0,.08);border-color:rgba(46,237,0,.25)}
+.finance-section-head .expense-icon{background:rgba(242,27,27,.07);border-color:rgba(242,27,27,.22)}
 .finance-section.income .finance-section-head span,.finance-section.income h3{color:var(--grn-dk)}
 .finance-section.expense .finance-section-head span,.finance-section.expense h3{color:var(--red)}
 .finance-section h3{font-family:'Inter',sans-serif;font-size:.76rem;text-transform:uppercase;letter-spacing:.09em;margin:0;font-weight:950}
@@ -350,13 +353,13 @@ label{font-size:.79rem;display:block;margin-bottom:4px;color:var(--mut);font-wei
 .legend-item{display:flex;align-items:center;gap:5px;font-size:.72rem;color:var(--mut)}
 .legend-dot{width:10px;height:10px;border-radius:50%;flex-shrink:0}
 /* Meals */
-.meal-slot{display:grid;grid-template-columns:30px minmax(0,1fr) 76px 28px;align-items:center;gap:8px;padding:10px 11px;border:1.5px solid var(--bdr);border-radius:10px;margin-bottom:8px;background:var(--sur);transition:.2s}
+.meal-slot{display:grid;grid-template-columns:30px minmax(0,1fr) minmax(82px,auto) 28px;align-items:center;gap:8px;padding:10px 11px;border:1.5px solid var(--bdr);border-radius:10px;margin-bottom:8px;background:var(--sur);transition:.2s;overflow:visible}
 .meal-slot.ate{border-color:var(--grn);background:rgba(46,237,0,.04);box-shadow:0 2px 8px rgba(46,237,0,.12)}
 .meal-check{width:26px;height:26px;min-width:26px;border:2px solid var(--bdr);border-radius:7px;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:.85rem;transition:.18s;background:none;color:transparent}
 .meal-check.on{background:var(--grn);border-color:var(--grn);color:#fff;box-shadow:0 3px 10px rgba(46,237,0,.4)}
 .meal-info{min-width:0}
 .meal-name{font-family:'Inter',sans-serif;font-size:.82rem;font-weight:850;color:var(--navy);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.meal-time-inp{width:76px;padding:4px 5px;border:1.5px solid var(--bdr);border-radius:999px;font-size:.7rem;font-family:inherit;background:var(--bg);color:var(--mut);text-align:center}
+.meal-time-inp{width:82px;min-width:82px;padding:4px 4px;border:1.5px solid var(--bdr);border-radius:999px;font-size:.68rem;font-family:inherit;background:var(--bg);color:var(--mut);text-align:center;justify-self:end}
 .meal-time-inp:focus{outline:none;border-color:var(--acc);background:var(--sur)}
 input[type=time].meal-time-inp{color:var(--txt)}
 .meal-nav{display:flex;align-items:center;gap:8px;margin-bottom:14px;padding:10px 14px;background:var(--warm);border-radius:9px;border:1px solid var(--bdr)}
@@ -457,4 +460,5 @@ input[type=time].meal-time-inp{color:var(--txt)}
 @media(max-width:520px){.char-metric-grid,.char-insight-grid{grid-template-columns:1fr}.rank-badge{width:60px;height:60px}}
 @media(max-width:460px){.stat-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.stat-row{grid-template-columns:1fr}.stat-icon{margin-bottom:2px}.stat-desc{display:none}}
 @media(max-width:520px){.finance-form{grid-template-columns:1fr}.finance-row{grid-template-columns:minmax(0,1fr) auto}.finance-row button{grid-column:2}.finance-row span{grid-column:2;grid-row:1}.mind-focus-time{font-size:1.9rem}}
+@media(max-width:420px){.meal-slot{grid-template-columns:30px minmax(0,1fr) 28px}.meal-time-inp{grid-column:2/4;grid-row:2;width:100%;max-width:132px;justify-self:end}.meal-lock-btn{grid-column:3;grid-row:1}}
 @media(max-width:460px){.today-habit-actions{margin-left:auto}.routine-head{align-items:flex-start}.routine-head span{align-self:flex-start}}
