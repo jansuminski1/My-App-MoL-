@@ -176,6 +176,8 @@ const D = {
   selFocus:3, meals:{}, mealDate:new Date(),
   profiles:[], activeProfile:null, profileStep:0,
   goals:{ dailyByDate:{}, weekly:[], monthly:[] },
+  todayTasks:[],
+  focusBlocks:[],
   alarmOn: true,
   mealLockedTimes: [null, null, null, null, null],
   body: { weightLog: [], cardioLog: [] },
@@ -227,6 +229,36 @@ function ensureFinance(){
   D.finance.categories=[...new Set([...FINANCE_CATEGORIES,...D.finance.categories,...usedTags])];
 }
 
+function ensureTodayFlow(){
+  const today=dateStamp();
+  if(!Array.isArray(D.todayTasks)) D.todayTasks=[];
+  if(!Array.isArray(D.focusBlocks)) D.focusBlocks=[];
+  D.todayTasks.forEach((t,i)=>{
+    if(!t.id) t.id=`task_${t.createdAt||Date.now()}_${i}`;
+    if(!t.date) t.date=t.createdAt?dateStamp(t.createdAt):today;
+    if(typeof t.title!=='string') t.title='';
+    if(typeof t.notes!=='string') t.notes='';
+    t.completed=!!t.completed;
+    if(!t.placementType) t.placementType='later';
+    if(t.placementId===undefined) t.placementId='';
+    t.order=Number.isFinite(Number(t.order))?Number(t.order):i;
+    if(!t.createdAt) t.createdAt=Date.now();
+  });
+  D.focusBlocks.forEach((b,i)=>{
+    if(!b.id) b.id=`focus_${b.createdAt||Date.now()}_${i}`;
+    if(!b.date) b.date=b.createdAt?dateStamp(b.createdAt):today;
+    if(typeof b.title!=='string') b.title='Deep Work';
+    if(typeof b.type!=='string') b.type='Deep Work';
+    if(typeof b.notes!=='string') b.notes='';
+    b.duration=Math.max(5,Math.min(240,parseInt(b.duration)||selectedFocusMinutes?.()||60));
+    b.completed=!!b.completed;
+    if(!b.placementType) b.placementType='later';
+    if(b.placementId===undefined) b.placementId='';
+    b.order=Number.isFinite(Number(b.order))?Number(b.order):i;
+    if(!b.createdAt) b.createdAt=Date.now();
+  });
+}
+
 function applyCoreData(data){
   D.schemaVersion = data.schemaVersion || D.schemaVersion || APP_SCHEMA_VERSION;
   D.character   = data.character   || D.character;
@@ -238,17 +270,21 @@ function applyCoreData(data){
   D.meals       = data.meals       || {};
   D.profiles    = data.profiles    || [];
   D.goals       = data.goals       || {weekly:[],monthly:[]};
+  D.todayTasks  = data.todayTasks  || [];
+  D.focusBlocks = data.focusBlocks || [];
   D.mealLockedTimes = data.mealLockedTimes || [null,null,null,null,null];
   D.body        = data.body        || {weightLog:[],cardioLog:[]};
   D.finance     = data.finance     || D.finance;
   ensureHabitData();
   ensureFinance();
+  ensureTodayFlow();
   ensureCharacter();
 }
 
 function coreSaveData(){
   ensureHabitData();
   ensureFinance();
+  ensureTodayFlow();
   ensureCharacter();
   return {
     schemaVersion:D.schemaVersion,
@@ -261,6 +297,8 @@ function coreSaveData(){
     meals:D.meals,
     profiles:D.profiles,
     goals:D.goals,
+    todayTasks:D.todayTasks,
+    focusBlocks:D.focusBlocks,
     mealLockedTimes:D.mealLockedTimes,
     body:D.body,
     finance:D.finance
@@ -420,6 +458,7 @@ function initApp() {
   appInited = true;
   ensureHabitData();
   ensureFinance();
+  ensureTodayFlow();
   ensureCharacter();
   setupMobileMenuDismiss();
   initSlogFilter();
@@ -1756,12 +1795,55 @@ function getTodayHabitProgress(){
   const done=habits.filter(habitIsDoneToday).length;
   return {done,total,percent:total?Math.round((done/total)*100):0};
 }
+function todayDateKey(){return dateStamp();}
+function todayTasks(){
+  ensureTodayFlow();
+  const today=todayDateKey();
+  return D.todayTasks.filter(t=>t.date===today).sort((a,b)=>(Number(a.order)||0)-(Number(b.order)||0)||(a.createdAt||0)-(b.createdAt||0));
+}
+function todayFocusBlocks(){
+  ensureTodayFlow();
+  const today=todayDateKey();
+  return D.focusBlocks.filter(b=>b.date===today).sort((a,b)=>(Number(a.order)||0)-(Number(b.order)||0)||(a.createdAt||0)-(b.createdAt||0));
+}
+function todayEntries(){
+  return [
+    ...todayTasks().map(item=>({kind:'task',item})),
+    ...todayFocusBlocks().map(item=>({kind:'focus',item}))
+  ].sort((a,b)=>(Number(a.item.order)||0)-(Number(b.item.order)||0)||(a.item.createdAt||0)-(b.item.createdAt||0));
+}
+function getTodayOverallProgress(){
+  const hp=getTodayHabitProgress();
+  const tasks=todayTasks();
+  const blocks=todayFocusBlocks();
+  const total=hp.total+tasks.length+blocks.length;
+  const done=hp.done+tasks.filter(t=>t.completed).length+blocks.filter(b=>b.completed).length;
+  return {done,total,percent:total?Math.round((done/total)*100):0,habitDone:hp.done,habitTotal:hp.total};
+}
+function maxTodayStreak(){
+  const due=(Array.isArray(D.habits)?D.habits:[]).filter(habitIsDueToday);
+  return due.length?Math.max(...due.map(h=>streak(h)||0)):0;
+}
 function renderTodayProgress(){
-  const progress=getTodayHabitProgress();
+  const progress=getTodayOverallProgress();
   const count=document.getElementById('today-progress-count');
   const fill=document.getElementById('today-progress-fill');
+  const dateLabel=document.getElementById('today-date-label');
+  const xpStatus=document.getElementById('today-xp-status');
+  const levelStatus=document.getElementById('today-level-status');
+  const streakStatus=document.getElementById('today-streak-status');
   if(count) count.textContent=`${progress.done} / ${progress.total} done`;
   if(fill) fill.style.width=`${progress.percent}%`;
+  if(dateLabel) dateLabel.textContent=new Date().toLocaleDateString([],{weekday:'long',month:'short',day:'numeric'});
+  if(xpStatus) xpStatus.textContent=`${todayXpGained()} XP today`;
+  if(levelStatus){
+    const lp=getLevelProgress(D.character?.totalXp||0);
+    levelStatus.textContent=`Level ${lp.level} · ${lp.progressPercent}%`;
+  }
+  if(streakStatus){
+    const s=maxTodayStreak();
+    streakStatus.textContent=s?`${s} day streak`:'Ready to start';
+  }
   updateMobileHeader();
 }
 function renderTodayXpFeed(){
@@ -1773,6 +1855,179 @@ function renderTodayXpFeed(){
     const time=e.timestamp?new Date(e.timestamp).toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'}):'Today';
     return`<div class="today-xp-item"><span>${escapeHtml(e.label||'XP gained')}</span><strong>+${Math.round(Number(e.generalXp)||0)} XP</strong><small>${time}</small></div>`;
   }).join('');
+}
+function runningFocusSnapshot(){
+  if(D.phase!=='work') return null;
+  const total=(_profileSteps[_profileIdx]?.mins||selectedFocusMinutes())*60;
+  const remaining=Math.max(0,total-(Number(_wElapsed)||0));
+  return {
+    type:'running-focus',
+    label:'Deep Work Block',
+    title:D.h20||selectedFocusProfile()?.name||'Focus session',
+    subtitle:D.paused?'Paused focus session':'Active focus session',
+    time:fmt(remaining)
+  };
+}
+function getCurrentFocus(chains=buildHabitChains()){
+  const running=runningFocusSnapshot();
+  if(running) return running;
+  const habit=firstActiveHabit(chains);
+  if(habit) return {type:'habit',chain:habit.chain,item:habit.item};
+  const task=todayTasks().find(t=>!t.completed);
+  if(task) return {type:'task',item:task};
+  const block=todayFocusBlocks().find(b=>!b.completed);
+  if(block) return {type:'focus-block',item:block};
+  return {type:'empty'};
+}
+function renderCurrentFocus(chains=buildHabitChains()){
+  const el=document.getElementById('today-current-focus');
+  if(!el) return;
+  const focus=getCurrentFocus(chains);
+  if(focus.type==='running-focus'){
+    el.innerHTML=`<div class="current-focus-card focus">
+      <div class="current-focus-kicker">Current Focus</div>
+      <div class="current-focus-type">${escapeHtml(focus.label)}</div>
+      <h2>${escapeHtml(focus.title)}</h2>
+      <p>${escapeHtml(focus.subtitle)}</p>
+      <div class="current-focus-time">${escapeHtml(focus.time)}</div>
+      <button class="btn bp current-focus-btn" onclick="navigateToTab('mind')">Open Timer</button>
+    </div>`;
+    return;
+  }
+  if(focus.type==='habit'){
+    const h=focus.item.habit;
+    el.innerHTML=`<div class="current-focus-card habit">
+      <div class="current-focus-kicker">Current Focus</div>
+      <div class="current-focus-type">${escapeHtml(focus.chain.title)}</div>
+      <h2>${escapeHtml(habitDisplayName(h))}</h2>
+      <p>${escapeHtml(h.sk||'Follow the next small step in this routine.')}</p>
+      <div class="current-focus-action">${escapeHtml(h.tm||'Do the smallest honest version now.')}</div>
+      <button class="btn bp current-focus-btn" onclick="togH(${focus.item.index},event.currentTarget)">Complete Step</button>
+    </div>`;
+    return;
+  }
+  if(focus.type==='task'){
+    const t=focus.item;
+    el.innerHTML=`<div class="current-focus-card task">
+      <div class="current-focus-kicker">Current Focus</div>
+      <div class="current-focus-type">Quick Task</div>
+      <h2>${escapeHtml(t.title)}</h2>
+      ${t.notes?`<p>${escapeHtml(t.notes)}</p>`:'<p>One temporary action for today.</p>'}
+      <button class="btn bp current-focus-btn" onclick="toggleTodayTask('${t.id}')">Complete Task</button>
+    </div>`;
+    return;
+  }
+  if(focus.type==='focus-block'){
+    const b=focus.item;
+    el.innerHTML=`<div class="current-focus-card focus">
+      <div class="current-focus-kicker">Current Focus</div>
+      <div class="current-focus-type">Focus Block</div>
+      <h2>${escapeHtml(b.title)}</h2>
+      <p>${escapeHtml(b.type)} · ${Number(b.duration)||60} min</p>
+      <button class="btn bp current-focus-btn" onclick="startTodayFocusBlock('${b.id}')">Start Focus</button>
+      <button class="btn bs current-focus-secondary" onclick="toggleFocusBlock('${b.id}')">Mark Done</button>
+    </div>`;
+    return;
+  }
+  el.innerHTML=`<div class="current-focus-card empty">
+    <div class="current-focus-kicker">Current Focus</div>
+    <div class="current-focus-type">Choose your next action</div>
+    <h2>Nothing is waiting right now.</h2>
+    <p>Add a quick task, create a focus block, or start the next tiny habit when you are ready.</p>
+  </div>`;
+}
+function todayPlacementLabel(entry){
+  if(entry.placementType==='start') return 'Start of day';
+  if(entry.placementType==='midday') return 'Midday';
+  if(entry.placementType==='evening') return 'Evening';
+  if(entry.placementType==='afterFlow') return 'After routine';
+  return 'Flexible / Later';
+}
+function entriesForPlacement(entries,type,id=''){
+  return entries.filter(e=>e.item.placementType===type&&(id===''||e.item.placementId===id));
+}
+function buildTodayFlow(chains=buildHabitChains()){
+  const entries=todayEntries();
+  const used=new Set();
+  const addEntries=(items,out)=>{
+    items.forEach(e=>{used.add(`${e.kind}:${e.item.id}`);out.push(e);});
+  };
+  const out=[];
+  addEntries(entriesForPlacement(entries,'start'),out);
+  chains.forEach((chain,idx)=>{
+    out.push({kind:'habit-flow',chain});
+    addEntries(entriesForPlacement(entries,'afterFlow',chain.id),out);
+    if(idx===0) addEntries(entriesForPlacement(entries,'midday'),out);
+  });
+  if(!chains.length) addEntries(entriesForPlacement(entries,'midday'),out);
+  addEntries(entriesForPlacement(entries,'evening'),out);
+  addEntries(entries.filter(e=>!used.has(`${e.kind}:${e.item.id}`)),out);
+  return out;
+}
+function renderTodayFlow(chains=buildHabitChains()){
+  const el=document.getElementById('today-flow-list');
+  if(!el) return;
+  const items=buildTodayFlow(chains);
+  if(!items.length){
+    el.innerHTML='<div class="today-flow-empty">No actions planned yet. Add one quick task or begin with your first habit flow.</div>';
+    return;
+  }
+  el.innerHTML=`<div class="today-flow-sequence">${items.map(renderTodayFlowItem).join('')}</div>`;
+}
+function renderTodayFlowItem(entry){
+  if(entry.kind==='habit-flow'){
+    const chain=entry.chain;
+    const done=chain.items.filter(x=>habitIsDoneToday(x.habit)).length;
+    const active=chain.items.findIndex(x=>!habitIsDoneToday(x.habit));
+    return`<div class="today-flow-item habit">
+      <div class="flow-kind">Habit Flow</div>
+      <div class="flow-main">
+        <strong>${escapeHtml(chain.title)}</strong>
+        <span>${done}/${chain.items.length} completed</span>
+      </div>
+      ${renderFlowSegments(chain,active)}
+    </div>`;
+  }
+  if(entry.kind==='task'){
+    const t=entry.item;
+    return`<details class="today-flow-item task ${t.completed?'done':''}">
+      <summary>
+        <span class="flow-kind">Quick Task</span>
+        <strong>${escapeHtml(t.title)}</strong>
+        <button class="mini-check ${t.completed?'on':''}" onclick="event.preventDefault();event.stopPropagation();toggleTodayTask('${t.id}')">${t.completed?'✓':''}</button>
+      </summary>
+      <div class="today-flow-detail">
+        <p>${escapeHtml(t.notes||todayPlacementLabel(t))}</p>
+        <label class="today-flow-move-label">Move after</label>
+        <select class="habit-chain-select" onchange="updateTodayEntryPlacement('task','${t.id}',this.value)">${renderTodayPlacementOptions(todayPlacementValue(t))}</select>
+        <div class="habit-design-actions">
+          <button class="habit-move-btn" onclick="moveTodayEntry('task','${t.id}',-1)" title="Move up">▲</button>
+          <button class="habit-move-btn" onclick="moveTodayEntry('task','${t.id}',1)" title="Move down">▼</button>
+          <button class="btn bd" onclick="deleteTodayTask('${t.id}')">Delete</button>
+        </div>
+      </div>
+    </details>`;
+  }
+  const b=entry.item;
+  return`<details class="today-flow-item focus ${b.completed?'done':''}">
+    <summary>
+      <span class="flow-kind">Focus Block</span>
+      <strong>${escapeHtml(b.title)}</strong>
+      <small>${escapeHtml(b.type)} · ${Number(b.duration)||60} min</small>
+    </summary>
+    <div class="today-flow-detail">
+      <p>${escapeHtml(b.notes||todayPlacementLabel(b))}</p>
+      <label class="today-flow-move-label">Move after</label>
+      <select class="habit-chain-select" onchange="updateTodayEntryPlacement('focus','${b.id}',this.value)">${renderTodayPlacementOptions(todayPlacementValue(b))}</select>
+      <div class="habit-design-actions">
+        <button class="btn bp" onclick="startTodayFocusBlock('${b.id}')">Start Focus</button>
+        <button class="btn bs" onclick="toggleFocusBlock('${b.id}')">${b.completed?'Reopen':'Mark Done'}</button>
+        <button class="habit-move-btn" onclick="moveTodayEntry('focus','${b.id}',-1)" title="Move up">▲</button>
+        <button class="habit-move-btn" onclick="moveTodayEntry('focus','${b.id}',1)" title="Move down">▼</button>
+        <button class="btn bd" onclick="deleteFocusBlock('${b.id}')">Delete</button>
+      </div>
+    </div>
+  </details>`;
 }
 function toggleTodayDesignMode(){
   todayDesignMode=!todayDesignMode;
@@ -1984,31 +2239,35 @@ function renderHabitChain(chain){
       </div>
     </details>`;
   }
-  return`<div class="card routine-card ${doneCount===chain.items.length?'routine-complete':''}" ondragover="allowHabitDrop(event)" ondrop="dropHabitOnGroup(event,'${chain.id}')">
+  return`<details class="card routine-card routine-detail ${doneCount===chain.items.length?'routine-complete':''}" ${primary?'open':''} ondragover="allowHabitDrop(event)" ondrop="dropHabitOnGroup(event,'${chain.id}')">
     ${startTime?`<div class="chain-time-badge">Starts ${escapeHtml(startTime)}</div>`:''}
-    <div class="routine-head">
+    <summary class="routine-head">
       <div>
         <h2>${escapeHtml(chain.title)}</h2>
         <p>${escapeHtml(identity)}</p>
       </div>
       <span>${doneCount}/${chain.items.length}</span>
-    </div>
+    </summary>
     ${renderFlowSegments(chain,activeIndex)}
     ${chain.items.map((item,pos)=>renderHabitDropZone(chain.id,pos)+renderHabitRow(item,chain,pos,pos===activeIndex,primary&&pos===activeIndex)).join('')}${renderHabitDropZone(chain.id,chain.items.length)}
-  </div>`;
+  </details>`;
 }
 
 function renHabits(){
+  ensureHabitData();
+  ensureTodayFlow();
   renderTodayProgress();
   const toggle=document.getElementById('today-design-toggle');
   if(toggle){toggle.textContent=todayDesignMode?'Done Designing':'Design Mode';toggle.classList.toggle('on',todayDesignMode);}
+  const chains=buildHabitChains();
+  renderCurrentFocus(chains);
+  renderTodayFlow(chains);
   if(!D.habits.length){
     document.getElementById('hlist').innerHTML='<div class="card"><p class="char-note">No habits yet. Add one tiny action to begin today.</p></div>';
     renderTodayXpFeed();
     renHCsel();
     return;
   }
-  const chains=buildHabitChains();
   if(!chains.length){
     document.getElementById('hlist').innerHTML='<div class="card"><p class="char-note">No habits are scheduled for today.</p></div>';
     renderTodayXpFeed();
@@ -2135,6 +2394,140 @@ function saveHabit(){
   addHabitToSelectedFlow(habit,chainId);
   sv();closeMod();renHabits();renCal();
   showHabitCreatedConfirmation(s,n);
+}
+function renderTodayPlacementOptions(selected='later'){
+  const options=[
+    ['start','Start of Today'],
+    ['midday','Midday'],
+    ['evening','Evening'],
+    ['later','Flexible / Later']
+  ];
+  const chainOptions=buildHabitChains().map(c=>[`afterFlow:${c.id}`,`After ${c.title}`]);
+  return [...options.slice(0,1),...chainOptions,...options.slice(1)].map(([value,label])=>`<option value="${escapeHtml(value)}" ${value===selected?'selected':''}>${escapeHtml(label)}</option>`).join('');
+}
+function todayPlacementValue(item){
+  if(item.placementType==='afterFlow') return `afterFlow:${item.placementId||''}`;
+  return item.placementType||'later';
+}
+function parseTodayPlacement(value){
+  const raw=String(value||'later');
+  if(raw.startsWith('afterFlow:')) return {placementType:'afterFlow',placementId:raw.slice(10)};
+  if(['start','midday','evening','later'].includes(raw)) return {placementType:raw,placementId:''};
+  return {placementType:'later',placementId:''};
+}
+function updateTodayEntryPlacement(kind,id,value){
+  const arr=kind==='task'?D.todayTasks:D.focusBlocks;
+  const item=arr.find(x=>x.id===id);
+  if(!item) return;
+  const placement=parseTodayPlacement(value);
+  item.placementType=placement.placementType;
+  item.placementId=placement.placementId;
+  item.order=nextTodayOrder();
+  sv();renHabits();
+}
+function nextTodayOrder(){
+  const entries=todayEntries();
+  return entries.length?Math.max(...entries.map(e=>Number(e.item.order)||0))+1:0;
+}
+function showAddTodayTask(){
+  document.getElementById('mod').innerHTML=`
+    <h2>New Quick Task</h2>
+    <p class="habit-form-intro">Add one temporary action for today. This is not a habit.</p>
+    <label>Task name</label><input type="text" id="today-task-title" placeholder="Go to groceries" class="mb10">
+    <label>Where should it fit today?</label><select id="today-task-placement" class="mb10">${renderTodayPlacementOptions()}</select>
+    <label>Notes <em>(optional)</em></label><textarea id="today-task-notes" rows="3" placeholder="Anything useful to remember"></textarea>
+    <div class="brow"><button class="btn bp" onclick="saveTodayTask()">Add Task</button><button class="btn bs" onclick="closeMod()">Cancel</button></div>`;
+  document.getElementById('mov').classList.remove('hid');
+  setTimeout(()=>document.getElementById('today-task-title')?.focus(),50);
+}
+function saveTodayTask(){
+  ensureTodayFlow();
+  const title=document.getElementById('today-task-title').value.trim();
+  if(!title){toast('Task needs a name.');return;}
+  const notes=document.getElementById('today-task-notes').value.trim();
+  const placement=parseTodayPlacement(document.getElementById('today-task-placement').value);
+  D.todayTasks.push({id:`task_${Date.now()}`,title,notes,date:todayDateKey(),completed:false,...placement,order:nextTodayOrder(),createdAt:Date.now(),completedAt:null});
+  sv();closeMod();renHabits();
+}
+function toggleTodayTask(id){
+  ensureTodayFlow();
+  const t=D.todayTasks.find(x=>x.id===id);
+  if(!t) return;
+  t.completed=!t.completed;
+  t.completedAt=t.completed?Date.now():null;
+  sv();renHabits();
+}
+function deleteTodayTask(id){
+  if(!confirm('Delete this task?')) return;
+  D.todayTasks=D.todayTasks.filter(t=>t.id!==id);
+  sv();renHabits();
+}
+function showAddFocusBlock(){
+  document.getElementById('mod').innerHTML=`
+    <h2>New Focus Block</h2>
+    <p class="habit-form-intro">Plan one intentional work session without building a full calendar.</p>
+    <label>Title</label><input type="text" id="focus-block-title" placeholder="Study: Philosophy" class="mb10">
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+      <div><label>Type</label><select id="focus-block-type" class="mb10"><option>Deep Work</option><option>Study</option><option>Admin</option><option>Health</option><option>Recovery</option><option>Other</option></select></div>
+      <div><label>Duration</label><input type="number" id="focus-block-duration" value="${selectedFocusMinutes()}" min="5" max="240" class="mb10"></div>
+    </div>
+    <label>Where should it fit today?</label><select id="focus-block-placement" class="mb10">${renderTodayPlacementOptions('midday')}</select>
+    <label>Notes <em>(optional)</em></label><textarea id="focus-block-notes" rows="3" placeholder="Goal, project, or setup notes"></textarea>
+    <div class="brow"><button class="btn bp" onclick="saveFocusBlock()">Add Focus Block</button><button class="btn bs" onclick="closeMod()">Cancel</button></div>`;
+  document.getElementById('mov').classList.remove('hid');
+  setTimeout(()=>document.getElementById('focus-block-title')?.focus(),50);
+}
+function saveFocusBlock(){
+  ensureTodayFlow();
+  const title=document.getElementById('focus-block-title').value.trim();
+  if(!title){toast('Focus block needs a title.');return;}
+  const type=document.getElementById('focus-block-type').value;
+  const duration=Math.max(5,Math.min(240,parseInt(document.getElementById('focus-block-duration').value)||selectedFocusMinutes()));
+  const notes=document.getElementById('focus-block-notes').value.trim();
+  const placement=parseTodayPlacement(document.getElementById('focus-block-placement').value);
+  D.focusBlocks.push({id:`focus_${Date.now()}`,title,type,duration,notes,date:todayDateKey(),completed:false,...placement,order:nextTodayOrder(),createdAt:Date.now(),completedAt:null});
+  sv();closeMod();renHabits();
+}
+function toggleFocusBlock(id){
+  ensureTodayFlow();
+  const b=D.focusBlocks.find(x=>x.id===id);
+  if(!b) return;
+  b.completed=!b.completed;
+  b.completedAt=b.completed?Date.now():null;
+  sv();renHabits();
+}
+function deleteFocusBlock(id){
+  if(!confirm('Delete this focus block?')) return;
+  D.focusBlocks=D.focusBlocks.filter(b=>b.id!==id);
+  sv();renHabits();
+}
+function moveTodayEntry(kind,id,dir){
+  const arr=kind==='task'?D.todayTasks:D.focusBlocks;
+  const today=arr.filter(x=>x.date===todayDateKey()).sort((a,b)=>(Number(a.order)||0)-(Number(b.order)||0)||(a.createdAt||0)-(b.createdAt||0));
+  const pos=today.findIndex(x=>x.id===id);
+  const next=pos+dir;
+  if(pos<0||next<0||next>=today.length) return;
+  [today[pos].order,today[next].order]=[today[next].order,today[pos].order];
+  sv();renHabits();
+}
+function startTodayFocusBlock(id){
+  const b=D.focusBlocks.find(x=>x.id===id);
+  if(!b) return;
+  const plan=b.notes||b.title;
+  const mins=Math.max(5,Math.min(240,parseInt(b.duration)||selectedFocusMinutes()));
+  const h20=document.getElementById('h20');
+  if(h20) h20.value=plan;
+  navigateToTab('mind');
+  if(D.phase==='idle'){
+    setTimeout(()=>{
+      const input=document.getElementById('h20');
+      if(input) input.value=plan;
+      D.h20=plan;
+      _profileSteps=[{type:'focus',mins}];
+      _profileIdx=0;
+      startFocusPhase(mins);
+    },80);
+  }
 }
 function closeMod(){document.getElementById('mov').classList.add('hid');}
 
