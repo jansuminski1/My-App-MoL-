@@ -302,23 +302,41 @@
 <div id="tab-habits" class="tab on">
   <section class="today-progress-section">
     <div class="today-progress-head">
-      <h2><span class="section-mini-icon">📅</span>Today's Progress</h2>
+      <div>
+        <h2><span class="section-mini-icon">📅</span>Today</h2>
+        <p id="today-date-label">Today</p>
+      </div>
       <span id="today-progress-count">0 / 0 done</span>
     </div>
     <div class="today-progress-bar"><div id="today-progress-fill" style="width:0%"></div></div>
+    <div class="today-status-row">
+      <span id="today-xp-status">0 XP today</span>
+      <span id="today-level-status">Level progress 0%</span>
+      <span id="today-streak-status">Ready</span>
+    </div>
   </section>
+  <section class="today-current-focus" id="today-current-focus"></section>
+  <section class="today-flow-head">
+    <div>
+      <h2><span class="section-mini-icon">⇣</span>Today Flow</h2>
+      <p>Routines, quick tasks, and focus blocks in one flexible sequence.</p>
+    </div>
+    <div class="today-habit-actions today-flow-actions">
+      <button class="btn bs" onclick="showAddTodayTask()">+ Task</button>
+      <button class="btn bs" onclick="showAddFocusBlock()">+ Focus</button>
+      <button class="btn bp today-new-habit-btn" onclick="showAddHabit()">+ New Habit</button>
+    </div>
+  </section>
+  <div id="today-flow-list"></div>
   <section class="today-habits-head">
     <div>
-      <h2><span class="section-mini-icon">✅</span>Today's Habits</h2>
-      <p>Follow the current step in each routine.</p>
-    </div>
-    <div class="today-habit-actions">
-      <button class="btn bp today-new-habit-btn" onclick="showAddHabit()">+ New Habit</button>
+      <h2><span class="section-mini-icon">✅</span>Habit Flows</h2>
+      <p>Open a routine when you want the full sequence.</p>
     </div>
   </section>
   <div id="hlist"></div>
   <details class="today-xp-compact">
-    <summary><span class="section-mini-icon">⚡</span>XP Today</summary>
+    <summary><span class="section-mini-icon">⚡</span>Daily Summary</summary>
     <div class="today-xp-feed" id="today-xp-feed"></div>
   </details>
   <details class="today-calendar-toggle">
@@ -332,7 +350,7 @@
     <div class="cgrid" id="cgrid"></div>
     <div class="cal-legend">
       <div class="cal-leg-item"><div class="cal-leg-dot" style="background:var(--cyn)"></div>Done</div>
-      <div class="cal-leg-item"><div class="cal-leg-dot" style="background:rgba(242,27,27,.5)"></div>Missed</div>
+      <div class="cal-leg-item"><div class="cal-leg-dot" style="background:rgba(242,27,27,.5)"></div>Open</div>
       <div class="cal-leg-item"><div class="cal-leg-dot" style="border:2px solid var(--acc);background:transparent"></div>Today</div>
     </div>
   </details>
