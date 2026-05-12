@@ -1879,10 +1879,140 @@ function getCurrentFocus(chains=buildHabitChains()){
   if(block) return {type:'focus-block',item:block};
   return {type:'empty'};
 }
+function flowTheme(chain,index=0){
+  const title=String(chain?.title||'').toLowerCase();
+  if(title.includes('morning')) return {key:'morning',icon:'🌄',accent:'#22a66a'};
+  if(title.includes('midday')) return {key:'midday',icon:'☀️',accent:'#f59f00'};
+  if(title.includes('evening')||title.includes('reset')) return {key:'evening',icon:'🌙',accent:'#6d5dfc'};
+  if(title.includes('today')) return {key:'today',icon:'✓',accent:'#0e8bba'};
+  const fallback=[{key:'custom-blue',icon:'◆',accent:'#0e8bba'},{key:'custom-green',icon:'◇',accent:'#22a66a'},{key:'custom-purple',icon:'✦',accent:'#6d5dfc'}];
+  return fallback[index%fallback.length];
+}
+function activeStepTitle(h){return habitDisplayName(h)||h?.name||'Next step';}
+function renderFocusBadge(){return '<div class="current-focus-badge"><span>◎</span>Current Focus</div>';}
+function renderFocusMenu(){return `<button class="current-focus-menu" onclick="toast('More focus options can live here soon.')" aria-label="More options">⋯</button>`;}
+function renderFocusRing(seconds,totalSeconds=seconds){
+  const safeTotal=Math.max(1,Number(totalSeconds)||Number(seconds)||1);
+  const safeSeconds=Math.max(0,Number(seconds)||0);
+  const percent=Math.max(0,Math.min(100,(safeSeconds/safeTotal)*100));
+  return`<div class="focus-visual-ring" style="--focus-ring:${percent}%">
+    <strong>${escapeHtml(fmt(safeSeconds))}</strong>
+    <span>Time remaining</span>
+  </div>`;
+}
+function renderCurrentFlowVisual(chain,item){
+  const idx=chain.items.findIndex(x=>x.index===item.index);
+  return`<div class="current-flow-visual">
+    ${renderNodeProgress(chain,idx,{compact:false})}
+    <div class="current-flow-step">${idx+1}<span>/ ${chain.items.length}</span></div>
+  </div>`;
+}
+function focusInfoStrip(items){
+  return`<div class="current-info-strip">${items.map(x=>`<span>${escapeHtml(x)}</span>`).join('')}</div>`;
+}
 function renderCurrentFocus(chains=buildHabitChains()){
   const el=document.getElementById('today-current-focus');
   if(!el) return;
   const focus=getCurrentFocus(chains);
+  if(focus.type==='running-focus'){
+    const total=(_profileSteps[_profileIdx]?.mins||selectedFocusMinutes())*60;
+    const remaining=Math.max(0,total-(Number(_wElapsed)||0));
+    el.innerHTML=`<div class="current-focus-card focus premium-focus">
+      ${renderFocusMenu()}
+      <div class="current-focus-copy">
+        ${renderFocusBadge()}
+        <div class="current-focus-type">Deep Work Block</div>
+        <h2>${escapeHtml(focus.title)}</h2>
+        <p>📖 ${escapeHtml(focus.subtitle)}</p>
+        <p>🕐 ${Math.round(total/60)} min focus session</p>
+        <div class="current-focus-actions">
+          <button class="btn bp current-focus-btn focus-primary" onclick="navigateToTab('mind')">▶ Open Timer</button>
+          <button class="btn bs current-focus-pomodoro" onclick="navigateToTab('mind')"><span>🍅</span>Pomodoro</button>
+        </div>
+        ${focusInfoStrip(['XP reward','🧠 Deep Work','🎯 High Impact'])}
+      </div>
+      <div class="current-focus-visual">${renderFocusRing(remaining,total)}</div>
+    </div>`;
+    return;
+  }
+  if(focus.type==='habit'){
+    const h=focus.item.habit;
+    const theme=flowTheme(focus.chain,chains.findIndex(c=>c.id===focus.chain.id));
+    const stepNumber=focus.chain.items.findIndex(x=>x.index===focus.item.index)+1;
+    el.innerHTML=`<div class="current-focus-card habit premium-focus" style="--flow-accent:${theme.accent}">
+      ${renderFocusMenu()}
+      <div class="current-focus-copy">
+        ${renderFocusBadge()}
+        <div class="current-focus-type">${escapeHtml(focus.chain.title)}</div>
+        <h2>${escapeHtml(focus.chain.title)}</h2>
+        <p class="current-next-line">Next step: <strong>${escapeHtml(activeStepTitle(h))}</strong></p>
+        <p>${escapeHtml(h.sk||'Follow the next small step in this routine.')}</p>
+        <div class="current-focus-action">${escapeHtml(h.tm||'Do the smallest honest version now.')}</div>
+        <div class="current-focus-actions">
+          <button class="btn bp current-focus-btn habit-primary" onclick="togH(${focus.item.index},event.currentTarget)">✓ Complete Step</button>
+          <button class="btn bs current-focus-ghost" onclick="toast('Skip keeps this step open for later.')">Skip</button>
+        </div>
+        ${focusInfoStrip(['XP reward','Habit Flow',`Step ${stepNumber}/${focus.chain.items.length}`])}
+      </div>
+      <div class="current-focus-visual">${renderCurrentFlowVisual(focus.chain,focus.item)}</div>
+    </div>`;
+    return;
+  }
+  if(focus.type==='task'){
+    const t=focus.item;
+    el.innerHTML=`<div class="current-focus-card task premium-focus">
+      ${renderFocusMenu()}
+      <div class="current-focus-copy">
+        ${renderFocusBadge()}
+        <div class="current-focus-type">Quick Task</div>
+        <h2>${escapeHtml(t.title)}</h2>
+        ${t.notes?`<p>${escapeHtml(t.notes)}</p>`:'<p>One temporary action for today.</p>'}
+        <div class="current-focus-actions">
+          <button class="btn bp current-focus-btn task-primary" onclick="toggleTodayTask('${t.id}')">✓ Complete Task</button>
+          <button class="btn bs current-focus-ghost" onclick="updateTodayEntryPlacement('task','${t.id}','later')">Move Later</button>
+        </div>
+        ${focusInfoStrip(['Quick Task',todayPlacementLabel(t),'XP reward'])}
+      </div>
+      <div class="current-focus-visual"><div class="task-visual-mark">✓</div></div>
+    </div>`;
+    return;
+  }
+  if(focus.type==='focus-block'){
+    const b=focus.item;
+    const mins=Number(b.duration)||60;
+    el.innerHTML=`<div class="current-focus-card focus premium-focus">
+      ${renderFocusMenu()}
+      <div class="current-focus-copy">
+        ${renderFocusBadge()}
+        <div class="current-focus-type">Focus Block</div>
+        <h2>Deep Work Block</h2>
+        <p>📖 ${escapeHtml(b.title)}</p>
+        <p>🕐 ${mins} min focus session</p>
+        <div class="current-focus-actions">
+          <button class="btn bp current-focus-btn focus-primary" onclick="startTodayFocusBlock('${b.id}')">▶ Start Focus</button>
+          <button class="btn bs current-focus-pomodoro" onclick="navigateToTab('mind')"><span>🍅</span>Pomodoro</button>
+        </div>
+        ${focusInfoStrip(['XP reward',`🧠 ${b.type||'Deep Work'}`,'🎯 High Impact'])}
+      </div>
+      <div class="current-focus-visual">${renderFocusRing(mins*60,mins*60)}</div>
+    </div>`;
+    return;
+  }
+  el.innerHTML=`<div class="current-focus-card empty premium-focus">
+    ${renderFocusMenu()}
+    <div class="current-focus-copy">
+      ${renderFocusBadge()}
+      <div class="current-focus-type">Choose your next action</div>
+      <h2>Nothing is waiting right now.</h2>
+      <p>Add a quick task, create a focus block, or start the next tiny habit when you are ready.</p>
+      <div class="current-focus-actions">
+        <button class="btn bp current-focus-btn task-primary" onclick="showAddTodayTask()">+ Add Task</button>
+        <button class="btn bs current-focus-ghost" onclick="showAddFocusBlock()">+ Focus</button>
+      </div>
+    </div>
+    <div class="current-focus-visual"><div class="task-visual-mark">◎</div></div>
+  </div>`;
+  return;
   if(focus.type==='running-focus'){
     el.innerHTML=`<div class="current-focus-card focus">
       <div class="current-focus-kicker">Current Focus</div>
@@ -1979,21 +2109,22 @@ function renderTodayFlowItem(entry){
     const chain=entry.chain;
     const done=chain.items.filter(x=>habitIsDoneToday(x.habit)).length;
     const active=chain.items.findIndex(x=>!habitIsDoneToday(x.habit));
-    return`<div class="today-flow-item habit">
-      <div class="flow-kind">Habit Flow</div>
-      <div class="flow-main">
+    const theme=flowTheme(chain);
+    return`<div class="today-flow-item habit flow-card-mini" style="--flow-accent:${theme.accent}">
+      <div class="flow-mini-icon">${theme.icon}</div>
+      <div class="flow-mini-text">
         <strong>${escapeHtml(chain.title)}</strong>
-        <span>${done}/${chain.items.length} completed</span>
+        <span>${done} / ${chain.items.length} completed</span>
       </div>
-      ${renderFlowSegments(chain,active)}
+      ${renderNodeProgress(chain,active)}
     </div>`;
   }
   if(entry.kind==='task'){
     const t=entry.item;
     return`<details class="today-flow-item task ${t.completed?'done':''}">
       <summary>
-        <span class="flow-kind">Quick Task</span>
-        <strong>${escapeHtml(t.title)}</strong>
+        <span class="flow-type-icon">✓</span>
+        <span class="flow-summary-text"><span class="flow-kind">Quick Task</span><strong>${escapeHtml(t.title)}</strong><small>${escapeHtml(todayPlacementLabel(t))}</small></span>
         <button class="mini-check ${t.completed?'on':''}" onclick="event.preventDefault();event.stopPropagation();toggleTodayTask('${t.id}')">${t.completed?'✓':''}</button>
       </summary>
       <div class="today-flow-detail">
@@ -2011,9 +2142,8 @@ function renderTodayFlowItem(entry){
   const b=entry.item;
   return`<details class="today-flow-item focus ${b.completed?'done':''}">
     <summary>
-      <span class="flow-kind">Focus Block</span>
-      <strong>${escapeHtml(b.title)}</strong>
-      <small>${escapeHtml(b.type)} · ${Number(b.duration)||60} min</small>
+      <span class="flow-type-icon focus">◷</span>
+      <span class="flow-summary-text"><span class="flow-kind">Focus Block</span><strong>${escapeHtml(b.title)}</strong><small>${escapeHtml(b.type)} · ${Number(b.duration)||60} min</small></span>
     </summary>
     <div class="today-flow-detail">
       <p>${escapeHtml(b.notes||todayPlacementLabel(b))}</p>
@@ -2054,13 +2184,21 @@ function habitDetailBlock(h,i,chain,position){
     </div>
   </div>`;
 }
-function renderFlowSegments(chain,activeIndex){
-  return`<div class="routine-flow-line">${chain.items.map((item,pos)=>{
-    const done=habitIsDoneToday(item.habit);
-    const state=done?'done':pos===activeIndex?'current':'remaining';
-    return`<span class="${state}"></span>`;
-  }).join('')}</div>`;
+function renderNodeProgress(chain,activeIndex,{compact=true}={}){
+  const theme=flowTheme(chain);
+  return`<div class="flow-node-track ${compact?'compact':'large'}" style="--flow-accent:${theme.accent}">
+    ${chain.items.map((item,pos)=>{
+      const done=habitIsDoneToday(item.habit);
+      const state=done?'done':pos===activeIndex?'current':'upcoming';
+      const lineState=done?'done':'open';
+      return`<span class="flow-node-wrap">
+        <span class="flow-node ${state}">${done?'✓':''}</span>
+        ${pos<chain.items.length-1?`<span class="flow-node-line ${lineState}"></span>`:''}
+      </span>`;
+    }).join('')}
+  </div>`;
 }
+function renderFlowSegments(chain,activeIndex){return renderNodeProgress(chain,activeIndex);}
 let habitDragIndex=null;
 function startHabitDrag(e,index){
   habitDragIndex=index;
@@ -2192,6 +2330,24 @@ function showHabitCreatedConfirmation(trigger,action){
   document.body.appendChild(pop);
   setTimeout(()=>pop.remove(),2100);
 }
+function renderCurrentStepSubCard(chain,activeIndex,theme){
+  if(activeIndex<0) return '<div class="flow-current-step complete">Routine complete for today.</div>';
+  const item=chain.items[activeIndex];
+  const h=item.habit;
+  return`<div class="flow-current-step" style="--flow-accent:${theme.accent}">
+    <div class="flow-step-label">Current Step</div>
+    <div class="flow-step-main">
+      <span class="flow-step-check"></span>
+      <strong>${escapeHtml(activeStepTitle(h))}</strong>
+    </div>
+    <p>${escapeHtml(h.sk||'Follow this cue and do the next tiny action.')}</p>
+    <div class="flow-step-actions">
+      <button class="btn bs" onclick="toast('Skip keeps this step open for later.')">Skip</button>
+      <button class="btn bp" onclick="togH(${item.index},event.currentTarget)">✓ Complete</button>
+    </div>
+    <span class="flow-step-pill">🔗 ${escapeHtml(compactHabitSubline(h)||'Current link')}</span>
+  </div>`;
+}
 function renderHabitRow(item,chain,position,active=false,primary=false){
   const h=item.habit,i=item.index,done=habitIsDoneToday(h);
   const name=escapeHtml(habitDisplayName(h));
@@ -2226,6 +2382,33 @@ function renderHabitChain(chain){
   const primary=firstActiveHabit()?.chain?.id===chain.id;
   const fullChain=buildHabitGroupsAll().find(g=>g.id===chain.id);
   const startTime=fullChain?.items?.[0]?.habit?.startTime||chain.items[0]?.habit?.startTime||'';
+  const theme=flowTheme(chain);
+  if(doneCount===chain.items.length){
+    return`<details class="habit-flow-card completed-routine" style="--flow-accent:${theme.accent}" ondragover="allowHabitDrop(event)" ondrop="dropHabitOnGroup(event,'${chain.id}')">
+      ${startTime?`<div class="chain-time-badge">Starts ${escapeHtml(startTime)}</div>`:''}
+      <summary class="habit-flow-summary">
+        <span class="habit-flow-icon">${theme.icon}</span>
+        <span class="habit-flow-title"><strong>${escapeHtml(chain.title)}</strong><small>${doneCount} / ${chain.items.length} completed</small></span>
+        ${renderNodeProgress(chain,-1)}
+        <span class="habit-flow-chevron">⌄</span>
+      </summary>
+      <div class="completed-routine-details">
+        ${chain.items.map((item,pos)=>renderHabitDropZone(chain.id,pos)+renderHabitRow(item,chain,pos,false)).join('')}${renderHabitDropZone(chain.id,chain.items.length)}
+      </div>
+    </details>`;
+  }
+  return`<details class="habit-flow-card routine-detail" style="--flow-accent:${theme.accent}" ${primary?'open':''} ondragover="allowHabitDrop(event)" ondrop="dropHabitOnGroup(event,'${chain.id}')">
+    ${startTime?`<div class="chain-time-badge">Starts ${escapeHtml(startTime)}</div>`:''}
+    <summary class="habit-flow-summary">
+      <span class="habit-flow-icon">${theme.icon}</span>
+      <span class="habit-flow-title"><strong>${escapeHtml(chain.title)}</strong><small>${doneCount} / ${chain.items.length} completed</small></span>
+      ${renderNodeProgress(chain,activeIndex)}
+      <span class="habit-flow-chevron">⌄</span>
+    </summary>
+    <p class="habit-flow-identity">${escapeHtml(identity)}</p>
+    ${renderCurrentStepSubCard(chain,activeIndex,theme)}
+    ${chain.items.map((item,pos)=>pos===activeIndex?'':renderHabitDropZone(chain.id,pos)+renderHabitRow(item,chain,pos,false)).join('')}${renderHabitDropZone(chain.id,chain.items.length)}
+  </details>`;
   if(doneCount===chain.items.length){
     return`<details class="routine-card routine-complete completed-routine" ondragover="allowHabitDrop(event)" ondrop="dropHabitOnGroup(event,'${chain.id}')">
       ${startTime?`<div class="chain-time-badge">Starts ${escapeHtml(startTime)}</div>`:''}
