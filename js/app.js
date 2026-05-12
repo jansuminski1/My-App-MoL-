@@ -1890,6 +1890,53 @@ function cancelHabitPointer(){
 function renderChainMoveOptions(currentGroupId){
   return buildHabitGroupsAll().map(g=>`<option value="${g.id}" ${g.id===currentGroupId?'selected':''}>${escapeHtml(g.title)}</option>`).join('');
 }
+function renderAddHabitChainOptions(){
+  const groups=buildHabitGroupsAll();
+  const options=[`<option value="loose">Today / Other Habits</option>`];
+  groups.filter(g=>g.id!=='loose').forEach(g=>{
+    options.push(`<option value="${g.id}">Add to ${escapeHtml(g.title)}</option>`);
+  });
+  return options.join('');
+}
+function addHabitToSelectedFlow(habit,chainId='loose'){
+  const groups=buildHabitGroupsAll();
+  let target=groups.find(g=>g.id===chainId);
+  if(!target){
+    target={id:'loose',title:'Today',items:[]};
+    groups.push(target);
+  }
+  target.items.push({habit,index:D.habits.length});
+  rebuildHabitsFromGroups(groups);
+}
+function habitActionIdentity(action){
+  const clean=String(action||'').trim();
+  if(!clean) return 'I am someone who keeps promises to myself.';
+  return `I am someone who follows through on ${clean.toLowerCase()}.`;
+}
+function cleanHabitConfirmationPhrase(text,type){
+  let clean=String(text||'').trim();
+  if(type==='trigger') clean=clean.replace(/^after\s+i\s+/i,'');
+  if(type==='action') clean=clean.replace(/^i\s+will\s+/i,'');
+  return clean||text||'this cue';
+}
+function showHabitCreatedConfirmation(trigger,action){
+  const existing=document.querySelector('.habit-created-pop');
+  if(existing) existing.remove();
+  const triggerText=cleanHabitConfirmationPhrase(trigger,'trigger');
+  const actionText=cleanHabitConfirmationPhrase(action,'action');
+  const pop=document.createElement('div');
+  pop.className='habit-created-pop';
+  pop.innerHTML=`
+    <div class="habit-created-link">
+      <div class="habit-created-node"><strong>Trigger</strong>${escapeHtml(triggerText)}</div>
+      <div class="habit-created-line"></div>
+      <div class="habit-created-node"><strong>New habit</strong>${escapeHtml(actionText)}</div>
+    </div>
+    <h3>New habit started!</h3>
+    <p>Every time you "${escapeHtml(triggerText)}", do "${escapeHtml(actionText)}" afterwards.</p>`;
+  document.body.appendChild(pop);
+  setTimeout(()=>pop.remove(),2100);
+}
 function renderHabitRow(item,chain,position,active=false,primary=false){
   const h=item.habit,i=item.index,done=habitIsDoneToday(h);
   const name=escapeHtml(habitDisplayName(h));
@@ -1990,13 +2037,32 @@ function showEditHabit(i){
   const h=D.habits[i];
   window._editFreq['edit']={...(h.freq||{type:'daily',days:[]}),days:[...((h.freq||{}).days||[])]};
   document.getElementById('mod').innerHTML=`
-    <h2>Edit Habit</h2>
-    <label>Display Name</label><input type="text" id="edit-hname-label" value="${h.name||''}" placeholder="e.g. Morning workout" class="mb10">
-    <label>Identity statement</label><input type="text" id="edit-hname" value="${h.id2}" class="mb10">
-    <label>Habit stack trigger</label><input type="text" id="edit-hsk" value="${h.sk}" class="mb10">
-    <label>2-Minute version</label><input type="text" id="edit-htm" value="${h.tm}" class="mb10">
-    <label>Start time <em>(optional)</em></label><input type="time" id="edit-hstart" value="${h.startTime||''}" class="mb10">
-    <div id="edit-freq-wrap">${renderFreqPicker(h,'edit')}</div>
+    <h2 class="habit-builder-title">Edit Habit Link</h2>
+    <p class="habit-form-intro">Keep the trigger and action connected so the habit remains easy to execute.</p>
+    <div class="habit-builder-grid">
+      <div class="habit-link-box trigger">
+        <div class="habit-link-label">Trigger</div>
+        <p class="habit-link-help">What existing action starts this habit?</p>
+        <input type="text" id="edit-hsk" value="${escapeHtml(h.sk||'')}" placeholder="After I..." class="mb10">
+      </div>
+      <div class="habit-link-connector"><span>⛓</span></div>
+      <div class="habit-link-box action">
+        <div class="habit-link-label">New habit</div>
+        <p class="habit-link-help">What happens immediately afterward?</p>
+        <input type="text" id="edit-hname-label" value="${escapeHtml(h.name||'')}" placeholder="I will..." class="mb10">
+      </div>
+    </div>
+    <div class="habit-form-section primary">
+      <div class="habit-form-label">Tiny version</div>
+      <p class="habit-form-hint">Make it so small you can do it on a bad day.</p>
+      <input type="text" id="edit-htm" value="${escapeHtml(h.tm||'')}" class="mb10">
+      <label>Start time <em>(optional)</em></label><input type="time" id="edit-hstart" value="${escapeHtml(h.startTime||'')}" class="mb10">
+    </div>
+    <details class="habit-form-section secondary" open>
+      <summary>Secondary</summary>
+      <label>Identity statement <em>(I am...)</em></label><input type="text" id="edit-hname" value="${escapeHtml(h.id2||'')}" class="mb10">
+      <div id="edit-freq-wrap">${renderFreqPicker(h,'edit')}</div>
+    </details>
     <div class="brow">
       <button class="btn bp" onclick="saveEditHabit(${i})">Save</button>
       <button class="btn bd" onclick="deleteHabit(${i})">Delete</button>
@@ -2007,11 +2073,11 @@ function showEditHabit(i){
 }
 function saveEditHabit(i){
   const nameLabel=document.getElementById('edit-hname-label').value.trim();
-  const name=document.getElementById('edit-hname').value.trim();
+  const name=document.getElementById('edit-hname').value.trim()||habitActionIdentity(nameLabel);
   const sk=document.getElementById('edit-hsk').value.trim();
   const tm=document.getElementById('edit-htm').value.trim();
   const startTime=document.getElementById('edit-hstart').value||'';
-  if(!name||!sk||!tm){toast('Please fill all fields.');return;}
+  if(!nameLabel||!sk||!tm){toast('Please fill trigger, habit, and tiny version.');return;}
   D.habits[i].name=nameLabel;D.habits[i].id2=name;D.habits[i].sk=sk;D.habits[i].tm=tm;
   D.habits[i].startTime=startTime;
   D.habits[i].freq=window._editFreq['edit']||{type:'daily',days:[]};
@@ -2026,33 +2092,49 @@ function deleteHabit(i){
 function showAddHabit(){
   window._editFreq['add']={type:'daily',days:[]};
   document.getElementById('mod').innerHTML=`
-    <h2>New Habit</h2>
-    <p class="habit-form-intro">Build the smallest repeatable action first.</p>
+    <h2 class="habit-builder-title">Build a Habit Link</h2>
+    <p class="habit-form-intro">Choose what already happens, then attach the next action.</p>
+    <div class="habit-builder-grid">
+      <div class="habit-link-box trigger">
+        <div class="habit-link-label">Trigger</div>
+        <p class="habit-link-help">What existing action will start this habit?</p>
+        <input type="text" id="ms" placeholder="After I..." class="mb10">
+      </div>
+      <div class="habit-link-connector"><span>⛓</span></div>
+      <div class="habit-link-box action">
+        <div class="habit-link-label">New habit</div>
+        <p class="habit-link-help">What will you do immediately afterward?</p>
+        <input type="text" id="mn" placeholder="I will..." class="mb10">
+      </div>
+    </div>
     <div class="habit-form-section primary">
-      <div class="habit-form-label">Primary</div>
-      <label>Habit / action name</label><input type="text" id="mn" placeholder="e.g. Morning workout" class="mb10">
-      <label>Tiny executable version</label><input type="text" id="mt" placeholder="Smallest possible start..." class="mb10">
-      <label>Cue / trigger</label><input type="text" id="ms" placeholder="After I..., I will..." class="mb10">
+      <div class="habit-form-label">Tiny version</div>
+      <p class="habit-form-hint">Make it so small you can do it on a bad day.</p>
+      <input type="text" id="mt" placeholder="Smallest possible start..." class="mb10">
       <label>Start time <em>(optional)</em></label><input type="time" id="mst" class="mb10">
       <label>Chain / flow placement</label>
-      <p class="habit-form-hint">Place related habits next to each other, then use Details to stack them into a flow.</p>
+      <select id="mchain" class="mb10">${renderAddHabitChainOptions()}</select>
+      <p class="habit-form-hint">Add it to a flow, or keep it in Today as its own action.</p>
     </div>
-    <details class="habit-form-section secondary" open>
+    <details class="habit-form-section secondary">
       <summary>Secondary</summary>
       <label>Identity statement <em>(I am...)</em></label><input type="text" id="mi" placeholder="I am someone who..." class="mb10">
       <div id="add-freq-wrap">${renderFreqPicker(null,'add')}</div>
     </details>
     <div class="brow"><button class="btn bp" onclick="saveHabit()">Add Habit</button><button class="btn bs" onclick="closeMod()">Cancel</button></div>`;
   document.getElementById('mov').classList.remove('hid');
-  setTimeout(()=>document.getElementById('mn').focus(),50);
+  setTimeout(()=>document.getElementById('ms').focus(),50);
 }
 function saveHabit(){
   const n=document.getElementById('mn').value.trim();
-  const i=document.getElementById('mi').value.trim(),s=document.getElementById('ms').value.trim(),t=document.getElementById('mt').value.trim();
+  const i=document.getElementById('mi').value.trim()||habitActionIdentity(n),s=document.getElementById('ms').value.trim(),t=document.getElementById('mt').value.trim();
   const startTime=document.getElementById('mst')?.value||'';
-  if(!i||!s||!t){toast('Please fill identity, trigger, and 2-minute fields.');return;}
-  D.habits.push({id:'h'+Date.now(),name:n,id2:i,sk:s,tm:t,startTime,added:Date.now(),log:{},freq:window._editFreq['add']||{type:'daily',days:[]}});
+  const chainId=document.getElementById('mchain')?.value||'loose';
+  if(!n||!s||!t){toast('Please fill trigger, habit, and tiny version.');return;}
+  const habit={id:'h'+Date.now(),name:n,id2:i,sk:s,tm:t,startTime,added:Date.now(),log:{},freq:window._editFreq['add']||{type:'daily',days:[]}};
+  addHabitToSelectedFlow(habit,chainId);
   sv();closeMod();renHabits();renCal();
+  showHabitCreatedConfirmation(s,n);
 }
 function closeMod(){document.getElementById('mov').classList.add('hid');}
 

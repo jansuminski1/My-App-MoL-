@@ -60,15 +60,10 @@ nav button:hover:not(.on){border-color:var(--acc);color:var(--acc)}
 .section-heading{display:grid;grid-template-columns:auto minmax(0,1fr);gap:8px;align-items:center;margin-bottom:14px}
 .section-heading h2{font-family:'Inter',sans-serif;font-size:1rem;margin:0;color:var(--navy);font-weight:900;letter-spacing:.01em}
 .section-heading p{font-size:.76rem;color:var(--mut);line-height:1.4;margin-top:2px}
-.section-icon{width:28px;height:28px;border-radius:9px;display:inline-flex;align-items:center;justify-content:center;font-size:1rem;line-height:1;box-shadow:0 4px 10px rgba(9,32,54,.08);background:linear-gradient(135deg,#fff,var(--warm));border:1px solid rgba(197,213,229,.75);align-self:start;margin-top:1px}
-.section-icon.finance-icon{background:linear-gradient(135deg,#fff7df,#e7fff0)}
-.section-icon.character-icon{background:linear-gradient(135deg,#ecf7ff,#fff7df)}
-.section-icon.health-icon{background:linear-gradient(135deg,#ecfff2,#fff)}
-.section-icon.meals-icon{background:linear-gradient(135deg,#f1fff4,#fff8df);color:#1b7f35}
-.section-icon.strength-icon{background:linear-gradient(135deg,#fff7df,#fff)}
-.section-icon.connection-icon{background:linear-gradient(135deg,#f4efff,#fff)}
+.section-icon{width:auto;min-width:22px;height:24px;display:inline-flex;align-items:center;justify-content:center;font-size:1.12rem;line-height:1;align-self:start;margin-top:1px;background:transparent;border:0;box-shadow:none;border-radius:0}
+.section-icon.meals-icon{color:#1b7f35}
 .section-card-title{font-family:'Inter',sans-serif!important;font-size:.9rem!important;font-weight:900!important;letter-spacing:.01em;display:flex;align-items:center;gap:7px}
-.section-mini-icon{width:24px;height:24px;border-radius:8px;display:inline-flex;align-items:center;justify-content:center;font-size:.9rem;line-height:1;background:linear-gradient(135deg,#fff,var(--warm));border:1px solid rgba(197,213,229,.72);box-shadow:0 3px 8px rgba(9,32,54,.06);vertical-align:-.28em;flex-shrink:0}
+.section-mini-icon{width:auto;min-width:18px;height:20px;display:inline-flex;align-items:center;justify-content:center;font-size:.96rem;line-height:1;background:transparent;border:0;box-shadow:none;border-radius:0;vertical-align:-.16em;flex-shrink:0}
 .compact-section-heading{grid-template-columns:auto minmax(0,1fr) auto;margin-bottom:12px}
 .section-date-pill{font-size:.68rem;padding:3px 9px;border-radius:999px;background:var(--warm);border:1px solid var(--bdr);color:var(--acc);font-weight:800;white-space:nowrap}
 .fb{display:flex;justify-content:space-between;align-items:center}
@@ -292,14 +287,32 @@ label{font-size:.79rem;display:block;margin-bottom:4px;color:var(--mut);font-wei
 .habit-form-section summary{cursor:pointer;list-style:none}
 .habit-form-section summary::-webkit-details-marker{display:none}
 .habit-form-hint{font-size:.68rem;color:var(--mut);line-height:1.35;margin:-2px 0 2px}
+.habit-builder-title{margin-bottom:4px!important}
+.habit-builder-grid{display:grid;grid-template-columns:1fr;gap:0;margin-bottom:10px}
+.habit-link-box{border:1px solid rgba(197,213,229,.78);border-radius:12px;padding:12px;background:#fff;box-shadow:0 4px 14px rgba(9,32,54,.045)}
+.habit-link-box.trigger{background:linear-gradient(180deg,#fff 0%,#f8fdff 100%)}
+.habit-link-box.action{background:linear-gradient(180deg,#fff 0%,#fffdf6 100%)}
+.habit-link-label{font-size:.63rem;color:var(--acc);font-weight:950;text-transform:uppercase;letter-spacing:.1em;margin-bottom:4px}
+.habit-link-box.action .habit-link-label{color:var(--orange)}
+.habit-link-help{font-size:.68rem;color:var(--mut);line-height:1.32;margin-bottom:8px}
+.habit-link-box input{margin-bottom:0}
+.habit-link-connector{display:flex;align-items:center;justify-content:center;min-height:30px;color:var(--acc)}
+.habit-link-connector::before,.habit-link-connector::after{content:"";width:1px;height:18px;background:linear-gradient(180deg,transparent,rgba(14,139,186,.4),transparent)}
+.habit-link-connector span{width:26px;height:26px;border-radius:999px;border:1px solid rgba(14,139,186,.22);background:#fff;display:inline-flex;align-items:center;justify-content:center;font-size:.9rem;box-shadow:0 4px 14px rgba(14,139,186,.08);margin:0 8px}
+.habit-created-pop{position:fixed;left:50%;top:50%;transform:translate(-50%,-50%);z-index:160;width:min(360px,calc(100vw - 32px));background:#fff;border:1px solid rgba(197,213,229,.86);border-radius:16px;box-shadow:0 18px 60px rgba(9,32,54,.22);padding:16px;animation:habitCreatedIn 2s ease forwards;pointer-events:none}
+.habit-created-link{display:grid;grid-template-columns:1fr;gap:8px;margin-bottom:10px}
+.habit-created-node{border-radius:12px;padding:10px 12px;background:#f8fdff;border:1px solid rgba(14,139,186,.16);font-size:.76rem;color:var(--mut)}
+.habit-created-node strong{display:block;color:var(--navy);font-size:.68rem;text-transform:uppercase;letter-spacing:.08em;margin-bottom:2px}
+.habit-created-line{height:18px;width:2px;background:linear-gradient(180deg,rgba(14,139,186,.1),var(--cyn),rgba(14,139,186,.1));border-radius:999px;margin:0 auto;box-shadow:0 0 16px rgba(20,206,255,.45)}
+.habit-created-pop h3{margin:0 0 4px;color:var(--navy);font-size:1rem}
+.habit-created-pop p{font-size:.78rem;color:var(--txt);line-height:1.38}
+@keyframes habitCreatedIn{0%{opacity:0;transform:translate(-50%,-46%) scale(.96)}14%,78%{opacity:1;transform:translate(-50%,-50%) scale(1)}100%{opacity:0;transform:translate(-50%,-54%) scale(.98)}}
 .finance-card.card{background:linear-gradient(180deg,#fff 0%,#fbfdff 100%)}
 .finance-section{border:1px solid rgba(197,213,229,.72);border-radius:12px;padding:12px;margin-top:12px}
 .finance-section.income{background:linear-gradient(135deg,rgba(46,237,0,.055),#fff)}
 .finance-section.expense{background:linear-gradient(135deg,rgba(242,27,27,.045),#fff)}
 .finance-section-head{display:flex;align-items:center;gap:8px;margin-bottom:10px}
-.finance-section-head span{width:25px;height:25px;border-radius:8px;display:inline-flex;align-items:center;justify-content:center;font-size:.9rem;font-weight:900;background:#fff;border:1px solid rgba(197,213,229,.78)}
-.finance-section-head .income-icon{background:rgba(46,237,0,.08);border-color:rgba(46,237,0,.25)}
-.finance-section-head .expense-icon{background:rgba(242,27,27,.07);border-color:rgba(242,27,27,.22)}
+.finance-section-head span{width:auto;min-width:20px;height:22px;display:inline-flex;align-items:center;justify-content:center;font-size:1rem;font-weight:900;background:transparent;border:0;border-radius:0}
 .finance-section.income .finance-section-head span,.finance-section.income h3{color:var(--grn-dk)}
 .finance-section.expense .finance-section-head span,.finance-section.expense h3{color:var(--red)}
 .finance-section h3{font-family:'Inter',sans-serif;font-size:.76rem;text-transform:uppercase;letter-spacing:.09em;margin:0;font-weight:950}
