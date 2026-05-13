@@ -238,6 +238,9 @@ function ensureFinance(){
 
 function ensureTodayFlow(){
   const today=dateStamp();
+  if(!D.todayFlowOrder||typeof D.todayFlowOrder!=='object'||Array.isArray(D.todayFlowOrder)) D.todayFlowOrder={};
+  const cutoff=new Date();cutoff.setDate(cutoff.getDate()-7);const cutoffStr=dateStamp(cutoff.getTime());
+  Object.keys(D.todayFlowOrder).forEach(k=>{if(k<cutoffStr)delete D.todayFlowOrder[k];});
   if(!Array.isArray(D.todayTasks)) D.todayTasks=[];
   if(!Array.isArray(D.focusBlocks)) D.focusBlocks=[];
   if(!D.todayFlowOrder||typeof D.todayFlowOrder!=='object'||Array.isArray(D.todayFlowOrder)) D.todayFlowOrder={};
@@ -2065,14 +2068,38 @@ function buildTodayFlow(chains=buildHabitChains()){
   const out=[];
   addEntries(entriesForPlacement(entries,'start'),out);
   chains.forEach((chain,idx)=>{
-    out.push({kind:'habit-flow',chain});
+    out.push({kind:'habit-flow',chain,item:{id:chain.id}});
     addEntries(entriesForPlacement(entries,'afterFlow',chain.id),out);
     if(idx===0) addEntries(entriesForPlacement(entries,'midday'),out);
   });
   if(!chains.length) addEntries(entriesForPlacement(entries,'midday'),out);
   addEntries(entriesForPlacement(entries,'evening'),out);
   addEntries(entries.filter(e=>!used.has(`${e.kind}:${e.item.id}`)),out);
+  const today=todayDateKey();
+  const customOrder=(D.todayFlowOrder||{})[today];
+  if(customOrder&&customOrder.length) return applyTodayFlowCustomOrder(out,customOrder);
   return out;
+}
+function applyTodayFlowCustomOrder(items,customOrder){
+  const lookup=new Map(customOrder.map((e,i)=>[`${e.kind}:${e.id}`,i]));
+  const getKey=e=>e.kind==='habit-flow'?`habit-flow:${e.chain?.id||e.item?.id}`:`${e.kind}:${e.item?.id}`;
+  return [...items].sort((a,b)=>{
+    const ai=lookup.has(getKey(a))?lookup.get(getKey(a)):9999;
+    const bi=lookup.has(getKey(b))?lookup.get(getKey(b)):9999;
+    return ai-bi;
+  });
+}
+function saveTodayFlowOrder(orderedItems){
+  if(!D.todayFlowOrder||typeof D.todayFlowOrder!=='object') D.todayFlowOrder={};
+  const today=todayDateKey();
+  D.todayFlowOrder[today]=orderedItems.map(e=>({
+    kind:e.kind,
+    id:e.kind==='habit-flow'?(e.chain?.id):e.item?.id
+  }));
+  sv();
+}
+function renderTodayFlowDropZone(pos){
+  return`<div class="today-flow-drop-zone" data-pos="${pos}" ondragover="event.preventDefault();this.classList.add('on')" ondragleave="this.classList.remove('on')" ondrop="dropTodayFlowItem(event,${pos})"></div>`;
 }
 function renderTodayFlow(chains=buildHabitChains()){
   const el=document.getElementById('today-flow-list');
@@ -2082,26 +2109,41 @@ function renderTodayFlow(chains=buildHabitChains()){
     el.innerHTML='<div class="today-flow-empty">No actions planned yet. Add one quick task or begin with your first habit flow.</div>';
     return;
   }
-  el.innerHTML=`<div class="today-flow-sequence">${items.map(renderTodayFlowItem).join('')}</div>`;
+  const hint=todayFlowReorderMode?'<div class="today-flow-reorder-hint">Tap ↑ ↓ to reorder</div>':'';
+  let html=hint+'<div class="today-flow-sequence">';
+  items.forEach((entry,i)=>{
+    html+=(todayFlowReorderMode?'':renderTodayFlowDropZone(i))+renderTodayFlowItem(entry,i);
+  });
+  html+=(todayFlowReorderMode?'':renderTodayFlowDropZone(items.length))+'</div>';
+  el.innerHTML=html;
 }
-function renderTodayFlowItem(entry){
+function renderTodayFlowItem(entry,flowIndex=0){
   if(entry.kind==='habit-flow'){
-    const chain=entry.chain;
-    return renderHabitChain(chain);
+    return renderHabitChain(entry.chain,flowIndex);
   }
   if(entry.kind==='task'){
     const t=entry.item;
-    return`<div class="today-flow-item task quick-task-row ${t.completed?'done':''}">
+    const moveCtrl=todayFlowReorderMode
+      ?`<div class="tf-move-btns"><button class="tf-move-btn" onclick="moveTodayFlowItem('task','${t.id}',-1)" title="Move up">↑</button><button class="tf-move-btn" onclick="moveTodayFlowItem('task','${t.id}',1)" title="Move down">↓</button></div>`
+      :`<span class="tf-drag-handle" title="Drag to reorder (desktop)">&#8801;</span>`;
+    const taskDelete=todayFlowReorderMode?'':`<button class="tf-delete-btn" onclick="event.stopPropagation();deleteTodayTask('${t.id}')" title="Remove task">&#215;</button>`;
+    return`<div class="today-flow-item task quick-task-row ${t.completed?'done':''} ${todayFlowReorderMode?'reorder-active':''}" data-flow-kind="task" data-flow-id="${t.id}" draggable="true" ondragstart="startTodayFlowDrag(event,'task','${t.id}')" ondragend="endTodayFlowDrag(event)">
       <button class="mini-check ${t.completed?'on':''}" onclick="toggleTodayTask('${t.id}')">${t.completed?'&#10003;':''}</button>
-      <strong class="flow-row-title">${escapeHtml(t.title)}</strong>
-      <span class="flow-row-type">Quick task</span>
+      <div class="quick-task-text"><strong>${escapeHtml(t.title)}</strong><small>Quick task</small></div>
+      ${taskDelete}
+      ${moveCtrl}
     </div>`;
   }
   const b=entry.item;
-  return`<div class="today-flow-item focus compact-focus-row ${b.completed?'done':''}">
-    <span class="flow-type-icon focus">&#9687;</span>
+  const moveCtrl=todayFlowReorderMode
+    ?`<div class="tf-move-btns"><button class="tf-move-btn" onclick="moveTodayFlowItem('focus','${b.id}',-1)" title="Move up">↑</button><button class="tf-move-btn" onclick="moveTodayFlowItem('focus','${b.id}',1)" title="Move down">↓</button></div>`
+    :`<span class="tf-drag-handle" title="Drag to reorder (desktop)">&#8801;</span>`;
+  const focusActions=todayFlowReorderMode?'':`<div class="tf-focus-actions"><button class="btn bs" onclick="startTodayFocusBlock('${b.id}')">Start Focus</button><button class="tf-delete-btn" onclick="event.stopPropagation();deleteFocusBlock('${b.id}')" title="Remove focus block">&#215;</button></div>`;
+  return`<div class="today-flow-item focus compact-focus-row ${b.completed?'done':''} ${todayFlowReorderMode?'reorder-active':''}" data-flow-kind="focus" data-flow-id="${b.id}" draggable="true" ondragstart="startTodayFlowDrag(event,'focus','${b.id}')" ondragend="endTodayFlowDrag(event)">
+    <span class="flow-type-icon focus">◎</span>
     <div class="quick-task-text"><strong>${escapeHtml(b.title)}</strong><small>${escapeHtml(b.type)} &middot; ${Number(b.duration)||60} min</small></div>
-    <button class="btn bs" onclick="startTodayFocusBlock('${b.id}')">Start Focus</button>
+    ${focusActions}
+    ${moveCtrl}
   </div>`;
 }
 function toggleTodayDesignMode(){
@@ -2131,13 +2173,17 @@ function habitDetailBlock(h,i,chain,position){
 }
 function renderNodeProgress(chain,activeIndex,{compact=true}={}){
   const theme=flowTheme(chain);
+  const cid=chain.id||'';
   return`<div class="flow-node-track ${compact?'compact':'large'}" style="--flow-accent:${theme.accent}">
     ${chain.items.map((item,pos)=>{
       const done=habitIsDoneToday(item.habit);
       const state=done?'done':pos===activeIndex?'current':'upcoming';
       const lineState=done?'done':'open';
+      const nodeEl=done
+        ?`<button class="flow-node done clickable" type="button" title="Tap to undo step" onclick="uncompleteHabitInFlow(${item.index},'${cid}',this)">✓</button>`
+        :`<span class="flow-node ${state}"></span>`;
       return`<span class="flow-node-wrap">
-        <span class="flow-node ${state}">${done?'✓':''}</span>
+        ${nodeEl}
         ${pos<chain.items.length-1?`<span class="flow-node-line ${lineState}"></span>`:''}
       </span>`;
     }).join('')}
@@ -2225,6 +2271,88 @@ function cancelHabitPointer(){
   habitPointerState=null;
   habitDragIndex=null;
 }
+
+// ── TODAY FLOW DRAG & DROP ──────────────────────────────
+let todayFlowDragKind=null,todayFlowDragId=null;
+let todayFlowReorderMode=false;
+function startTodayFlowDrag(e,kind,id){
+  if(e.target.closest('.habit-draggable,.habit-drag-handle')) return;
+  if(e.target.closest('button,input,select,textarea')) return;
+  todayFlowDragKind=kind;
+  todayFlowDragId=id;
+  e.dataTransfer?.setData('text/plain',`${kind}:${id}`);
+  e.currentTarget.classList.add('today-flow-dragging');
+}
+function endTodayFlowDrag(e){
+  todayFlowDragKind=null;
+  todayFlowDragId=null;
+  e.currentTarget?.classList.remove('today-flow-dragging');
+  document.querySelectorAll('.today-flow-drop-zone.on').forEach(el=>el.classList.remove('on'));
+}
+function dropTodayFlowItem(e,dropPos){
+  e.preventDefault();
+  e.stopPropagation();
+  document.querySelectorAll('.today-flow-drop-zone.on').forEach(el=>el.classList.remove('on'));
+  const raw=e.dataTransfer?.getData('text/plain')||'';
+  const colonIdx=raw.indexOf(':');
+  const kind=todayFlowDragKind||(colonIdx>0?raw.slice(0,colonIdx):'');
+  const id=todayFlowDragId||(colonIdx>0?raw.slice(colonIdx+1):'');
+  todayFlowDragKind=null;
+  todayFlowDragId=null;
+  if(!kind||!id) return;
+  const chains=buildHabitChains();
+  const allItems=buildTodayFlow(chains);
+  const getKey=e2=>e2.kind==='habit-flow'?`habit-flow:${e2.chain?.id||e2.item?.id}`:`${e2.kind}:${e2.item?.id}`;
+  const dragKey=`${kind}:${id}`;
+  const fromIdx=allItems.findIndex(e2=>getKey(e2)===dragKey);
+  if(fromIdx<0) return;
+  const newItems=[...allItems];
+  const [removed]=newItems.splice(fromIdx,1);
+  const insertAt=fromIdx<dropPos?dropPos-1:dropPos;
+  newItems.splice(Math.max(0,Math.min(insertAt,newItems.length)),0,removed);
+  saveTodayFlowOrder(newItems);
+  renHabits();
+}
+function toggleTodayFlowReorderMode(){
+  todayFlowReorderMode=!todayFlowReorderMode;
+  renHabits();
+}
+function moveTodayFlowItem(kind,id,dir){
+  const chains=buildHabitChains();
+  const allItems=buildTodayFlow(chains);
+  const getKey=e=>e.kind==='habit-flow'?`habit-flow:${e.chain?.id||e.item?.id}`:`${e.kind}:${e.item?.id}`;
+  const key=`${kind}:${id}`;
+  const idx=allItems.findIndex(e=>getKey(e)===key);
+  if(idx<0) return;
+  const newIdx=idx+dir;
+  if(newIdx<0||newIdx>=allItems.length) return;
+  const newItems=[...allItems];
+  const [removed]=newItems.splice(idx,1);
+  newItems.splice(newIdx,0,removed);
+  saveTodayFlowOrder(newItems);
+  renHabits();
+}
+function uncompleteHabitInFlow(habitIndex,chainId,targetEl=null){
+  const k=tdk();
+  const h=D.habits[habitIndex];
+  if(!h||!h.log[k]) return;
+  const chains=buildHabitChains();
+  const chain=chains.find(c=>c.id===chainId);
+  if(chain){
+    const pos=chain.items.findIndex(x=>x.index===habitIndex);
+    if(pos>=0){
+      chain.items.slice(pos).forEach(ci=>{
+        if(habitIsDoneToday(ci.habit)){
+          D.habits[ci.index].log[k]=false;
+          removeXpEventByRewardKey(habitRewardKey(D.habits[ci.index],k),{save:false});
+        }
+      });
+      sv();renHabits();renCal();
+      return;
+    }
+  }
+  togH(habitIndex,targetEl);
+}
 function renderChainMoveOptions(currentGroupId){
   return buildHabitGroupsAll().map(g=>`<option value="${g.id}" ${g.id===currentGroupId?'selected':''}>${escapeHtml(g.title)}</option>`).join('');
 }
@@ -2299,15 +2427,28 @@ function renderFlowNodeRow(chain,activeIndex){
 function renderFlowEditPanel(chain){
   return`<div class="flow-edit-panel">
     <div class="flow-edit-head">
-      <strong>Flow editing</strong>
-      <button class="flow-edit-add" onclick="showAddHabit('${chain.id}')">+ Add habit</button>
+      <strong>Edit Flow Steps</strong>
+      <button class="flow-edit-add" onclick="showAddHabit('${chain.id}')">+ Add step</button>
     </div>
-    ${chain.items.map((item,pos)=>renderHabitDropZone(chain.id,pos)+renderHabitRow(item,chain,pos,false)).join('')}${renderHabitDropZone(chain.id,chain.items.length)}
+    ${chain.items.map((item,pos)=>{
+      const h=item.habit,i=item.index;
+      const name=escapeHtml(habitDisplayName(h)||h.name||'Step');
+      return`<div class="flow-edit-step">
+        <div class="flow-edit-step-info">
+          <span class="flow-edit-step-num">${pos+1}</span>
+          <span class="flow-edit-step-name">${name}</span>
+        </div>
+        <div class="flow-edit-step-actions">
+          <button class="flow-edit-move-btn" onclick="moveHabit(${i},-1)" ${pos===0?'disabled':''} title="Move up">▲</button>
+          <button class="flow-edit-move-btn" onclick="moveHabit(${i},1)" ${pos===chain.items.length-1?'disabled':''} title="Move down">▼</button>
+          <button class="flow-edit-move-btn del" onclick="deleteHabit(${i})" title="Remove step">✕</button>
+        </div>
+      </div>`;
+    }).join('')}
+    <p class="flow-edit-note">Changes save immediately. To reorder cards, use the Edit order button above Today Flow.</p>
   </div>`;
 }
-function editHabitFlow(chainId,event=null){
-  event?.preventDefault?.();
-  event?.stopPropagation?.();
+function editHabitFlow(chainId){
   editingFlowId=editingFlowId===chainId?null:chainId;
   todayDesignMode=!!editingFlowId;
   renHabits();
@@ -2339,7 +2480,7 @@ function renderHabitRow(item,chain,position,active=false,primary=false){
     ${todayDesignMode?`<div class="habit-design-note">Design mode is on for this routine.</div>`:''}
   </details>`;
 }
-function renderHabitChain(chain){
+function renderHabitChain(chain,flowIndex=0){
   const doneCount=chain.items.filter(x=>habitIsDoneToday(x.habit)).length;
   const activeIndex=chain.items.findIndex(x=>!habitIsDoneToday(x.habit));
   const identity=chain.items[activeIndex>=0?activeIndex:0]?.habit?.id2||'Every action is a vote for the person you wish to become.';
@@ -2349,13 +2490,18 @@ function renderHabitChain(chain){
   const startTime=fullChain?.items?.[0]?.habit?.startTime||chain.items[0]?.habit?.startTime||'';
   const theme=flowTheme(chain);
   const isEditing=editingFlowId===chain.id;
-  const editButton=`<button class="flow-edit-btn ${isEditing?'on':''}" onclick="editHabitFlow('${chain.id}',event)">Edit</button>`;
+  const editButton=`<button class="flow-edit-btn ${isEditing?'on':''}" onclick="event.stopPropagation();event.preventDefault();editHabitFlow('${chain.id}')">Edit</button>`;
+  const flowDragAttrs=`data-flow-kind="habit-flow" data-flow-id="${chain.id}" draggable="true" ondragstart="startTodayFlowDrag(event,'habit-flow','${chain.id}')" ondragend="endTodayFlowDrag(event)"`;
+  const flowMoveCtrl=todayFlowReorderMode
+    ?`<div class="tf-move-btns" onclick="event.stopPropagation()"><button class="tf-move-btn" onclick="moveTodayFlowItem('habit-flow','${chain.id}',-1)" title="Move up">↑</button><button class="tf-move-btn" onclick="moveTodayFlowItem('habit-flow','${chain.id}',1)" title="Move down">↓</button></div>`
+    :`<span class="tf-drag-handle" onclick="event.stopPropagation()" title="Drag to reorder (desktop)">&#8801;</span>`;
   if(doneCount===chain.items.length){
-    return`<details class="habit-flow-card completed-routine" style="--flow-accent:${theme.accent}" ondragover="allowHabitDrop(event)" ondrop="dropHabitOnGroup(event,'${chain.id}')">
+    return`<details class="habit-flow-card completed-routine ${todayFlowReorderMode?'reorder-active':''}" style="--flow-accent:${theme.accent}" ${isEditing?'open':''} ${flowDragAttrs} ondragover="allowHabitDrop(event)" ondrop="dropHabitOnGroup(event,'${chain.id}')">
       <summary class="habit-flow-summary">
         <span class="habit-flow-icon">${theme.icon}</span>
         <span class="habit-flow-title"><strong>${escapeHtml(chain.title)}</strong><small>${doneCount} / ${chain.items.length} completed</small></span>
         ${editButton}
+        ${flowMoveCtrl}
         <span class="habit-flow-chevron">&rsaquo;</span>
       </summary>
       ${startTime?`<div class="chain-time-badge">Starts ${escapeHtml(startTime)}</div>`:''}
@@ -2365,11 +2511,12 @@ function renderHabitChain(chain){
       ${isEditing?renderFlowEditPanel(chain):''}
     </details>`;
   }
-  return`<details class="habit-flow-card routine-detail" style="--flow-accent:${theme.accent}" ${primary?'open':''} ondragover="allowHabitDrop(event)" ondrop="dropHabitOnGroup(event,'${chain.id}')">
+  return`<details class="habit-flow-card routine-detail ${todayFlowReorderMode?'reorder-active':''}" style="--flow-accent:${theme.accent}" ${primary||isEditing?'open':''} ${flowDragAttrs} ondragover="allowHabitDrop(event)" ondrop="dropHabitOnGroup(event,'${chain.id}')">
     <summary class="habit-flow-summary">
       <span class="habit-flow-icon">${theme.icon}</span>
       <span class="habit-flow-title"><strong>${escapeHtml(chain.title)}</strong><small>${doneCount} / ${chain.items.length} completed</small></span>
       ${editButton}
+      ${flowMoveCtrl}
       <span class="habit-flow-chevron">&rsaquo;</span>
     </summary>
     ${startTime?`<div class="chain-time-badge">Starts ${escapeHtml(startTime)}</div>`:''}
@@ -2385,6 +2532,8 @@ function renHabits(){
   renderTodayProgress();
   const toggle=document.getElementById('today-design-toggle');
   if(toggle){toggle.textContent=todayDesignMode?'Done Designing':'Design Mode';toggle.classList.toggle('on',todayDesignMode);}
+  const reorderBtn=document.getElementById('today-flow-reorder-btn');
+  if(reorderBtn){reorderBtn.textContent=todayFlowReorderMode?'Done':'Edit order';reorderBtn.classList.toggle('active',todayFlowReorderMode);}
   const chains=buildHabitChains();
   renderCurrentFocus(chains);
   renderTodayFlow(chains);
@@ -2436,7 +2585,7 @@ function showEditHabit(i){
         <p class="habit-link-help">What existing action starts this habit?</p>
         <input type="text" id="edit-hsk" value="${escapeHtml(h.sk||'')}" placeholder="After I..." class="mb10">
       </div>
-      <div class="habit-link-connector"><span>⛓</span></div>
+      <div class="habit-node-connector"><div class="habit-conn-line"></div><span class="habit-conn-pill">then</span><div class="habit-conn-line"></div></div>
       <div class="habit-link-box action">
         <div class="habit-link-label">New habit</div>
         <p class="habit-link-help">What happens immediately afterward?</p>
@@ -2485,43 +2634,63 @@ function deleteHabit(i){
 function showAddHabit(chainId=''){
   window._editFreq['add']={type:'daily',days:[]};
   document.getElementById('mod').innerHTML=`
-    <h2 class="habit-builder-title">Build a Habit Link</h2>
-    <p class="habit-form-intro">Choose what already happens, then attach the next action.</p>
-    <div class="habit-builder-grid">
-      <div class="habit-link-box trigger">
-        <div class="habit-link-label">Trigger</div>
-        <p class="habit-link-help">What existing action will start this habit?</p>
-        <input type="text" id="ms" placeholder="After I..." class="mb10">
+    <h2 class="habit-builder-title">New Habit</h2>
+    <p class="habit-form-intro">Attach a new action to something that already happens.</p>
+    <div class="habit-ii-preview">After I <strong id="habit-ii-trig">&hellip;</strong>, I will <strong id="habit-ii-act">&hellip;</strong>.</div>
+    <div class="habit-nodes-wrap">
+      <div class="habit-node-card preceding">
+        <div class="habit-node-top">
+          <span class="habit-bullseye"></span>
+          <div>
+            <div class="habit-node-label">Preceding Event</div>
+            <p class="habit-node-hint">What already happens right before?</p>
+          </div>
+        </div>
+        <input type="text" id="ms" placeholder="After I finish breakfast&hellip;" oninput="var el=document.getElementById('habit-ii-trig');if(el)el.textContent=this.value||'…'">
       </div>
-      <div class="habit-link-connector"><span>⛓</span></div>
-      <div class="habit-link-box action">
-        <div class="habit-link-label">New habit</div>
-        <p class="habit-link-help">What will you do immediately afterward?</p>
-        <input type="text" id="mn" placeholder="I will..." class="mb10">
+      <div class="habit-node-connector">
+        <div class="habit-conn-line"></div>
+        <span class="habit-conn-pill">then</span>
+        <div class="habit-conn-line"></div>
+      </div>
+      <div class="habit-node-card new-habit">
+        <div class="habit-node-top">
+          <span class="habit-bullseye active"></span>
+          <div>
+            <div class="habit-node-label action">New Habit</div>
+            <p class="habit-node-hint">The action you want to build.</p>
+          </div>
+        </div>
+        <input type="text" id="mn" placeholder="I will do 5 push-ups&hellip;" oninput="var el=document.getElementById('habit-ii-act');if(el)el.textContent=this.value||'…'">
       </div>
     </div>
-    <div class="habit-form-section primary">
-      <div class="habit-form-label">Tiny version</div>
-      <p class="habit-form-hint">Make it so small you can do it on a bad day.</p>
-      <input type="text" id="mt" placeholder="Smallest possible start..." class="mb10">
-      <label>Start time <em>(optional)</em></label><input type="time" id="mst" class="mb10">
-      <label>Chain / flow placement</label>
-      <select id="mchain" class="mb10">${renderAddHabitChainOptions()}</select>
-      <p class="habit-form-hint">Add it to a flow, or keep it in Today as its own action.</p>
+    <div class="habit-placement-row">
+      <div>
+        <label>Start time <em>(optional)</em></label>
+        <input type="time" id="mst">
+      </div>
+      <div>
+        <label>Show in</label>
+        <select id="mchain">${renderAddHabitChainOptions()}</select>
+      </div>
     </div>
     <details class="habit-form-section secondary">
-      <summary>Secondary</summary>
-      <label>Identity statement <em>(I am...)</em></label><input type="text" id="mi" placeholder="I am someone who..." class="mb10">
+      <summary>More options</summary>
+      <label>Tiny version <em>(optional)</em></label><input type="text" id="mt" placeholder="Smallest possible version&hellip;" class="mb10">
+      <label>Identity statement <em>(optional)</em></label><input type="text" id="mi" placeholder="I am someone who&hellip;" class="mb10">
       <div id="add-freq-wrap">${renderFreqPicker(null,'add')}</div>
     </details>
-    <div class="brow"><button class="btn bp" onclick="saveHabit()">Add Habit</button><button class="btn bs" onclick="closeMod()">Cancel</button></div>`;
+    <div class="brow"><button class="btn bp" onclick="saveHabit()">Create Habit</button><button class="btn bs" onclick="closeMod()">Cancel</button></div>`;
   document.getElementById('mov').classList.remove('hid');
   if(chainId&&document.getElementById('mchain')) document.getElementById('mchain').value=chainId;
   setTimeout(()=>document.getElementById('ms').focus(),50);
 }
 function saveHabit(){
   const n=document.getElementById('mn').value.trim();
-  const i=document.getElementById('mi').value.trim()||habitActionIdentity(n),s=document.getElementById('ms').value.trim(),t=document.getElementById('mt').value.trim();
+  const s=document.getElementById('ms').value.trim();
+  if(!n||!s){toast('Please fill in the Preceding Event and New Habit fields.');return;}
+  const i=document.getElementById('mi')?.value.trim()||habitActionIdentity(n);
+  const t=document.getElementById('mt')?.value.trim()||'';
   const startTime=document.getElementById('mst')?.value||'';
   const chainId=document.getElementById('mchain')?.value||'loose';
   if(!n||!s||!t){toast('Please fill trigger, habit, and tiny version.');return;}

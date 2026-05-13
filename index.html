@@ -317,10 +317,9 @@
   </section>
   <section class="today-current-focus" id="today-current-focus"></section>
   <section class="today-flow-head">
-    <div>
-      <h2><span class="section-mini-icon">⇣</span>Today Flow</h2>
-    </div>
-    <div class="today-habit-actions today-flow-actions">
+    <h2 class="today-flow-head-title"><span class="section-mini-icon">⇣</span>Today Flow</h2>
+    <div class="today-flow-head-actions">
+      <button id="today-flow-reorder-btn" class="flow-edit-order-btn" onclick="toggleTodayFlowReorderMode()">Edit order</button>
       <button class="flow-add-pill habit" onclick="showAddHabit()">+ Habit</button>
       <button class="flow-add-pill task" onclick="showAddTodayTask()">+ Task</button>
       <button class="flow-add-pill focus" onclick="showAddFocusBlock()">+ Focus</button>
