@@ -82,6 +82,12 @@ const STAT_UI = {
   resolve:{label:'Resolve',icon:'🛡️',color:'#092036'}
 };
 
+function createId(prefix='id'){
+  const safePrefix=String(prefix||'id').replace(/[^a-z0-9_-]/gi,'_').toLowerCase();
+  if(window.crypto?.randomUUID) return `${safePrefix}_${window.crypto.randomUUID()}`;
+  return `${safePrefix}_${Date.now()}_${Math.random().toString(36).slice(2,8)}`;
+}
+
 const RANKS = [
   {range:'1-5',minLevel:1,maxLevel:5,title:'Awakening',description:'You have noticed that life can be shaped instead of merely endured. This is the first spark of intentional change.'},
   {range:'6-10',minLevel:6,maxLevel:10,title:'First Steps',description:'You are beginning to act, even if the steps are small. The important thing is that movement has started.'},
@@ -237,6 +243,7 @@ function ensureTodayFlow(){
   Object.keys(D.todayFlowOrder).forEach(k=>{if(k<cutoffStr)delete D.todayFlowOrder[k];});
   if(!Array.isArray(D.todayTasks)) D.todayTasks=[];
   if(!Array.isArray(D.focusBlocks)) D.focusBlocks=[];
+  if(!D.todayFlowOrder||typeof D.todayFlowOrder!=='object'||Array.isArray(D.todayFlowOrder)) D.todayFlowOrder={};
   D.todayTasks.forEach((t,i)=>{
     if(!t.id) t.id=`task_${t.createdAt||Date.now()}_${i}`;
     if(!t.date) t.date=t.createdAt?dateStamp(t.createdAt):today;
@@ -263,7 +270,20 @@ function ensureTodayFlow(){
   });
 }
 
+function migrateData(raw){
+  const data=(raw&&typeof raw==='object'&&!Array.isArray(raw))?{...raw}:{};
+  data.schemaVersion=Number(data.schemaVersion)||APP_SCHEMA_VERSION;
+  if(!data.todayFlowOrder||typeof data.todayFlowOrder!=='object'||Array.isArray(data.todayFlowOrder)) data.todayFlowOrder={};
+
+  // Future migrations should be additive and guarded by schemaVersion checks.
+  // Example:
+  // if(data.schemaVersion < 2) { ...non-destructive normalization... }
+
+  return data;
+}
+
 function applyCoreData(data){
+  data=migrateData(data);
   D.schemaVersion = data.schemaVersion || D.schemaVersion || APP_SCHEMA_VERSION;
   D.character   = data.character   || D.character;
   D.tags        = data.tags        || D.tags;
@@ -304,7 +324,7 @@ function coreSaveData(){
     goals:D.goals,
     todayTasks:D.todayTasks,
     focusBlocks:D.focusBlocks,
-    todayFlowOrder:D.todayFlowOrder||{},
+    todayFlowOrder:D.todayFlowOrder,
     mealLockedTimes:D.mealLockedTimes,
     body:D.body,
     finance:D.finance
@@ -407,7 +427,7 @@ function startFirestoreSync(uid) {
     snapshotCount++;
     lastSnapshotTime = new Date().toLocaleTimeString();
     if (doc.exists) {
-      const data = doc.data();
+      const data = migrateData(doc.data());
       applyCoreData(data);
       ldLocal(); // merge with localStorage for any unsaved offline changes
       refreshCurrentTab();
@@ -452,7 +472,7 @@ function ldLocal() {
       const p = JSON.parse(r);
       // Only use local data for fields that Firestore didn't provide
       if (!currentUser) {
-        applyCoreData(p);
+        applyCoreData(migrateData(p));
       }
     } catch(e){}
   }
@@ -522,6 +542,22 @@ function refreshCurrentTab() {
   refreshTab(on.id.replace('tab-',''));
 }
 
+function requestAppRender(reason='current'){
+  if(reason==='today'||reason==='habits'){
+    renHabits();
+    renCal();
+    return;
+  }
+  if(reason==='character'){
+    renCharacter();
+    return;
+  }
+  refreshCurrentTab();
+}
+function saveAndRender(reason='current'){
+  sv();
+  requestAppRender(reason);
+}
 // ══════════════════════════════════════════
 // TABS
 // ══════════════════════════════════════════
@@ -2589,9 +2625,11 @@ function saveEditHabit(i){
 }
 function deleteHabit(i){
   if(!confirm('Delete this habit and all its data?'))return;
+  const deleted=D.habits[i];
+  if(deleted?.id) removeFromTodayFlowOrder('flow',deleted.id);
   removeXpEventsByRewardPrefix(habitRewardPrefix(D.habits[i]),{save:false});
   D.habits.splice(i,1);if(D.ahi>=D.habits.length)D.ahi=Math.max(0,D.habits.length-1);
-  sv();closeMod();renHabits();renCal();
+  closeMod();saveAndRender('today');
 }
 function showAddHabit(chainId=''){
   window._editFreq['add']={type:'daily',days:[]};
@@ -2655,9 +2693,10 @@ function saveHabit(){
   const t=document.getElementById('mt')?.value.trim()||'';
   const startTime=document.getElementById('mst')?.value||'';
   const chainId=document.getElementById('mchain')?.value||'loose';
-  const habit={id:'h'+Date.now(),name:n,id2:i,sk:s,tm:t,startTime,added:Date.now(),log:{},freq:window._editFreq['add']||{type:'daily',days:[]}};
+  if(!n||!s||!t){toast('Please fill trigger, habit, and tiny version.');return;}
+  const habit={id:createId('h'),name:n,id2:i,sk:s,tm:t,startTime,added:Date.now(),log:{},freq:window._editFreq['add']||{type:'daily',days:[]}};
   addHabitToSelectedFlow(habit,chainId);
-  sv();closeMod();renHabits();renCal();
+  closeMod();saveAndRender('today');
   showHabitCreatedConfirmation(s,n);
 }
 function renderTodayPlacementOptions(selected='later'){
@@ -2679,6 +2718,32 @@ function parseTodayPlacement(value){
   if(raw.startsWith('afterFlow:')) return {placementType:'afterFlow',placementId:raw.slice(10)};
   if(['start','midday','evening','later'].includes(raw)) return {placementType:raw,placementId:''};
   return {placementType:'later',placementId:''};
+}
+function makeTodayFlowOrderKey(entry){
+  if(!entry) return '';
+  if(entry.kind&&entry.item?.id) return `${entry.kind}:${entry.item.id}`;
+  if(entry.kind==='habit-flow'&&entry.chain?.id) return `flow:${entry.chain.id}`;
+  const kind=entry.kind||entry.type||'item';
+  const id=entry.id||entry.placementId||entry.chain?.id||'';
+  return id?`${kind}:${id}`:'';
+}
+function removeFromTodayFlowOrder(kind,id,dateKey=todayDateKey()){
+  if(!D.todayFlowOrder||typeof D.todayFlowOrder!=='object') return;
+  const order=D.todayFlowOrder[dateKey];
+  if(!Array.isArray(order)) return;
+  const aliases=new Set([`${kind}:${id}`]);
+  if(kind==='task') aliases.add(`today-task:${id}`);
+  if(kind==='focus') aliases.add(`focus-block:${id}`);
+  if(kind==='flow'||kind==='habit-flow'){
+    aliases.add(`flow:${id}`);
+    aliases.add(`habit-flow:${id}`);
+    aliases.add(`chain:${id}`);
+  }
+  D.todayFlowOrder[dateKey]=order.filter(item=>{
+    if(typeof item==='string') return !aliases.has(item);
+    const key=makeTodayFlowOrderKey(item);
+    return !aliases.has(key)&&item?.id!==id;
+  });
 }
 function updateTodayEntryPlacement(kind,id,value){
   const arr=kind==='task'?D.todayTasks:D.focusBlocks;
@@ -2711,8 +2776,8 @@ function saveTodayTask(){
   if(!title){toast('Task needs a name.');return;}
   const notes=document.getElementById('today-task-notes').value.trim();
   const placement=parseTodayPlacement(document.getElementById('today-task-placement').value);
-  D.todayTasks.push({id:`task_${Date.now()}`,title,notes,date:todayDateKey(),completed:false,...placement,order:nextTodayOrder(),createdAt:Date.now(),completedAt:null});
-  sv();closeMod();renHabits();
+  D.todayTasks.push({id:createId('task'),title,notes,date:todayDateKey(),completed:false,...placement,order:nextTodayOrder(),createdAt:Date.now(),completedAt:null});
+  closeMod();saveAndRender('today');
 }
 function toggleTodayTask(id){
   ensureTodayFlow();
@@ -2720,14 +2785,13 @@ function toggleTodayTask(id){
   if(!t) return;
   t.completed=!t.completed;
   t.completedAt=t.completed?Date.now():null;
-  sv();renHabits();
+  saveAndRender('today');
 }
 function deleteTodayTask(id){
   if(!confirm('Delete this task?')) return;
+  removeFromTodayFlowOrder('task',id);
   D.todayTasks=D.todayTasks.filter(t=>t.id!==id);
-  const today=todayDateKey();
-  if(D.todayFlowOrder?.[today]) D.todayFlowOrder[today]=D.todayFlowOrder[today].filter(e=>!(e.kind==='task'&&e.id===id));
-  sv();renHabits();
+  saveAndRender('today');
 }
 function showAddFocusBlock(){
   document.getElementById('mod').innerHTML=`
@@ -2752,8 +2816,8 @@ function saveFocusBlock(){
   const duration=Math.max(5,Math.min(240,parseInt(document.getElementById('focus-block-duration').value)||selectedFocusMinutes()));
   const notes=document.getElementById('focus-block-notes').value.trim();
   const placement=parseTodayPlacement(document.getElementById('focus-block-placement').value);
-  D.focusBlocks.push({id:`focus_${Date.now()}`,title,type,duration,notes,date:todayDateKey(),completed:false,...placement,order:nextTodayOrder(),createdAt:Date.now(),completedAt:null});
-  sv();closeMod();renHabits();
+  D.focusBlocks.push({id:createId('focus'),title,type,duration,notes,date:todayDateKey(),completed:false,...placement,order:nextTodayOrder(),createdAt:Date.now(),completedAt:null});
+  closeMod();saveAndRender('today');
 }
 function toggleFocusBlock(id){
   ensureTodayFlow();
@@ -2761,14 +2825,13 @@ function toggleFocusBlock(id){
   if(!b) return;
   b.completed=!b.completed;
   b.completedAt=b.completed?Date.now():null;
-  sv();renHabits();
+  saveAndRender('today');
 }
 function deleteFocusBlock(id){
   if(!confirm('Delete this focus block?')) return;
+  removeFromTodayFlowOrder('focus',id);
   D.focusBlocks=D.focusBlocks.filter(b=>b.id!==id);
-  const today=todayDateKey();
-  if(D.todayFlowOrder?.[today]) D.todayFlowOrder[today]=D.todayFlowOrder[today].filter(e=>!(e.kind==='focus'&&e.id===id));
-  sv();renHabits();
+  saveAndRender('today');
 }
 function moveTodayEntry(kind,id,dir){
   const arr=kind==='task'?D.todayTasks:D.focusBlocks;
