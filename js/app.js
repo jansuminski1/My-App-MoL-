@@ -2042,19 +2042,7 @@ function renderTodayFlow(chains=buildHabitChains()){
 function renderTodayFlowItem(entry){
   if(entry.kind==='habit-flow'){
     const chain=entry.chain;
-    const done=chain.items.filter(x=>habitIsDoneToday(x.habit)).length;
-    const active=chain.items.findIndex(x=>!habitIsDoneToday(x.habit));
-    const theme=flowTheme(chain);
-    const activeItem=active>=0?chain.items[active]:chain.items[chain.items.length-1];
-    const currentText=active>=0?`Current step: ${activeStepTitle(activeItem.habit)}`:'Flow complete';
-    return`<div class="today-flow-item habit unified-flow-habit" style="--flow-accent:${theme.accent}">
-      <div class="flow-mini-icon">${theme.icon}</div>
-      <div class="flow-mini-text">
-        <strong>${escapeHtml(chain.title)}</strong>
-        <span>${done} / ${chain.items.length} completed &middot; ${escapeHtml(currentText)}</span>
-        ${renderNodeProgress(chain,active)}
-      </div>
-    </div>`;
+    return renderHabitChain(chain);
   }
   if(entry.kind==='task'){
     const t=entry.item;
