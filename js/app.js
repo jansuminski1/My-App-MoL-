@@ -1683,6 +1683,7 @@ function toggleFreqDay(prefix,d){
 }
 
 let todayDesignMode=false;
+let editingFlowId=null;
 
 function habitDisplayName(h){
   return h?.name||String(h?.id2||'Habit').replace(/^I am (someone who )?/i,'');
@@ -1871,12 +1872,17 @@ function runningFocusSnapshot(){
 function getCurrentFocus(chains=buildHabitChains()){
   const running=runningFocusSnapshot();
   if(running) return running;
-  const habit=firstActiveHabit(chains);
-  if(habit) return {type:'habit',chain:habit.chain,item:habit.item};
-  const task=todayTasks().find(t=>!t.completed);
-  if(task) return {type:'task',item:task};
-  const block=todayFocusBlocks().find(b=>!b.completed);
-  if(block) return {type:'focus-block',item:block};
+  const ordered=buildTodayFlow(chains);
+  for(const entry of ordered){
+    if(entry.kind==='habit-flow'){
+      const item=entry.chain.items.find(x=>!habitIsDoneToday(x.habit));
+      if(item) return {type:'habit',chain:entry.chain,item};
+    }else if(entry.kind==='task'&&!entry.item.completed){
+      return {type:'task',item:entry.item};
+    }else if(entry.kind==='focus'&&!entry.item.completed){
+      return {type:'focus-block',item:entry.item};
+    }
+  }
   return {type:'empty'};
 }
 function flowTheme(chain,index=0){
@@ -2048,7 +2054,8 @@ function renderTodayFlowItem(entry){
     const t=entry.item;
     return`<div class="today-flow-item task quick-task-row ${t.completed?'done':''}">
       <button class="mini-check ${t.completed?'on':''}" onclick="toggleTodayTask('${t.id}')">${t.completed?'&#10003;':''}</button>
-      <div class="quick-task-text"><strong>${escapeHtml(t.title)}</strong><small>Quick task</small></div>
+      <strong class="flow-row-title">${escapeHtml(t.title)}</strong>
+      <span class="flow-row-type">Quick task</span>
     </div>`;
   }
   const b=entry.item;
@@ -2247,6 +2254,25 @@ function renderCurrentStepSubCard(chain,activeIndex,theme){
     <span class="flow-step-pill">🔗 ${escapeHtml(compactHabitSubline(h)||'Current link')}</span>
   </div>`;
 }
+function renderFlowNodeRow(chain,activeIndex){
+  return `<div class="flow-card-node-row">${renderNodeProgress(chain,activeIndex,{compact:false})}</div>`;
+}
+function renderFlowEditPanel(chain){
+  return`<div class="flow-edit-panel">
+    <div class="flow-edit-head">
+      <strong>Flow editing</strong>
+      <button class="flow-edit-add" onclick="showAddHabit('${chain.id}')">+ Add habit</button>
+    </div>
+    ${chain.items.map((item,pos)=>renderHabitDropZone(chain.id,pos)+renderHabitRow(item,chain,pos,false)).join('')}${renderHabitDropZone(chain.id,chain.items.length)}
+  </div>`;
+}
+function editHabitFlow(chainId,event=null){
+  event?.preventDefault?.();
+  event?.stopPropagation?.();
+  editingFlowId=editingFlowId===chainId?null:chainId;
+  todayDesignMode=!!editingFlowId;
+  renHabits();
+}
 function renderHabitRow(item,chain,position,active=false,primary=false){
   const h=item.habit,i=item.index,done=habitIsDoneToday(h);
   const name=escapeHtml(habitDisplayName(h));
@@ -2278,63 +2304,42 @@ function renderHabitChain(chain){
   const doneCount=chain.items.filter(x=>habitIsDoneToday(x.habit)).length;
   const activeIndex=chain.items.findIndex(x=>!habitIsDoneToday(x.habit));
   const identity=chain.items[activeIndex>=0?activeIndex:0]?.habit?.id2||'Every action is a vote for the person you wish to become.';
-  const primary=firstActiveHabit()?.chain?.id===chain.id;
+  const currentFocus=getCurrentFocus();
+  const primary=currentFocus.type==='habit'&&currentFocus.chain?.id===chain.id;
   const fullChain=buildHabitGroupsAll().find(g=>g.id===chain.id);
   const startTime=fullChain?.items?.[0]?.habit?.startTime||chain.items[0]?.habit?.startTime||'';
   const theme=flowTheme(chain);
+  const isEditing=editingFlowId===chain.id;
+  const editButton=`<button class="flow-edit-btn ${isEditing?'on':''}" onclick="editHabitFlow('${chain.id}',event)">Edit</button>`;
   if(doneCount===chain.items.length){
     return`<details class="habit-flow-card completed-routine" style="--flow-accent:${theme.accent}" ondragover="allowHabitDrop(event)" ondrop="dropHabitOnGroup(event,'${chain.id}')">
-      ${startTime?`<div class="chain-time-badge">Starts ${escapeHtml(startTime)}</div>`:''}
       <summary class="habit-flow-summary">
         <span class="habit-flow-icon">${theme.icon}</span>
         <span class="habit-flow-title"><strong>${escapeHtml(chain.title)}</strong><small>${doneCount} / ${chain.items.length} completed</small></span>
-        ${renderNodeProgress(chain,-1)}
-        <span class="habit-flow-chevron">⌄</span>
+        ${editButton}
+        <span class="habit-flow-chevron">&rsaquo;</span>
       </summary>
-      <div class="completed-routine-details">
-        ${chain.items.map((item,pos)=>renderHabitDropZone(chain.id,pos)+renderHabitRow(item,chain,pos,false)).join('')}${renderHabitDropZone(chain.id,chain.items.length)}
-      </div>
+      ${startTime?`<div class="chain-time-badge">Starts ${escapeHtml(startTime)}</div>`:''}
+      <p class="habit-flow-identity">${escapeHtml(identity)}</p>
+      ${renderCurrentStepSubCard(chain,activeIndex,theme)}
+      ${renderFlowNodeRow(chain,-1)}
+      ${isEditing?renderFlowEditPanel(chain):''}
     </details>`;
   }
   return`<details class="habit-flow-card routine-detail" style="--flow-accent:${theme.accent}" ${primary?'open':''} ondragover="allowHabitDrop(event)" ondrop="dropHabitOnGroup(event,'${chain.id}')">
-    ${startTime?`<div class="chain-time-badge">Starts ${escapeHtml(startTime)}</div>`:''}
     <summary class="habit-flow-summary">
       <span class="habit-flow-icon">${theme.icon}</span>
       <span class="habit-flow-title"><strong>${escapeHtml(chain.title)}</strong><small>${doneCount} / ${chain.items.length} completed</small></span>
-      ${renderNodeProgress(chain,activeIndex)}
-      <span class="habit-flow-chevron">⌄</span>
+      ${editButton}
+      <span class="habit-flow-chevron">&rsaquo;</span>
     </summary>
+    ${startTime?`<div class="chain-time-badge">Starts ${escapeHtml(startTime)}</div>`:''}
     <p class="habit-flow-identity">${escapeHtml(identity)}</p>
     ${renderCurrentStepSubCard(chain,activeIndex,theme)}
-    ${chain.items.map((item,pos)=>pos===activeIndex?'':renderHabitDropZone(chain.id,pos)+renderHabitRow(item,chain,pos,false)).join('')}${renderHabitDropZone(chain.id,chain.items.length)}
-  </details>`;
-  if(doneCount===chain.items.length){
-    return`<details class="routine-card routine-complete completed-routine" ondragover="allowHabitDrop(event)" ondrop="dropHabitOnGroup(event,'${chain.id}')">
-      ${startTime?`<div class="chain-time-badge">Starts ${escapeHtml(startTime)}</div>`:''}
-      <summary>
-        <span>${escapeHtml(chain.title)} ✓ ${doneCount}/${chain.items.length}</span>
-        <small>Complete</small>
-      </summary>
-      ${renderFlowSegments(chain,-1)}
-      <div class="completed-routine-details">
-        ${chain.items.map((item,pos)=>renderHabitDropZone(chain.id,pos)+renderHabitRow(item,chain,pos,false)).join('')}${renderHabitDropZone(chain.id,chain.items.length)}
-      </div>
-    </details>`;
-  }
-  return`<details class="card routine-card routine-detail ${doneCount===chain.items.length?'routine-complete':''}" ${primary?'open':''} ondragover="allowHabitDrop(event)" ondrop="dropHabitOnGroup(event,'${chain.id}')">
-    ${startTime?`<div class="chain-time-badge">Starts ${escapeHtml(startTime)}</div>`:''}
-    <summary class="routine-head">
-      <div>
-        <h2>${escapeHtml(chain.title)}</h2>
-        <p>${escapeHtml(identity)}</p>
-      </div>
-      <span>${doneCount}/${chain.items.length}</span>
-    </summary>
-    ${renderFlowSegments(chain,activeIndex)}
-    ${chain.items.map((item,pos)=>renderHabitDropZone(chain.id,pos)+renderHabitRow(item,chain,pos,pos===activeIndex,primary&&pos===activeIndex)).join('')}${renderHabitDropZone(chain.id,chain.items.length)}
+    ${renderFlowNodeRow(chain,activeIndex)}
+    ${isEditing?renderFlowEditPanel(chain):''}
   </details>`;
 }
-
 function renHabits(){
   ensureHabitData();
   ensureTodayFlow();
@@ -2436,7 +2441,7 @@ function deleteHabit(i){
   D.habits.splice(i,1);if(D.ahi>=D.habits.length)D.ahi=Math.max(0,D.habits.length-1);
   sv();closeMod();renHabits();renCal();
 }
-function showAddHabit(){
+function showAddHabit(chainId=''){
   window._editFreq['add']={type:'daily',days:[]};
   document.getElementById('mod').innerHTML=`
     <h2 class="habit-builder-title">Build a Habit Link</h2>
@@ -2470,6 +2475,7 @@ function showAddHabit(){
     </details>
     <div class="brow"><button class="btn bp" onclick="saveHabit()">Add Habit</button><button class="btn bs" onclick="closeMod()">Cancel</button></div>`;
   document.getElementById('mov').classList.remove('hid');
+  if(chainId&&document.getElementById('mchain')) document.getElementById('mchain').value=chainId;
   setTimeout(()=>document.getElementById('ms').focus(),50);
 }
 function saveHabit(){
