@@ -2088,6 +2088,7 @@ function renderTodayFlowItem(entry,flowIndex=0){
       <button class="mini-check ${t.completed?'on':''}" onclick="toggleTodayTask('${t.id}')">${t.completed?'&#10003;':''}</button>
       <div class="quick-task-text"><strong>${escapeHtml(t.title)}</strong><small>Quick task</small></div>
       <span class="flow-row-type">Task</span>
+      <span class="tf-drag-handle" title="Hold to reorder">&#8801;</span>
     </div>`;
   }
   const b=entry.item;
@@ -2095,6 +2096,7 @@ function renderTodayFlowItem(entry,flowIndex=0){
     <span class="flow-type-icon focus">&#9687;</span>
     <div class="quick-task-text"><strong>${escapeHtml(b.title)}</strong><small>${escapeHtml(b.type)} &middot; ${Number(b.duration)||60} min</small></div>
     <button class="btn bs" onclick="startTodayFocusBlock('${b.id}')">Start Focus</button>
+    <span class="tf-drag-handle" title="Hold to reorder">&#8801;</span>
   </div>`;
 }
 function toggleTodayDesignMode(){
@@ -2270,9 +2272,10 @@ function dropTodayFlowItem(e,dropPos){
 }
 function startTodayFlowPointer(e,kind,id){
   if(e.pointerType==='mouse') return;
-  if(isTodayFlowPointerIgnored(e.target)) return;
+  const isHandle=!!e.target.closest('.tf-drag-handle');
+  if(!isHandle&&isTodayFlowPointerIgnored(e.target)) return;
   const target=e.currentTarget;
-  todayFlowPointerState={kind,id,target,active:false,zone:null,timer:null};
+  todayFlowPointerState={kind,id,target,active:false,zone:null,timer:null,startX:e.clientX,startY:e.clientY};
   todayFlowPointerState.timer=setTimeout(()=>{
     if(!todayFlowPointerState) return;
     todayFlowPointerState.active=true;
@@ -2280,18 +2283,25 @@ function startTodayFlowPointer(e,kind,id){
     todayFlowDragId=id;
     target.classList.add('today-flow-dragging');
     try{navigator.vibrate?.(35);}catch(_){}
-  },850);
+  },isHandle?300:850);
   window.addEventListener('pointermove',moveTodayFlowPointer,{passive:false});
   window.addEventListener('pointerup',endTodayFlowPointer,{once:true});
   window.addEventListener('pointercancel',cancelTodayFlowPointer,{once:true});
 }
 function moveTodayFlowPointer(e){
-  if(!todayFlowPointerState||!todayFlowPointerState.active) return;
+  if(!todayFlowPointerState) return;
+  const state=todayFlowPointerState;
+  if(!state.active){
+    const dx=Math.abs(e.clientX-state.startX);
+    const dy=Math.abs(e.clientY-state.startY);
+    if(dx>10||dy>10) cancelTodayFlowPointer();
+    return;
+  }
   e.preventDefault();
   const zone=document.elementFromPoint(e.clientX,e.clientY)?.closest?.('.today-flow-drop-zone');
-  if(zone!==todayFlowPointerState.zone){
-    todayFlowPointerState.zone?.classList.remove('on');
-    todayFlowPointerState.zone=zone;
+  if(zone!==state.zone){
+    state.zone?.classList.remove('on');
+    state.zone=zone;
     zone?.classList.add('on');
   }
 }
@@ -2327,6 +2337,8 @@ function cancelTodayFlowPointer(){
   if(!todayFlowPointerState) return;
   clearTimeout(todayFlowPointerState.timer);
   window.removeEventListener('pointermove',moveTodayFlowPointer);
+  window.removeEventListener('pointerup',endTodayFlowPointer);
+  window.removeEventListener('pointercancel',cancelTodayFlowPointer);
   todayFlowPointerState.target?.classList.remove('today-flow-dragging');
   todayFlowPointerState.zone?.classList.remove('on');
   todayFlowPointerState=null;
@@ -2501,6 +2513,7 @@ function renderHabitChain(chain,flowIndex=0){
         <span class="habit-flow-icon">${theme.icon}</span>
         <span class="habit-flow-title"><strong>${escapeHtml(chain.title)}</strong><small>${doneCount} / ${chain.items.length} completed</small></span>
         ${editButton}
+        <span class="tf-drag-handle" onclick="event.stopPropagation()" title="Hold to reorder">&#8801;</span>
         <span class="habit-flow-chevron">&rsaquo;</span>
       </summary>
       ${startTime?`<div class="chain-time-badge">Starts ${escapeHtml(startTime)}</div>`:''}
@@ -2515,6 +2528,7 @@ function renderHabitChain(chain,flowIndex=0){
       <span class="habit-flow-icon">${theme.icon}</span>
       <span class="habit-flow-title"><strong>${escapeHtml(chain.title)}</strong><small>${doneCount} / ${chain.items.length} completed</small></span>
       ${editButton}
+      <span class="tf-drag-handle" onclick="event.stopPropagation()" title="Hold to reorder">&#8801;</span>
       <span class="habit-flow-chevron">&rsaquo;</span>
     </summary>
     ${startTime?`<div class="chain-time-badge">Starts ${escapeHtml(startTime)}</div>`:''}
