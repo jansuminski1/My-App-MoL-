@@ -1917,153 +1917,88 @@ function renderCurrentFocus(chains=buildHabitChains()){
   if(focus.type==='running-focus'){
     const total=(_profileSteps[_profileIdx]?.mins||selectedFocusMinutes())*60;
     const remaining=Math.max(0,total-(Number(_wElapsed)||0));
-    el.innerHTML=`<div class="current-focus-card focus premium-focus">
+    el.innerHTML=`<div class="current-focus-card focus premium-focus simple-focus">
       ${renderFocusMenu()}
       <div class="current-focus-copy">
         ${renderFocusBadge()}
-        <div class="current-focus-type">Deep Work Block</div>
+        <div class="current-focus-type">Deep Work</div>
         <h2>${escapeHtml(focus.title)}</h2>
-        <p>📖 ${escapeHtml(focus.subtitle)}</p>
-        <p>🕐 ${Math.round(total/60)} min focus session</p>
+        <p class="current-identity">${escapeHtml(focus.subtitle)} &middot; ${escapeHtml(fmt(remaining))} remaining</p>
         <div class="current-focus-actions">
-          <button class="btn bp current-focus-btn focus-primary" onclick="navigateToTab('mind')">▶ Open Timer</button>
+          <button class="btn bp current-focus-btn focus-primary" onclick="navigateToTab('mind')">&#9654; Open Timer</button>
           <button class="btn bs current-focus-pomodoro" onclick="navigateToTab('mind')"><span>🍅</span>Pomodoro</button>
         </div>
-        ${focusInfoStrip(['XP reward','🧠 Deep Work','🎯 High Impact'])}
       </div>
-      <div class="current-focus-visual">${renderFocusRing(remaining,total)}</div>
     </div>`;
     return;
   }
   if(focus.type==='habit'){
     const h=focus.item.habit;
     const theme=flowTheme(focus.chain,chains.findIndex(c=>c.id===focus.chain.id));
-    const stepNumber=focus.chain.items.findIndex(x=>x.index===focus.item.index)+1;
-    el.innerHTML=`<div class="current-focus-card habit premium-focus" style="--flow-accent:${theme.accent}">
+    const activeIndex=focus.chain.items.findIndex(x=>x.index===focus.item.index);
+    el.innerHTML=`<div class="current-focus-card habit premium-focus simple-focus" style="--flow-accent:${theme.accent}">
       ${renderFocusMenu()}
       <div class="current-focus-copy">
         ${renderFocusBadge()}
         <div class="current-focus-type">${escapeHtml(focus.chain.title)}</div>
-        <h2>${escapeHtml(focus.chain.title)}</h2>
-        <p class="current-next-line">Next step: <strong>${escapeHtml(activeStepTitle(h))}</strong></p>
-        <p>${escapeHtml(h.sk||'Follow the next small step in this routine.')}</p>
-        <div class="current-focus-action">${escapeHtml(h.tm||'Do the smallest honest version now.')}</div>
+        <h2>${escapeHtml(activeStepTitle(h))}</h2>
+        <p class="current-identity">${escapeHtml(h.id2||'I am a person who shows up for the life I am building.')}</p>
+        ${renderNodeProgress(focus.chain,activeIndex,{compact:false})}
         <div class="current-focus-actions">
-          <button class="btn bp current-focus-btn habit-primary" onclick="togH(${focus.item.index},event.currentTarget)">✓ Complete Step</button>
+          <button class="btn bp current-focus-btn habit-primary" onclick="togH(${focus.item.index},event.currentTarget)">&#10003; Complete Step</button>
           <button class="btn bs current-focus-ghost" onclick="toast('Skip keeps this step open for later.')">Skip</button>
         </div>
-        ${focusInfoStrip(['XP reward','Habit Flow',`Step ${stepNumber}/${focus.chain.items.length}`])}
       </div>
-      <div class="current-focus-visual">${renderCurrentFlowVisual(focus.chain,focus.item)}</div>
     </div>`;
     return;
   }
   if(focus.type==='task'){
     const t=focus.item;
-    el.innerHTML=`<div class="current-focus-card task premium-focus">
+    el.innerHTML=`<div class="current-focus-card task premium-focus simple-focus">
       ${renderFocusMenu()}
       <div class="current-focus-copy">
         ${renderFocusBadge()}
         <div class="current-focus-type">Quick Task</div>
         <h2>${escapeHtml(t.title)}</h2>
-        ${t.notes?`<p>${escapeHtml(t.notes)}</p>`:'<p>One temporary action for today.</p>'}
+        <p class="current-identity">${escapeHtml(t.notes||'A small practical action that clears today’s path.')}</p>
         <div class="current-focus-actions">
-          <button class="btn bp current-focus-btn task-primary" onclick="toggleTodayTask('${t.id}')">✓ Complete Task</button>
+          <button class="btn bp current-focus-btn task-primary" onclick="toggleTodayTask('${t.id}')">&#10003; Complete Task</button>
           <button class="btn bs current-focus-ghost" onclick="updateTodayEntryPlacement('task','${t.id}','later')">Move Later</button>
         </div>
-        ${focusInfoStrip(['Quick Task',todayPlacementLabel(t),'XP reward'])}
       </div>
-      <div class="current-focus-visual"><div class="task-visual-mark">✓</div></div>
     </div>`;
     return;
   }
   if(focus.type==='focus-block'){
     const b=focus.item;
     const mins=Number(b.duration)||60;
-    el.innerHTML=`<div class="current-focus-card focus premium-focus">
+    el.innerHTML=`<div class="current-focus-card focus premium-focus simple-focus">
       ${renderFocusMenu()}
       <div class="current-focus-copy">
         ${renderFocusBadge()}
-        <div class="current-focus-type">Focus Block</div>
-        <h2>Deep Work Block</h2>
-        <p>📖 ${escapeHtml(b.title)}</p>
-        <p>🕐 ${mins} min focus session</p>
+        <div class="current-focus-type">Deep Work</div>
+        <h2>${escapeHtml(b.title||'Deep Work Block')}</h2>
+        <p class="current-identity">${escapeHtml(b.notes||`${mins} min focus session`)}</p>
         <div class="current-focus-actions">
-          <button class="btn bp current-focus-btn focus-primary" onclick="startTodayFocusBlock('${b.id}')">▶ Start Focus</button>
+          <button class="btn bp current-focus-btn focus-primary" onclick="startTodayFocusBlock('${b.id}')">&#9654; Start Focus</button>
           <button class="btn bs current-focus-pomodoro" onclick="navigateToTab('mind')"><span>🍅</span>Pomodoro</button>
         </div>
-        ${focusInfoStrip(['XP reward',`🧠 ${b.type||'Deep Work'}`,'🎯 High Impact'])}
       </div>
-      <div class="current-focus-visual">${renderFocusRing(mins*60,mins*60)}</div>
     </div>`;
     return;
   }
-  el.innerHTML=`<div class="current-focus-card empty premium-focus">
+  el.innerHTML=`<div class="current-focus-card empty premium-focus simple-focus">
     ${renderFocusMenu()}
     <div class="current-focus-copy">
       ${renderFocusBadge()}
       <div class="current-focus-type">Choose your next action</div>
       <h2>Nothing is waiting right now.</h2>
-      <p>Add a quick task, create a focus block, or start the next tiny habit when you are ready.</p>
+      <p class="current-identity">Add one small action or start a focus block when you are ready.</p>
       <div class="current-focus-actions">
         <button class="btn bp current-focus-btn task-primary" onclick="showAddTodayTask()">+ Add Task</button>
         <button class="btn bs current-focus-ghost" onclick="showAddFocusBlock()">+ Focus</button>
       </div>
     </div>
-    <div class="current-focus-visual"><div class="task-visual-mark">◎</div></div>
-  </div>`;
-  return;
-  if(focus.type==='running-focus'){
-    el.innerHTML=`<div class="current-focus-card focus">
-      <div class="current-focus-kicker">Current Focus</div>
-      <div class="current-focus-type">${escapeHtml(focus.label)}</div>
-      <h2>${escapeHtml(focus.title)}</h2>
-      <p>${escapeHtml(focus.subtitle)}</p>
-      <div class="current-focus-time">${escapeHtml(focus.time)}</div>
-      <button class="btn bp current-focus-btn" onclick="navigateToTab('mind')">Open Timer</button>
-    </div>`;
-    return;
-  }
-  if(focus.type==='habit'){
-    const h=focus.item.habit;
-    el.innerHTML=`<div class="current-focus-card habit">
-      <div class="current-focus-kicker">Current Focus</div>
-      <div class="current-focus-type">${escapeHtml(focus.chain.title)}</div>
-      <h2>${escapeHtml(habitDisplayName(h))}</h2>
-      <p>${escapeHtml(h.sk||'Follow the next small step in this routine.')}</p>
-      <div class="current-focus-action">${escapeHtml(h.tm||'Do the smallest honest version now.')}</div>
-      <button class="btn bp current-focus-btn" onclick="togH(${focus.item.index},event.currentTarget)">Complete Step</button>
-    </div>`;
-    return;
-  }
-  if(focus.type==='task'){
-    const t=focus.item;
-    el.innerHTML=`<div class="current-focus-card task">
-      <div class="current-focus-kicker">Current Focus</div>
-      <div class="current-focus-type">Quick Task</div>
-      <h2>${escapeHtml(t.title)}</h2>
-      ${t.notes?`<p>${escapeHtml(t.notes)}</p>`:'<p>One temporary action for today.</p>'}
-      <button class="btn bp current-focus-btn" onclick="toggleTodayTask('${t.id}')">Complete Task</button>
-    </div>`;
-    return;
-  }
-  if(focus.type==='focus-block'){
-    const b=focus.item;
-    el.innerHTML=`<div class="current-focus-card focus">
-      <div class="current-focus-kicker">Current Focus</div>
-      <div class="current-focus-type">Focus Block</div>
-      <h2>${escapeHtml(b.title)}</h2>
-      <p>${escapeHtml(b.type)} · ${Number(b.duration)||60} min</p>
-      <button class="btn bp current-focus-btn" onclick="startTodayFocusBlock('${b.id}')">Start Focus</button>
-      <button class="btn bs current-focus-secondary" onclick="toggleFocusBlock('${b.id}')">Mark Done</button>
-    </div>`;
-    return;
-  }
-  el.innerHTML=`<div class="current-focus-card empty">
-    <div class="current-focus-kicker">Current Focus</div>
-    <div class="current-focus-type">Choose your next action</div>
-    <h2>Nothing is waiting right now.</h2>
-    <p>Add a quick task, create a focus block, or start the next tiny habit when you are ready.</p>
   </div>`;
 }
 function todayPlacementLabel(entry){
@@ -2110,54 +2045,30 @@ function renderTodayFlowItem(entry){
     const done=chain.items.filter(x=>habitIsDoneToday(x.habit)).length;
     const active=chain.items.findIndex(x=>!habitIsDoneToday(x.habit));
     const theme=flowTheme(chain);
-    return`<div class="today-flow-item habit flow-card-mini" style="--flow-accent:${theme.accent}">
+    const activeItem=active>=0?chain.items[active]:chain.items[chain.items.length-1];
+    const currentText=active>=0?`Current step: ${activeStepTitle(activeItem.habit)}`:'Flow complete';
+    return`<div class="today-flow-item habit unified-flow-habit" style="--flow-accent:${theme.accent}">
       <div class="flow-mini-icon">${theme.icon}</div>
       <div class="flow-mini-text">
         <strong>${escapeHtml(chain.title)}</strong>
-        <span>${done} / ${chain.items.length} completed</span>
+        <span>${done} / ${chain.items.length} completed &middot; ${escapeHtml(currentText)}</span>
+        ${renderNodeProgress(chain,active)}
       </div>
-      ${renderNodeProgress(chain,active)}
     </div>`;
   }
   if(entry.kind==='task'){
     const t=entry.item;
-    return`<details class="today-flow-item task ${t.completed?'done':''}">
-      <summary>
-        <span class="flow-type-icon">✓</span>
-        <span class="flow-summary-text"><span class="flow-kind">Quick Task</span><strong>${escapeHtml(t.title)}</strong><small>${escapeHtml(todayPlacementLabel(t))}</small></span>
-        <button class="mini-check ${t.completed?'on':''}" onclick="event.preventDefault();event.stopPropagation();toggleTodayTask('${t.id}')">${t.completed?'✓':''}</button>
-      </summary>
-      <div class="today-flow-detail">
-        <p>${escapeHtml(t.notes||todayPlacementLabel(t))}</p>
-        <label class="today-flow-move-label">Move after</label>
-        <select class="habit-chain-select" onchange="updateTodayEntryPlacement('task','${t.id}',this.value)">${renderTodayPlacementOptions(todayPlacementValue(t))}</select>
-        <div class="habit-design-actions">
-          <button class="habit-move-btn" onclick="moveTodayEntry('task','${t.id}',-1)" title="Move up">▲</button>
-          <button class="habit-move-btn" onclick="moveTodayEntry('task','${t.id}',1)" title="Move down">▼</button>
-          <button class="btn bd" onclick="deleteTodayTask('${t.id}')">Delete</button>
-        </div>
-      </div>
-    </details>`;
+    return`<div class="today-flow-item task quick-task-row ${t.completed?'done':''}">
+      <button class="mini-check ${t.completed?'on':''}" onclick="toggleTodayTask('${t.id}')">${t.completed?'&#10003;':''}</button>
+      <div class="quick-task-text"><strong>${escapeHtml(t.title)}</strong><small>Quick task</small></div>
+    </div>`;
   }
   const b=entry.item;
-  return`<details class="today-flow-item focus ${b.completed?'done':''}">
-    <summary>
-      <span class="flow-type-icon focus">◷</span>
-      <span class="flow-summary-text"><span class="flow-kind">Focus Block</span><strong>${escapeHtml(b.title)}</strong><small>${escapeHtml(b.type)} · ${Number(b.duration)||60} min</small></span>
-    </summary>
-    <div class="today-flow-detail">
-      <p>${escapeHtml(b.notes||todayPlacementLabel(b))}</p>
-      <label class="today-flow-move-label">Move after</label>
-      <select class="habit-chain-select" onchange="updateTodayEntryPlacement('focus','${b.id}',this.value)">${renderTodayPlacementOptions(todayPlacementValue(b))}</select>
-      <div class="habit-design-actions">
-        <button class="btn bp" onclick="startTodayFocusBlock('${b.id}')">Start Focus</button>
-        <button class="btn bs" onclick="toggleFocusBlock('${b.id}')">${b.completed?'Reopen':'Mark Done'}</button>
-        <button class="habit-move-btn" onclick="moveTodayEntry('focus','${b.id}',-1)" title="Move up">▲</button>
-        <button class="habit-move-btn" onclick="moveTodayEntry('focus','${b.id}',1)" title="Move down">▼</button>
-        <button class="btn bd" onclick="deleteFocusBlock('${b.id}')">Delete</button>
-      </div>
-    </div>
-  </details>`;
+  return`<div class="today-flow-item focus compact-focus-row ${b.completed?'done':''}">
+    <span class="flow-type-icon focus">&#9687;</span>
+    <div class="quick-task-text"><strong>${escapeHtml(b.title)}</strong><small>${escapeHtml(b.type)} &middot; ${Number(b.duration)||60} min</small></div>
+    <button class="btn bs" onclick="startTodayFocusBlock('${b.id}')">Start Focus</button>
+  </div>`;
 }
 function toggleTodayDesignMode(){
   todayDesignMode=!todayDesignMode;
@@ -2445,19 +2356,25 @@ function renHabits(){
   const chains=buildHabitChains();
   renderCurrentFocus(chains);
   renderTodayFlow(chains);
+  const hlist=document.getElementById('hlist');
+  if(!hlist){
+    renderTodayXpFeed();
+    renHCsel();
+    return;
+  }
   if(!D.habits.length){
-    document.getElementById('hlist').innerHTML='<div class="card"><p class="char-note">No habits yet. Add one tiny action to begin today.</p></div>';
+    hlist.innerHTML='<div class="card"><p class="char-note">No habits yet. Add one tiny action to begin today.</p></div>';
     renderTodayXpFeed();
     renHCsel();
     return;
   }
   if(!chains.length){
-    document.getElementById('hlist').innerHTML='<div class="card"><p class="char-note">No habits are scheduled for today.</p></div>';
+    hlist.innerHTML='<div class="card"><p class="char-note">No habits are scheduled for today.</p></div>';
     renderTodayXpFeed();
     renHCsel();
     return;
   }
-  document.getElementById('hlist').innerHTML=chains.map(renderHabitChain).join('');
+  hlist.innerHTML=chains.map(renderHabitChain).join('');
   renderTodayXpFeed();
   renHCsel();
 }
@@ -2875,13 +2792,18 @@ function deleteFinanceExpense(id){
 // HABIT CALENDAR
 // ══════════════════════════════════════════
 function renHCsel(){
-  document.getElementById('hcsel').innerHTML=D.habits.map((h,i)=>`
+  const el=document.getElementById('hcsel');
+  if(!el) return;
+  el.innerHTML=D.habits.map((h,i)=>`
     <button class="tag ${D.ahi===i?'sel':''}" onclick="selAhi(${i})">${h.name||h.id2.replace(/^I am (someone who )?/i,'')}</button>`).join('');
 }
 function selAhi(i){D.ahi=i;renHCsel();renCal();}
 function renCal(){
+  const calMonth=document.getElementById('calml');
+  const calGrid=document.getElementById('cgrid');
+  if(!calMonth||!calGrid) return;
   const n=new Date(),y=n.getFullYear(),m=n.getMonth(),today=n.getDate();
-  document.getElementById('calml').textContent=n.toLocaleDateString([],{month:'long',year:'numeric'});
+  calMonth.textContent=n.toLocaleDateString([],{month:'long',year:'numeric'});
   const first=new Date(y,m,1).getDay(),days=new Date(y,m+1,0).getDate();
   const h=D.habits[D.ahi];
   let html='';
@@ -2897,7 +2819,7 @@ function renCal(){
     else cls=d===today?'tod':'';
     html+=`<div class="cd ${cls}" onclick="calClk(${d},event.currentTarget)">${d}</div>`;
   }
-  document.getElementById('cgrid').innerHTML=html;
+  calGrid.innerHTML=html;
 }
 function calClk(d,targetEl=null){
   const n=new Date();if(d>n.getDate())return;

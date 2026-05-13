@@ -319,42 +319,15 @@
   <section class="today-flow-head">
     <div>
       <h2><span class="section-mini-icon">⇣</span>Today Flow</h2>
-      <p>Routines, quick tasks, and focus blocks in one flexible sequence.</p>
     </div>
     <div class="today-habit-actions today-flow-actions">
-      <button class="btn bs" onclick="showAddTodayTask()">+ Task</button>
-      <button class="btn bs" onclick="showAddFocusBlock()">+ Focus</button>
-      <button class="btn bp today-new-habit-btn" onclick="showAddHabit()">+ New Habit</button>
+      <button class="flow-add-pill habit" onclick="showAddHabit()">+ Habit</button>
+      <button class="flow-add-pill task" onclick="showAddTodayTask()">+ Task</button>
+      <button class="flow-add-pill focus" onclick="showAddFocusBlock()">+ Focus</button>
     </div>
   </section>
   <div id="today-flow-list"></div>
-  <section class="today-habits-head">
-    <div>
-      <h2>Habit Flows</h2>
-      <p>Open a routine when you want the full sequence.</p>
-    </div>
-    <button class="today-manage-link" onclick="showAddHabit()">Manage ></button>
-  </section>
-  <div id="hlist"></div>
-  <details class="today-xp-compact">
-    <summary><span class="section-mini-icon">⚡</span>Daily Summary</summary>
-    <div class="today-xp-feed" id="today-xp-feed"></div>
-  </details>
-  <details class="today-calendar-toggle">
-    <summary>View habit calendar</summary>
-    <h2 class="section-card-title"><span class="section-mini-icon">🗓</span>Today’s Streak Calendar — <span id="calml"></span></h2>
-    <div id="hcsel" style="display:flex;gap:5px;flex-wrap:wrap;margin-bottom:9px"></div>
-    <div class="cgrid" id="chdr">
-      <div class="ch">Su</div><div class="ch">Mo</div><div class="ch">Tu</div>
-      <div class="ch">We</div><div class="ch">Th</div><div class="ch">Fr</div><div class="ch">Sa</div>
-    </div>
-    <div class="cgrid" id="cgrid"></div>
-    <div class="cal-legend">
-      <div class="cal-leg-item"><div class="cal-leg-dot" style="background:var(--cyn)"></div>Done</div>
-      <div class="cal-leg-item"><div class="cal-leg-dot" style="background:rgba(242,27,27,.5)"></div>Open</div>
-      <div class="cal-leg-item"><div class="cal-leg-dot" style="border:2px solid var(--acc);background:transparent"></div>Today</div>
-    </div>
-  </details>
+
 </div>
 
 <!-- ═══ HEALTH OVERVIEW ═══ -->
