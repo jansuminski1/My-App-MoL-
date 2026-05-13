@@ -178,6 +178,7 @@ const D = {
   goals:{ dailyByDate:{}, weekly:[], monthly:[] },
   todayTasks:[],
   focusBlocks:[],
+  todayFlowOrder:{},
   alarmOn: true,
   mealLockedTimes: [null, null, null, null, null],
   body: { weightLog: [], cardioLog: [] },
@@ -231,6 +232,9 @@ function ensureFinance(){
 
 function ensureTodayFlow(){
   const today=dateStamp();
+  if(!D.todayFlowOrder||typeof D.todayFlowOrder!=='object'||Array.isArray(D.todayFlowOrder)) D.todayFlowOrder={};
+  const cutoff=new Date();cutoff.setDate(cutoff.getDate()-7);const cutoffStr=dateStamp(cutoff.getTime());
+  Object.keys(D.todayFlowOrder).forEach(k=>{if(k<cutoffStr)delete D.todayFlowOrder[k];});
   if(!Array.isArray(D.todayTasks)) D.todayTasks=[];
   if(!Array.isArray(D.focusBlocks)) D.focusBlocks=[];
   D.todayTasks.forEach((t,i)=>{
@@ -272,6 +276,7 @@ function applyCoreData(data){
   D.goals       = data.goals       || {weekly:[],monthly:[]};
   D.todayTasks  = data.todayTasks  || [];
   D.focusBlocks = data.focusBlocks || [];
+  D.todayFlowOrder = data.todayFlowOrder || {};
   D.mealLockedTimes = data.mealLockedTimes || [null,null,null,null,null];
   D.body        = data.body        || {weightLog:[],cardioLog:[]};
   D.finance     = data.finance     || D.finance;
@@ -299,6 +304,7 @@ function coreSaveData(){
     goals:D.goals,
     todayTasks:D.todayTasks,
     focusBlocks:D.focusBlocks,
+    todayFlowOrder:D.todayFlowOrder||{},
     mealLockedTimes:D.mealLockedTimes,
     body:D.body,
     finance:D.finance
@@ -2026,14 +2032,38 @@ function buildTodayFlow(chains=buildHabitChains()){
   const out=[];
   addEntries(entriesForPlacement(entries,'start'),out);
   chains.forEach((chain,idx)=>{
-    out.push({kind:'habit-flow',chain});
+    out.push({kind:'habit-flow',chain,item:{id:chain.id}});
     addEntries(entriesForPlacement(entries,'afterFlow',chain.id),out);
     if(idx===0) addEntries(entriesForPlacement(entries,'midday'),out);
   });
   if(!chains.length) addEntries(entriesForPlacement(entries,'midday'),out);
   addEntries(entriesForPlacement(entries,'evening'),out);
   addEntries(entries.filter(e=>!used.has(`${e.kind}:${e.item.id}`)),out);
+  const today=todayDateKey();
+  const customOrder=(D.todayFlowOrder||{})[today];
+  if(customOrder&&customOrder.length) return applyTodayFlowCustomOrder(out,customOrder);
   return out;
+}
+function applyTodayFlowCustomOrder(items,customOrder){
+  const lookup=new Map(customOrder.map((e,i)=>[`${e.kind}:${e.id}`,i]));
+  const getKey=e=>e.kind==='habit-flow'?`habit-flow:${e.chain?.id||e.item?.id}`:`${e.kind}:${e.item?.id}`;
+  return [...items].sort((a,b)=>{
+    const ai=lookup.has(getKey(a))?lookup.get(getKey(a)):9999;
+    const bi=lookup.has(getKey(b))?lookup.get(getKey(b)):9999;
+    return ai-bi;
+  });
+}
+function saveTodayFlowOrder(orderedItems){
+  if(!D.todayFlowOrder||typeof D.todayFlowOrder!=='object') D.todayFlowOrder={};
+  const today=todayDateKey();
+  D.todayFlowOrder[today]=orderedItems.map(e=>({
+    kind:e.kind,
+    id:e.kind==='habit-flow'?(e.chain?.id):e.item?.id
+  }));
+  sv();
+}
+function renderTodayFlowDropZone(pos){
+  return`<div class="today-flow-drop-zone" data-pos="${pos}" ondragover="event.preventDefault();this.classList.add('on')" ondragleave="this.classList.remove('on')" ondrop="dropTodayFlowItem(event,${pos})"></div>`;
 }
 function renderTodayFlow(chains=buildHabitChains()){
   const el=document.getElementById('today-flow-list');
@@ -2043,23 +2073,25 @@ function renderTodayFlow(chains=buildHabitChains()){
     el.innerHTML='<div class="today-flow-empty">No actions planned yet. Add one quick task or begin with your first habit flow.</div>';
     return;
   }
-  el.innerHTML=`<div class="today-flow-sequence">${items.map(renderTodayFlowItem).join('')}</div>`;
+  let html='<div class="today-flow-sequence">';
+  items.forEach((entry,i)=>{html+=renderTodayFlowDropZone(i)+renderTodayFlowItem(entry,i);});
+  html+=renderTodayFlowDropZone(items.length)+'</div>';
+  el.innerHTML=html;
 }
-function renderTodayFlowItem(entry){
+function renderTodayFlowItem(entry,flowIndex=0){
   if(entry.kind==='habit-flow'){
-    const chain=entry.chain;
-    return renderHabitChain(chain);
+    return renderHabitChain(entry.chain,flowIndex);
   }
   if(entry.kind==='task'){
     const t=entry.item;
-    return`<div class="today-flow-item task quick-task-row ${t.completed?'done':''}">
+    return`<div class="today-flow-item task quick-task-row ${t.completed?'done':''}" data-flow-kind="task" data-flow-id="${t.id}" draggable="true" ondragstart="startTodayFlowDrag(event,'task','${t.id}')" ondragend="endTodayFlowDrag(event)" onpointerdown="startTodayFlowPointer(event,'task','${t.id}')">
       <button class="mini-check ${t.completed?'on':''}" onclick="toggleTodayTask('${t.id}')">${t.completed?'&#10003;':''}</button>
-      <strong class="flow-row-title">${escapeHtml(t.title)}</strong>
-      <span class="flow-row-type">Quick task</span>
+      <div class="quick-task-text"><strong>${escapeHtml(t.title)}</strong><small>Quick task</small></div>
+      <span class="flow-row-type">Task</span>
     </div>`;
   }
   const b=entry.item;
-  return`<div class="today-flow-item focus compact-focus-row ${b.completed?'done':''}">
+  return`<div class="today-flow-item focus compact-focus-row ${b.completed?'done':''}" data-flow-kind="focus" data-flow-id="${b.id}" draggable="true" ondragstart="startTodayFlowDrag(event,'focus','${b.id}')" ondragend="endTodayFlowDrag(event)" onpointerdown="startTodayFlowPointer(event,'focus','${b.id}')">
     <span class="flow-type-icon focus">&#9687;</span>
     <div class="quick-task-text"><strong>${escapeHtml(b.title)}</strong><small>${escapeHtml(b.type)} &middot; ${Number(b.duration)||60} min</small></div>
     <button class="btn bs" onclick="startTodayFocusBlock('${b.id}')">Start Focus</button>
@@ -2092,13 +2124,17 @@ function habitDetailBlock(h,i,chain,position){
 }
 function renderNodeProgress(chain,activeIndex,{compact=true}={}){
   const theme=flowTheme(chain);
+  const cid=chain.id||'';
   return`<div class="flow-node-track ${compact?'compact':'large'}" style="--flow-accent:${theme.accent}">
     ${chain.items.map((item,pos)=>{
       const done=habitIsDoneToday(item.habit);
       const state=done?'done':pos===activeIndex?'current':'upcoming';
       const lineState=done?'done':'open';
+      const nodeEl=done
+        ?`<button class="flow-node done clickable" type="button" title="Tap to undo step" onclick="uncompleteHabitInFlow(${item.index},'${cid}',this)">✓</button>`
+        :`<span class="flow-node ${state}"></span>`;
       return`<span class="flow-node-wrap">
-        <span class="flow-node ${state}">${done?'✓':''}</span>
+        ${nodeEl}
         ${pos<chain.items.length-1?`<span class="flow-node-line ${lineState}"></span>`:''}
       </span>`;
     }).join('')}
@@ -2186,6 +2222,138 @@ function cancelHabitPointer(){
   habitPointerState=null;
   habitDragIndex=null;
 }
+
+// ── TODAY FLOW DRAG & DROP ──────────────────────────────
+let todayFlowDragKind=null,todayFlowDragId=null;
+let todayFlowPointerState=null;
+
+function isTodayFlowPointerIgnored(target){
+  return !!target.closest('button,input,select,textarea,a,.habit-draggable,.habit-drag-handle,.flow-edit-step-actions');
+}
+function startTodayFlowDrag(e,kind,id){
+  if(e.target.closest('.habit-draggable,.habit-drag-handle')) return;
+  if(e.target.closest('button,input,select,textarea')) return;
+  todayFlowDragKind=kind;
+  todayFlowDragId=id;
+  e.dataTransfer?.setData('text/plain',`${kind}:${id}`);
+  e.currentTarget.classList.add('today-flow-dragging');
+}
+function endTodayFlowDrag(e){
+  todayFlowDragKind=null;
+  todayFlowDragId=null;
+  e.currentTarget?.classList.remove('today-flow-dragging');
+  document.querySelectorAll('.today-flow-drop-zone.on').forEach(el=>el.classList.remove('on'));
+}
+function dropTodayFlowItem(e,dropPos){
+  e.preventDefault();
+  e.stopPropagation();
+  document.querySelectorAll('.today-flow-drop-zone.on').forEach(el=>el.classList.remove('on'));
+  const raw=e.dataTransfer?.getData('text/plain')||'';
+  const colonIdx=raw.indexOf(':');
+  const kind=todayFlowDragKind||(colonIdx>0?raw.slice(0,colonIdx):'');
+  const id=todayFlowDragId||(colonIdx>0?raw.slice(colonIdx+1):'');
+  todayFlowDragKind=null;
+  todayFlowDragId=null;
+  if(!kind||!id) return;
+  const chains=buildHabitChains();
+  const allItems=buildTodayFlow(chains);
+  const getKey=e2=>e2.kind==='habit-flow'?`habit-flow:${e2.chain?.id||e2.item?.id}`:`${e2.kind}:${e2.item?.id}`;
+  const dragKey=`${kind}:${id}`;
+  const fromIdx=allItems.findIndex(e2=>getKey(e2)===dragKey);
+  if(fromIdx<0) return;
+  const newItems=[...allItems];
+  const [removed]=newItems.splice(fromIdx,1);
+  const insertAt=fromIdx<dropPos?dropPos-1:dropPos;
+  newItems.splice(Math.max(0,Math.min(insertAt,newItems.length)),0,removed);
+  saveTodayFlowOrder(newItems);
+  renHabits();
+}
+function startTodayFlowPointer(e,kind,id){
+  if(e.pointerType==='mouse') return;
+  if(isTodayFlowPointerIgnored(e.target)) return;
+  const target=e.currentTarget;
+  todayFlowPointerState={kind,id,target,active:false,zone:null,timer:null};
+  todayFlowPointerState.timer=setTimeout(()=>{
+    if(!todayFlowPointerState) return;
+    todayFlowPointerState.active=true;
+    todayFlowDragKind=kind;
+    todayFlowDragId=id;
+    target.classList.add('today-flow-dragging');
+    try{navigator.vibrate?.(35);}catch(_){}
+  },850);
+  window.addEventListener('pointermove',moveTodayFlowPointer,{passive:false});
+  window.addEventListener('pointerup',endTodayFlowPointer,{once:true});
+  window.addEventListener('pointercancel',cancelTodayFlowPointer,{once:true});
+}
+function moveTodayFlowPointer(e){
+  if(!todayFlowPointerState||!todayFlowPointerState.active) return;
+  e.preventDefault();
+  const zone=document.elementFromPoint(e.clientX,e.clientY)?.closest?.('.today-flow-drop-zone');
+  if(zone!==todayFlowPointerState.zone){
+    todayFlowPointerState.zone?.classList.remove('on');
+    todayFlowPointerState.zone=zone;
+    zone?.classList.add('on');
+  }
+}
+function endTodayFlowPointer(e){
+  if(!todayFlowPointerState) return;
+  clearTimeout(todayFlowPointerState.timer);
+  window.removeEventListener('pointermove',moveTodayFlowPointer);
+  const state=todayFlowPointerState;
+  todayFlowPointerState=null;
+  state.target?.classList.remove('today-flow-dragging');
+  if(state.active&&state.zone){
+    e.preventDefault();
+    const pos=Number(state.zone.dataset.pos);
+    state.zone.classList.remove('on');
+    const chains=buildHabitChains();
+    const allItems=buildTodayFlow(chains);
+    const getKey=e2=>e2.kind==='habit-flow'?`habit-flow:${e2.chain?.id||e2.item?.id}`:`${e2.kind}:${e2.item?.id}`;
+    const dragKey=`${state.kind}:${state.id}`;
+    const fromIdx=allItems.findIndex(e2=>getKey(e2)===dragKey);
+    if(fromIdx>=0){
+      const newItems=[...allItems];
+      const [removed]=newItems.splice(fromIdx,1);
+      const insertAt=fromIdx<pos?pos-1:pos;
+      newItems.splice(Math.max(0,Math.min(insertAt,newItems.length)),0,removed);
+      saveTodayFlowOrder(newItems);
+      renHabits();
+    }
+  }
+  todayFlowDragKind=null;
+  todayFlowDragId=null;
+}
+function cancelTodayFlowPointer(){
+  if(!todayFlowPointerState) return;
+  clearTimeout(todayFlowPointerState.timer);
+  window.removeEventListener('pointermove',moveTodayFlowPointer);
+  todayFlowPointerState.target?.classList.remove('today-flow-dragging');
+  todayFlowPointerState.zone?.classList.remove('on');
+  todayFlowPointerState=null;
+  todayFlowDragKind=null;
+  todayFlowDragId=null;
+}
+function uncompleteHabitInFlow(habitIndex,chainId,targetEl=null){
+  const k=tdk();
+  const h=D.habits[habitIndex];
+  if(!h||!h.log[k]) return;
+  const chains=buildHabitChains();
+  const chain=chains.find(c=>c.id===chainId);
+  if(chain){
+    const pos=chain.items.findIndex(x=>x.index===habitIndex);
+    if(pos>=0){
+      chain.items.slice(pos).forEach(ci=>{
+        if(habitIsDoneToday(ci.habit)){
+          D.habits[ci.index].log[k]=false;
+          removeXpEventByRewardKey(habitRewardKey(D.habits[ci.index],k),{save:false});
+        }
+      });
+      sv();renHabits();renCal();
+      return;
+    }
+  }
+  togH(habitIndex,targetEl);
+}
 function renderChainMoveOptions(currentGroupId){
   return buildHabitGroupsAll().map(g=>`<option value="${g.id}" ${g.id===currentGroupId?'selected':''}>${escapeHtml(g.title)}</option>`).join('');
 }
@@ -2260,10 +2428,25 @@ function renderFlowNodeRow(chain,activeIndex){
 function renderFlowEditPanel(chain){
   return`<div class="flow-edit-panel">
     <div class="flow-edit-head">
-      <strong>Flow editing</strong>
-      <button class="flow-edit-add" onclick="showAddHabit('${chain.id}')">+ Add habit</button>
+      <strong>Edit Flow Steps</strong>
+      <button class="flow-edit-add" onclick="showAddHabit('${chain.id}')">+ Add step</button>
     </div>
-    ${chain.items.map((item,pos)=>renderHabitDropZone(chain.id,pos)+renderHabitRow(item,chain,pos,false)).join('')}${renderHabitDropZone(chain.id,chain.items.length)}
+    ${chain.items.map((item,pos)=>{
+      const h=item.habit,i=item.index;
+      const name=escapeHtml(habitDisplayName(h)||h.name||'Step');
+      return`<div class="flow-edit-step">
+        <div class="flow-edit-step-info">
+          <span class="flow-edit-step-num">${pos+1}</span>
+          <span class="flow-edit-step-name">${name}</span>
+        </div>
+        <div class="flow-edit-step-actions">
+          <button class="flow-edit-move-btn" onclick="moveHabit(${i},-1)" ${pos===0?'disabled':''} title="Move up">▲</button>
+          <button class="flow-edit-move-btn" onclick="moveHabit(${i},1)" ${pos===chain.items.length-1?'disabled':''} title="Move down">▼</button>
+          <button class="flow-edit-move-btn del" onclick="deleteHabit(${i})" title="Remove step">✕</button>
+        </div>
+      </div>`;
+    }).join('')}
+    <p class="flow-edit-note">Changes save immediately. Reorder within this flow, or drag the whole card in Today Flow.</p>
   </div>`;
 }
 function editHabitFlow(chainId,event=null){
@@ -2300,7 +2483,7 @@ function renderHabitRow(item,chain,position,active=false,primary=false){
     ${todayDesignMode?`<div class="habit-design-note">Design mode is on for this routine.</div>`:''}
   </details>`;
 }
-function renderHabitChain(chain){
+function renderHabitChain(chain,flowIndex=0){
   const doneCount=chain.items.filter(x=>habitIsDoneToday(x.habit)).length;
   const activeIndex=chain.items.findIndex(x=>!habitIsDoneToday(x.habit));
   const identity=chain.items[activeIndex>=0?activeIndex:0]?.habit?.id2||'Every action is a vote for the person you wish to become.';
@@ -2311,8 +2494,9 @@ function renderHabitChain(chain){
   const theme=flowTheme(chain);
   const isEditing=editingFlowId===chain.id;
   const editButton=`<button class="flow-edit-btn ${isEditing?'on':''}" onclick="editHabitFlow('${chain.id}',event)">Edit</button>`;
+  const flowDragAttrs=`data-flow-kind="habit-flow" data-flow-id="${chain.id}" draggable="true" ondragstart="startTodayFlowDrag(event,'habit-flow','${chain.id}')" ondragend="endTodayFlowDrag(event)" onpointerdown="startTodayFlowPointer(event,'habit-flow','${chain.id}')"`;
   if(doneCount===chain.items.length){
-    return`<details class="habit-flow-card completed-routine" style="--flow-accent:${theme.accent}" ondragover="allowHabitDrop(event)" ondrop="dropHabitOnGroup(event,'${chain.id}')">
+    return`<details class="habit-flow-card completed-routine" style="--flow-accent:${theme.accent}" ${flowDragAttrs} ondragover="allowHabitDrop(event)" ondrop="dropHabitOnGroup(event,'${chain.id}')">
       <summary class="habit-flow-summary">
         <span class="habit-flow-icon">${theme.icon}</span>
         <span class="habit-flow-title"><strong>${escapeHtml(chain.title)}</strong><small>${doneCount} / ${chain.items.length} completed</small></span>
@@ -2326,7 +2510,7 @@ function renderHabitChain(chain){
       ${isEditing?renderFlowEditPanel(chain):''}
     </details>`;
   }
-  return`<details class="habit-flow-card routine-detail" style="--flow-accent:${theme.accent}" ${primary?'open':''} ondragover="allowHabitDrop(event)" ondrop="dropHabitOnGroup(event,'${chain.id}')">
+  return`<details class="habit-flow-card routine-detail" style="--flow-accent:${theme.accent}" ${primary?'open':''} ${flowDragAttrs} ondragover="allowHabitDrop(event)" ondrop="dropHabitOnGroup(event,'${chain.id}')">
     <summary class="habit-flow-summary">
       <span class="habit-flow-icon">${theme.icon}</span>
       <span class="habit-flow-title"><strong>${escapeHtml(chain.title)}</strong><small>${doneCount} / ${chain.items.length} completed</small></span>
