@@ -123,10 +123,9 @@ select:focus{outline:none;border-color:var(--acc)}
 .today-progress-bar div{height:100%;background:linear-gradient(90deg,var(--acc),var(--cyn));border-radius:999px;transition:width .3s ease}
 .today-status-row{display:flex;gap:6px;flex-wrap:wrap;margin-top:0}
 .today-status-row span{font-size:.67rem;color:var(--navy);font-weight:800;background:var(--warm);border:1px solid rgba(197,213,229,.8);border-radius:999px;padding:3px 9px}
-.today-flow-head{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:10px 0 4px}
-.today-flow-head-left{display:flex;align-items:center;gap:8px;min-width:0;flex-wrap:wrap}
-.today-flow-head h2{font-family:inherit;font-size:.71rem;margin:0;color:var(--navy);font-weight:900;text-transform:uppercase;letter-spacing:.09em}
-.today-flow-head p{font-size:.68rem;color:var(--mut);margin-top:1px;line-height:1.2}
+.today-flow-head{padding:10px 0 4px}
+.today-flow-head-title{font-family:inherit;font-size:.71rem;margin:0 0 7px;color:var(--navy);font-weight:900;text-transform:uppercase;letter-spacing:.09em}
+.today-flow-head-actions{display:flex;align-items:center;gap:6px;flex-wrap:wrap}
 .flow-edit-order-btn{border:1px solid rgba(197,213,229,.9);background:rgba(255,255,255,.85);color:var(--mut);border-radius:999px;padding:4px 11px;font-size:.65rem;font-weight:950;cursor:pointer;letter-spacing:.04em;transition:.15s;white-space:nowrap;flex-shrink:0}
 .flow-edit-order-btn:hover{border-color:var(--acc);color:var(--acc)}
 .flow-edit-order-btn.active{border-color:var(--acc);background:rgba(14,139,186,.1);color:var(--acc)}
@@ -136,6 +135,9 @@ select:focus{outline:none;border-color:var(--acc)}
 .tf-move-btn:hover,.tf-move-btn:active{background:rgba(14,139,186,.08);border-color:var(--acc);color:var(--acc)}
 .reorder-active{border-color:rgba(14,139,186,.3)!important}
 .today-habit-actions{display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end}
+.tf-delete-btn{width:26px;height:26px;min-width:26px;border-radius:50%;border:1px solid rgba(197,213,229,.7);background:transparent;color:#b8c8d8;font-size:1rem;line-height:1;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;transition:.13s;flex-shrink:0;padding:0;font-weight:400;-webkit-tap-highlight-color:transparent}
+.tf-delete-btn:hover,.tf-delete-btn:active{background:#fff2f2;border-color:rgba(220,53,69,.35);color:#cc3333}
+.tf-focus-actions{display:flex;align-items:center;gap:5px;flex-shrink:0}
 .today-habit-actions .btn{font-size:.7rem;padding:5px 10px}
 .today-new-habit-btn{border-radius:20px;box-shadow:0 3px 10px rgba(14,139,186,.18);font-weight:900}
 .current-focus-card{border:1px solid rgba(14,139,186,.2);border-radius:18px;padding:18px 20px;background:linear-gradient(145deg,#fff,#f7fbff);box-shadow:0 6px 20px rgba(9,32,54,.07)}
@@ -468,6 +470,28 @@ label{font-size:.79rem;display:block;margin-bottom:4px;color:var(--mut);font-wei
 .habit-link-connector{display:flex;align-items:center;justify-content:center;min-height:30px;color:var(--acc)}
 .habit-link-connector::before,.habit-link-connector::after{content:"";width:1px;height:18px;background:linear-gradient(180deg,transparent,rgba(14,139,186,.4),transparent)}
 .habit-link-connector span{width:26px;height:26px;border-radius:999px;border:1px solid rgba(14,139,186,.22);background:#fff;display:inline-flex;align-items:center;justify-content:center;font-size:.9rem;box-shadow:0 4px 14px rgba(14,139,186,.08);margin:0 8px}
+/* Add Habit — two-node layout */
+.habit-ii-preview{font-size:.8rem;color:var(--mut);text-align:center;margin:0 0 14px;padding:9px 14px;background:rgba(14,139,186,.04);border:1px solid rgba(14,139,186,.12);border-radius:10px;line-height:1.55}
+.habit-ii-preview strong{color:var(--navy);font-style:italic;font-weight:900}
+.habit-nodes-wrap{display:flex;flex-direction:column;gap:0;margin-bottom:14px}
+.habit-node-card{border:1.5px solid rgba(197,213,229,.85);border-radius:14px;padding:14px;background:#fff;box-shadow:0 3px 12px rgba(9,32,54,.05)}
+.habit-node-card.preceding{border-color:rgba(14,139,186,.3);background:linear-gradient(160deg,#f6fcff 0%,#fff 100%)}
+.habit-node-card.new-habit{border-color:rgba(46,200,0,.3);background:linear-gradient(160deg,#f6fff6 0%,#fff 100%)}
+.habit-node-top{display:flex;align-items:flex-start;gap:10px;margin-bottom:8px}
+.habit-bullseye{width:20px;height:20px;min-width:20px;border-radius:50%;border:2px solid rgba(14,139,186,.4);background:#fff;position:relative;margin-top:2px;flex-shrink:0;box-shadow:0 0 0 4px rgba(14,139,186,.07)}
+.habit-bullseye::after{content:"";position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:8px;height:8px;border-radius:50%;background:rgba(14,139,186,.3)}
+.habit-bullseye.active{border-color:var(--grn-dk);box-shadow:0 0 0 4px rgba(46,200,0,.1)}
+.habit-bullseye.active::after{background:var(--grn-dk);opacity:.65}
+.habit-node-label{font-size:.63rem;font-weight:950;text-transform:uppercase;letter-spacing:.1em;color:var(--acc);margin-bottom:2px}
+.habit-node-label.action{color:var(--grn-dk)}
+.habit-node-hint{font-size:.69rem;color:var(--mut);line-height:1.32;margin:0}
+.habit-node-card input{margin-top:6px;margin-bottom:0}
+.habit-node-connector{display:flex;flex-direction:column;align-items:center;padding:6px 0;gap:0}
+.habit-conn-line{width:2px;height:12px;background:linear-gradient(180deg,rgba(14,139,186,.15),rgba(14,139,186,.4));border-radius:999px}
+.habit-conn-pill{font-size:.6rem;font-weight:950;text-transform:uppercase;letter-spacing:.12em;color:var(--acc);background:#fff;border:1px solid rgba(14,139,186,.22);border-radius:999px;padding:3px 11px;margin:3px 0;white-space:nowrap}
+.habit-placement-row{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px}
+.habit-placement-row label{margin-bottom:3px;font-size:.74rem}
+.habit-placement-row input,.habit-placement-row select{margin-bottom:0}
 .habit-created-pop{position:fixed;left:50%;top:50%;transform:translate(-50%,-50%);z-index:160;width:min(360px,calc(100vw - 32px));background:#fff;border:1px solid rgba(197,213,229,.86);border-radius:16px;box-shadow:0 18px 60px rgba(9,32,54,.22);padding:16px;animation:habitCreatedIn 2s ease forwards;pointer-events:none}
 .habit-created-link{display:grid;grid-template-columns:1fr;gap:8px;margin-bottom:10px}
 .habit-created-node{border-radius:12px;padding:10px 12px;background:#f8fdff;border:1px solid rgba(14,139,186,.16);font-size:.76rem;color:var(--mut)}
@@ -632,8 +656,7 @@ input[type=time].meal-time-inp{color:var(--txt)}
   #tab-habits{padding-top:8px}
   .today-progress-section,.today-current-focus,.today-flow-head,#today-flow-list{margin-left:0;margin-right:0}
   .today-progress-section{padding:10px 12px 8px;border-radius:14px}
-  .today-flow-head{align-items:flex-start}
-  .today-flow-actions{justify-content:flex-start}
+  .compact-focus-row .btn{font-size:.64rem;padding:5px 8px}
   .current-focus-card{padding:14px 16px}
   .simple-focus{padding:14px 16px}
   .current-focus-card h2{font-size:1.05rem}

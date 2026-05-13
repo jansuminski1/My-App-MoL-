@@ -2090,10 +2090,11 @@ function renderTodayFlowItem(entry,flowIndex=0){
     const moveCtrl=todayFlowReorderMode
       ?`<div class="tf-move-btns"><button class="tf-move-btn" onclick="moveTodayFlowItem('task','${t.id}',-1)" title="Move up">↑</button><button class="tf-move-btn" onclick="moveTodayFlowItem('task','${t.id}',1)" title="Move down">↓</button></div>`
       :`<span class="tf-drag-handle" title="Drag to reorder (desktop)">&#8801;</span>`;
+    const taskDelete=todayFlowReorderMode?'':`<button class="tf-delete-btn" onclick="event.stopPropagation();deleteTodayTask('${t.id}')" title="Remove task">&#215;</button>`;
     return`<div class="today-flow-item task quick-task-row ${t.completed?'done':''} ${todayFlowReorderMode?'reorder-active':''}" data-flow-kind="task" data-flow-id="${t.id}" draggable="true" ondragstart="startTodayFlowDrag(event,'task','${t.id}')" ondragend="endTodayFlowDrag(event)">
       <button class="mini-check ${t.completed?'on':''}" onclick="toggleTodayTask('${t.id}')">${t.completed?'&#10003;':''}</button>
       <div class="quick-task-text"><strong>${escapeHtml(t.title)}</strong><small>Quick task</small></div>
-      ${todayFlowReorderMode?'':' <span class="flow-row-type">Task</span>'}
+      ${taskDelete}
       ${moveCtrl}
     </div>`;
   }
@@ -2101,10 +2102,11 @@ function renderTodayFlowItem(entry,flowIndex=0){
   const moveCtrl=todayFlowReorderMode
     ?`<div class="tf-move-btns"><button class="tf-move-btn" onclick="moveTodayFlowItem('focus','${b.id}',-1)" title="Move up">↑</button><button class="tf-move-btn" onclick="moveTodayFlowItem('focus','${b.id}',1)" title="Move down">↓</button></div>`
     :`<span class="tf-drag-handle" title="Drag to reorder (desktop)">&#8801;</span>`;
+  const focusActions=todayFlowReorderMode?'':`<div class="tf-focus-actions"><button class="btn bs" onclick="startTodayFocusBlock('${b.id}')">Start Focus</button><button class="tf-delete-btn" onclick="event.stopPropagation();deleteFocusBlock('${b.id}')" title="Remove focus block">&#215;</button></div>`;
   return`<div class="today-flow-item focus compact-focus-row ${b.completed?'done':''} ${todayFlowReorderMode?'reorder-active':''}" data-flow-kind="focus" data-flow-id="${b.id}" draggable="true" ondragstart="startTodayFlowDrag(event,'focus','${b.id}')" ondragend="endTodayFlowDrag(event)">
     <span class="flow-type-icon focus">◎</span>
     <div class="quick-task-text"><strong>${escapeHtml(b.title)}</strong><small>${escapeHtml(b.type)} &middot; ${Number(b.duration)||60} min</small></div>
-    ${todayFlowReorderMode?'':` <button class="btn bs" onclick="startTodayFocusBlock('${b.id}')">Start Focus</button>`}
+    ${focusActions}
     ${moveCtrl}
   </div>`;
 }
@@ -2547,7 +2549,7 @@ function showEditHabit(i){
         <p class="habit-link-help">What existing action starts this habit?</p>
         <input type="text" id="edit-hsk" value="${escapeHtml(h.sk||'')}" placeholder="After I..." class="mb10">
       </div>
-      <div class="habit-link-connector"><span>⛓</span></div>
+      <div class="habit-node-connector"><div class="habit-conn-line"></div><span class="habit-conn-pill">then</span><div class="habit-conn-line"></div></div>
       <div class="habit-link-box action">
         <div class="habit-link-label">New habit</div>
         <p class="habit-link-help">What happens immediately afterward?</p>
@@ -2594,46 +2596,65 @@ function deleteHabit(i){
 function showAddHabit(chainId=''){
   window._editFreq['add']={type:'daily',days:[]};
   document.getElementById('mod').innerHTML=`
-    <h2 class="habit-builder-title">Build a Habit Link</h2>
-    <p class="habit-form-intro">Choose what already happens, then attach the next action.</p>
-    <div class="habit-builder-grid">
-      <div class="habit-link-box trigger">
-        <div class="habit-link-label">Trigger</div>
-        <p class="habit-link-help">What existing action will start this habit?</p>
-        <input type="text" id="ms" placeholder="After I..." class="mb10">
+    <h2 class="habit-builder-title">New Habit</h2>
+    <p class="habit-form-intro">Attach a new action to something that already happens.</p>
+    <div class="habit-ii-preview">After I <strong id="habit-ii-trig">&hellip;</strong>, I will <strong id="habit-ii-act">&hellip;</strong>.</div>
+    <div class="habit-nodes-wrap">
+      <div class="habit-node-card preceding">
+        <div class="habit-node-top">
+          <span class="habit-bullseye"></span>
+          <div>
+            <div class="habit-node-label">Preceding Event</div>
+            <p class="habit-node-hint">What already happens right before?</p>
+          </div>
+        </div>
+        <input type="text" id="ms" placeholder="After I finish breakfast&hellip;" oninput="var el=document.getElementById('habit-ii-trig');if(el)el.textContent=this.value||'…'">
       </div>
-      <div class="habit-link-connector"><span>⛓</span></div>
-      <div class="habit-link-box action">
-        <div class="habit-link-label">New habit</div>
-        <p class="habit-link-help">What will you do immediately afterward?</p>
-        <input type="text" id="mn" placeholder="I will..." class="mb10">
+      <div class="habit-node-connector">
+        <div class="habit-conn-line"></div>
+        <span class="habit-conn-pill">then</span>
+        <div class="habit-conn-line"></div>
+      </div>
+      <div class="habit-node-card new-habit">
+        <div class="habit-node-top">
+          <span class="habit-bullseye active"></span>
+          <div>
+            <div class="habit-node-label action">New Habit</div>
+            <p class="habit-node-hint">The action you want to build.</p>
+          </div>
+        </div>
+        <input type="text" id="mn" placeholder="I will do 5 push-ups&hellip;" oninput="var el=document.getElementById('habit-ii-act');if(el)el.textContent=this.value||'…'">
       </div>
     </div>
-    <div class="habit-form-section primary">
-      <div class="habit-form-label">Tiny version</div>
-      <p class="habit-form-hint">Make it so small you can do it on a bad day.</p>
-      <input type="text" id="mt" placeholder="Smallest possible start..." class="mb10">
-      <label>Start time <em>(optional)</em></label><input type="time" id="mst" class="mb10">
-      <label>Chain / flow placement</label>
-      <select id="mchain" class="mb10">${renderAddHabitChainOptions()}</select>
-      <p class="habit-form-hint">Add it to a flow, or keep it in Today as its own action.</p>
+    <div class="habit-placement-row">
+      <div>
+        <label>Start time <em>(optional)</em></label>
+        <input type="time" id="mst">
+      </div>
+      <div>
+        <label>Show in</label>
+        <select id="mchain">${renderAddHabitChainOptions()}</select>
+      </div>
     </div>
     <details class="habit-form-section secondary">
-      <summary>Secondary</summary>
-      <label>Identity statement <em>(I am...)</em></label><input type="text" id="mi" placeholder="I am someone who..." class="mb10">
+      <summary>More options</summary>
+      <label>Tiny version <em>(optional)</em></label><input type="text" id="mt" placeholder="Smallest possible version&hellip;" class="mb10">
+      <label>Identity statement <em>(optional)</em></label><input type="text" id="mi" placeholder="I am someone who&hellip;" class="mb10">
       <div id="add-freq-wrap">${renderFreqPicker(null,'add')}</div>
     </details>
-    <div class="brow"><button class="btn bp" onclick="saveHabit()">Add Habit</button><button class="btn bs" onclick="closeMod()">Cancel</button></div>`;
+    <div class="brow"><button class="btn bp" onclick="saveHabit()">Create Habit</button><button class="btn bs" onclick="closeMod()">Cancel</button></div>`;
   document.getElementById('mov').classList.remove('hid');
   if(chainId&&document.getElementById('mchain')) document.getElementById('mchain').value=chainId;
   setTimeout(()=>document.getElementById('ms').focus(),50);
 }
 function saveHabit(){
   const n=document.getElementById('mn').value.trim();
-  const i=document.getElementById('mi').value.trim()||habitActionIdentity(n),s=document.getElementById('ms').value.trim(),t=document.getElementById('mt').value.trim();
+  const s=document.getElementById('ms').value.trim();
+  if(!n||!s){toast('Please fill in the Preceding Event and New Habit fields.');return;}
+  const i=document.getElementById('mi')?.value.trim()||habitActionIdentity(n);
+  const t=document.getElementById('mt')?.value.trim()||'';
   const startTime=document.getElementById('mst')?.value||'';
   const chainId=document.getElementById('mchain')?.value||'loose';
-  if(!n||!s||!t){toast('Please fill trigger, habit, and tiny version.');return;}
   const habit={id:'h'+Date.now(),name:n,id2:i,sk:s,tm:t,startTime,added:Date.now(),log:{},freq:window._editFreq['add']||{type:'daily',days:[]}};
   addHabitToSelectedFlow(habit,chainId);
   sv();closeMod();renHabits();renCal();
@@ -2704,6 +2725,8 @@ function toggleTodayTask(id){
 function deleteTodayTask(id){
   if(!confirm('Delete this task?')) return;
   D.todayTasks=D.todayTasks.filter(t=>t.id!==id);
+  const today=todayDateKey();
+  if(D.todayFlowOrder?.[today]) D.todayFlowOrder[today]=D.todayFlowOrder[today].filter(e=>!(e.kind==='task'&&e.id===id));
   sv();renHabits();
 }
 function showAddFocusBlock(){
@@ -2743,6 +2766,8 @@ function toggleFocusBlock(id){
 function deleteFocusBlock(id){
   if(!confirm('Delete this focus block?')) return;
   D.focusBlocks=D.focusBlocks.filter(b=>b.id!==id);
+  const today=todayDateKey();
+  if(D.todayFlowOrder?.[today]) D.todayFlowOrder[today]=D.todayFlowOrder[today].filter(e=>!(e.kind==='focus'&&e.id===id));
   sv();renHabits();
 }
 function moveTodayEntry(kind,id,dir){
