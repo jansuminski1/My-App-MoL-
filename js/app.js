@@ -611,6 +611,10 @@ function statKey(label){return label.toLowerCase();}
 function escapeHtml(str){
   return String(str??'').replace(/[&<>"']/g,ch=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]));
 }
+function stopUiEvent(event){
+  event?.preventDefault?.();
+  event?.stopPropagation?.();
+}
 function capStat(k){return STAT_UI[k]?.label||k.charAt(0).toUpperCase()+k.slice(1);}
 function dateStamp(ts=Date.now()){
   const d=new Date(ts);
@@ -1048,6 +1052,57 @@ function maybeAwardFinanceXp(kind,item,{showToast=false}={}){
     quality:'normal',
     difficulty:'easy',
     category:'finance'
+  }),{showToast});
+}
+function todayTaskRewardKey(task,dateKey=task?.date||todayDateKey()){return task?.id?`today_task:${dateKey}:${task.id}`:'';}
+function getTodayTaskXp(task){return task?.title?5:0;}
+function maybeAwardTodayTaskXp(task,{showToast=false}={}){
+  if(!task) return 0;
+  const xp=getTodayTaskXp(task);
+  if(!xp) return 0;
+  const timestamp=task.completedAt||Date.now();
+  return addXpEvent(makeXpEvent({
+    type:'today_task_completed',
+    sourceSection:'today',
+    label:`Completed task: ${task.title||'Quick task'}`,
+    linkedEntityId:task.id,
+    rewardKey:todayTaskRewardKey(task),
+    generalXp:xp,
+    statXp:{consistency:xp},
+    primaryStat:'consistency',
+    secondaryStat:'',
+    timestamp,
+    quality:'normal',
+    difficulty:'easy',
+    category:'today_task'
+  }),{showToast});
+}
+function focusBlockRewardKey(block,dateKey=block?.date||todayDateKey()){return block?.id?`focus_block:${dateKey}:${block.id}`:'';}
+function getFocusBlockXp(block){
+  const minutes=Number(block?.duration)||0;
+  if(minutes>=60) return 25;
+  if(minutes>=30) return 15;
+  return 10;
+}
+function maybeAwardFocusBlockXp(block,{showToast=false}={}){
+  if(!block) return 0;
+  const xp=getFocusBlockXp(block);
+  const timestamp=block.completedAt||Date.now();
+  return addXpEvent(makeXpEvent({
+    type:'focus_block_completed',
+    sourceSection:'today',
+    label:`Completed focus block: ${block.title||'Focus block'}`,
+    linkedEntityId:block.id,
+    rewardKey:focusBlockRewardKey(block),
+    generalXp:xp,
+    statXp:{intelligence:Math.round(xp*.7),consistency:Math.max(1,Math.round(xp*.3))},
+    primaryStat:'intelligence',
+    secondaryStat:'consistency',
+    durationMinutes:Number(block.duration)||0,
+    timestamp,
+    quality:'normal',
+    difficulty:'easy',
+    category:'focus_block'
   }),{showToast});
 }
 function importXpFromHistory(){
@@ -1935,7 +1990,7 @@ function flowTheme(chain,index=0){
 }
 function activeStepTitle(h){return habitDisplayName(h)||h?.name||'Next step';}
 function renderFocusBadge(){return '<div class="current-focus-badge"><span>◎</span>Current Focus</div>';}
-function renderFocusMenu(){return `<button class="current-focus-menu" onclick="toast('More focus options can live here soon.')" aria-label="More options">⋯</button>`;}
+function renderFocusMenu(){return `<button type="button" class="current-focus-menu" onclick="stopUiEvent(event);toast('More focus options can live here soon.')" aria-label="More options">⋯</button>`;}
 function renderFocusRing(seconds,totalSeconds=seconds){
   const safeTotal=Math.max(1,Number(totalSeconds)||Number(seconds)||1);
   const safeSeconds=Math.max(0,Number(seconds)||0);
@@ -1970,8 +2025,8 @@ function renderCurrentFocus(chains=buildHabitChains()){
         <h2>${escapeHtml(focus.title)}</h2>
         <p class="current-identity">${escapeHtml(focus.subtitle)} &middot; ${escapeHtml(fmt(remaining))} remaining</p>
         <div class="current-focus-actions">
-          <button class="btn bp current-focus-btn focus-primary" onclick="navigateToTab('mind')">&#9654; Open Timer</button>
-          <button class="btn bs current-focus-pomodoro" onclick="navigateToTab('mind')"><span>🍅</span>Pomodoro</button>
+          <button type="button" class="btn bp current-focus-btn focus-primary" onclick="navigateToTab('mind')">&#9654; Open Timer</button>
+          <button type="button" class="btn bs current-focus-pomodoro" onclick="navigateToTab('mind')"><span>🍅</span>Pomodoro</button>
         </div>
       </div>
     </div>`;
@@ -1990,8 +2045,8 @@ function renderCurrentFocus(chains=buildHabitChains()){
         <p class="current-identity">${escapeHtml(h.id2||'I am a person who shows up for the life I am building.')}</p>
         ${renderNodeProgress(focus.chain,activeIndex,{compact:false})}
         <div class="current-focus-actions">
-          <button class="btn bp current-focus-btn habit-primary" onclick="togH(${focus.item.index},event.currentTarget)">&#10003; Complete Step</button>
-          <button class="btn bs current-focus-ghost" onclick="toast('Skip keeps this step open for later.')">Skip</button>
+          <button type="button" class="btn bp current-focus-btn habit-primary" onclick="stopUiEvent(event);togH(${focus.item.index},event.currentTarget)">&#10003; Complete Step</button>
+          <button type="button" class="btn bs current-focus-ghost" onclick="stopUiEvent(event);toast('Skip keeps this step open for later.')">Skip</button>
         </div>
       </div>
     </div>`;
@@ -2007,8 +2062,8 @@ function renderCurrentFocus(chains=buildHabitChains()){
         <h2>${escapeHtml(t.title)}</h2>
         <p class="current-identity">${escapeHtml(t.notes||'A small practical action that clears today’s path.')}</p>
         <div class="current-focus-actions">
-          <button class="btn bp current-focus-btn task-primary" onclick="toggleTodayTask('${t.id}')">&#10003; Complete Task</button>
-          <button class="btn bs current-focus-ghost" onclick="updateTodayEntryPlacement('task','${t.id}','later')">Move Later</button>
+          <button type="button" class="btn bp current-focus-btn task-primary" onclick="stopUiEvent(event);toggleTodayTask('${t.id}',event.currentTarget)">&#10003; Complete Task</button>
+          <button type="button" class="btn bs current-focus-ghost" onclick="stopUiEvent(event);updateTodayEntryPlacement('task','${t.id}','later')">Move Later</button>
         </div>
       </div>
     </div>`;
@@ -2025,8 +2080,9 @@ function renderCurrentFocus(chains=buildHabitChains()){
         <h2>${escapeHtml(b.title||'Deep Work Block')}</h2>
         <p class="current-identity">${escapeHtml(b.notes||`${mins} min focus session`)}</p>
         <div class="current-focus-actions">
-          <button class="btn bp current-focus-btn focus-primary" onclick="startTodayFocusBlock('${b.id}')">&#9654; Start Focus</button>
-          <button class="btn bs current-focus-pomodoro" onclick="navigateToTab('mind')"><span>🍅</span>Pomodoro</button>
+          <button type="button" class="btn bp current-focus-btn focus-primary" onclick="startTodayFocusBlock('${b.id}')">&#9654; Start Focus</button>
+          <button type="button" class="btn bs current-focus-ghost" onclick="stopUiEvent(event);toggleFocusBlock('${b.id}',event.currentTarget)">Mark Done</button>
+          <button type="button" class="btn bs current-focus-pomodoro" onclick="navigateToTab('mind')"><span>🍅</span>Pomodoro</button>
         </div>
       </div>
     </div>`;
@@ -2040,8 +2096,8 @@ function renderCurrentFocus(chains=buildHabitChains()){
       <h2>Nothing is waiting right now.</h2>
       <p class="current-identity">Add one small action or start a focus block when you are ready.</p>
       <div class="current-focus-actions">
-        <button class="btn bp current-focus-btn task-primary" onclick="showAddTodayTask()">+ Add Task</button>
-        <button class="btn bs current-focus-ghost" onclick="showAddFocusBlock()">+ Focus</button>
+        <button type="button" class="btn bp current-focus-btn task-primary" onclick="showAddTodayTask()">+ Add Task</button>
+        <button type="button" class="btn bs current-focus-ghost" onclick="showAddFocusBlock()">+ Focus</button>
       </div>
     </div>
   </div>`;
@@ -2092,16 +2148,16 @@ function renderTodayFlowItem(entry){
   if(entry.kind==='task'){
     const t=entry.item;
     return`<div class="today-flow-item task quick-task-row ${t.completed?'done':''}">
-      <button class="mini-check ${t.completed?'on':''}" onclick="toggleTodayTask('${t.id}')">${t.completed?'&#10003;':''}</button>
+      <button type="button" class="mini-check ${t.completed?'on':''}" onclick="stopUiEvent(event);toggleTodayTask('${t.id}',event.currentTarget)">${t.completed?'&#10003;':''}</button>
       <strong class="flow-row-title">${escapeHtml(t.title)}</strong>
       <span class="flow-row-type">Quick task</span>
     </div>`;
   }
   const b=entry.item;
   return`<div class="today-flow-item focus compact-focus-row ${b.completed?'done':''}">
-    <span class="flow-type-icon focus">&#9687;</span>
+    <button type="button" class="mini-check ${b.completed?'on':''}" onclick="stopUiEvent(event);toggleFocusBlock('${b.id}',event.currentTarget)">${b.completed?'&#10003;':''}</button>
     <div class="quick-task-text"><strong>${escapeHtml(b.title)}</strong><small>${escapeHtml(b.type)} &middot; ${Number(b.duration)||60} min</small></div>
-    <button class="btn bs" onclick="startTodayFocusBlock('${b.id}')">Start Focus</button>
+    <button type="button" class="btn bs" onclick="stopUiEvent(event);startTodayFocusBlock('${b.id}')">Start Focus</button>
   </div>`;
 }
 function toggleTodayDesignMode(){
@@ -2119,13 +2175,13 @@ function habitDetailBlock(h,i,chain,position){
     <div><strong>Rhythm</strong><span>${str>0?`${str} day streak`:'Ready to start today'}</span></div>
     <div><strong>Stack</strong><span>${chain.items.length>1?`Step ${position+1} of ${chain.items.length}`:'Standalone habit'}</span></div>
     <div><strong>Start time</strong><span>${escapeHtml(h.startTime||'No start time')}</span></div>
-    <div><strong>Move to</strong><span><select class="habit-chain-select" onchange="moveHabitToGroup(${i},this.value)">${renderChainMoveOptions(chain.id)}</select></span></div>
+    <div><strong>Move to</strong><span><select class="habit-chain-select" onclick="event.stopPropagation()" onchange="moveHabitToGroup(${i},this.value)">${renderChainMoveOptions(chain.id)}</select></span></div>
     <div class="habit-design-actions">
-      <button class="btn bs" onclick="showEditHabit(${i})">Edit</button>
-      <button class="habit-move-btn" onclick="moveHabit(${i},-1)" ${position===0?'disabled':''} title="Move up">▲</button>
-      <button class="habit-move-btn" onclick="moveHabit(${i},1)" ${position===chain.items.length-1?'disabled':''} title="Move down">▼</button>
-      <button class="btn bs" onclick="moveHabitOutOfChain(${i})">Move to Today</button>
-      ${stacked?`<button class="btn bs" onclick="toggleStack(${i})">${h.stackedToNext?'Unstack':'Stack next'}</button>`:''}
+      <button type="button" class="btn bs" onclick="stopUiEvent(event);showEditHabit(${i})">Edit</button>
+      <button type="button" class="habit-move-btn" onclick="stopUiEvent(event);moveHabit(${i},-1)" ${position===0?'disabled':''} title="Move up">▲</button>
+      <button type="button" class="habit-move-btn" onclick="stopUiEvent(event);moveHabit(${i},1)" ${position===chain.items.length-1?'disabled':''} title="Move down">▼</button>
+      <button type="button" class="btn bs" onclick="stopUiEvent(event);moveHabitOutOfChain(${i})">Move to Today</button>
+      ${stacked?`<button type="button" class="btn bs" onclick="stopUiEvent(event);toggleStack(${i})">${h.stackedToNext?'Unstack':'Stack next'}</button>`:''}
     </div>
   </div>`;
 }
@@ -2287,8 +2343,8 @@ function renderCurrentStepSubCard(chain,activeIndex,theme){
     </div>
     <p>${escapeHtml(h.sk||'Follow this cue and do the next tiny action.')}</p>
     <div class="flow-step-actions">
-      <button class="btn bs" onclick="toast('Skip keeps this step open for later.')">Skip</button>
-      <button class="btn bp" onclick="togH(${item.index},event.currentTarget)">✓ Complete</button>
+      <button type="button" class="btn bs" onclick="stopUiEvent(event);toast('Skip keeps this step open for later.')">Skip</button>
+      <button type="button" class="btn bp" onclick="stopUiEvent(event);togH(${item.index},event.currentTarget)">✓ Complete</button>
     </div>
     <span class="flow-step-pill">🔗 ${escapeHtml(compactHabitSubline(h)||'Current link')}</span>
   </div>`;
@@ -2300,7 +2356,7 @@ function renderFlowEditPanel(chain){
   return`<div class="flow-edit-panel">
     <div class="flow-edit-head">
       <strong>Flow editing</strong>
-      <button class="flow-edit-add" onclick="showAddHabit('${chain.id}')">+ Add habit</button>
+      <button type="button" class="flow-edit-add" onclick="stopUiEvent(event);showAddHabit('${chain.id}')">+ Add habit</button>
     </div>
     ${chain.items.map((item,pos)=>renderHabitDropZone(chain.id,pos)+renderHabitRow(item,chain,pos,false)).join('')}${renderHabitDropZone(chain.id,chain.items.length)}
   </div>`;
@@ -2321,7 +2377,7 @@ function renderHabitRow(item,chain,position,active=false,primary=false){
       <div class="active-kicker">${primary?'Do this now':'Current step'}</div>
       <h3>${name}</h3>
       <div class="tiny-action">${escapeHtml(h.tm||'Do the smallest honest version now.')}</div>
-      <button class="complete-action-btn" onclick="togH(${i},event.currentTarget)">Complete</button>
+      <button type="button" class="complete-action-btn" onclick="stopUiEvent(event);togH(${i},event.currentTarget)">Complete</button>
       <details class="habit-more">
         <summary>Details</summary>
         ${habitDetailBlock(h,i,chain,position)}
@@ -2331,7 +2387,7 @@ function renderHabitRow(item,chain,position,active=false,primary=false){
   }
   return`<details class="habit-row-wrap habit-draggable ${done?'done':'upcoming'}" id="hi-${i}" draggable="true" onpointerdown="startHabitPointer(event,${i})" ondragstart="startHabitDrag(event,${i})" ondragend="endHabitDrag(event)" ondragover="allowHabitDrop(event)" ondrop="dropHabitOnGroup(event,'${chain.id}',${position})">
     <summary class="compact-habit-row">
-      <button class="mini-check ${done?'on':''}" onclick="event.preventDefault();event.stopPropagation();togH(${i},event.currentTarget)">${done?'✓':''}</button>
+      <button type="button" class="mini-check ${done?'on':''}" onclick="stopUiEvent(event);togH(${i},event.currentTarget)">${done?'✓':''}</button>
       <span>${name}</span>
       ${subline?`<small>${subline}</small>`:''}
     </summary>
@@ -2349,7 +2405,7 @@ function renderHabitChain(chain){
   const startTime=fullChain?.items?.[0]?.habit?.startTime||chain.items[0]?.habit?.startTime||'';
   const theme=flowTheme(chain);
   const isEditing=editingFlowId===chain.id;
-  const editButton=`<button class="flow-edit-btn ${isEditing?'on':''}" onclick="editHabitFlow('${chain.id}',event)">Edit</button>`;
+  const editButton=`<button type="button" class="flow-edit-btn ${isEditing?'on':''}" onclick="stopUiEvent(event);editHabitFlow('${chain.id}',event)">Edit</button>`;
   if(doneCount===chain.items.length){
     return`<details class="habit-flow-card completed-routine" style="--flow-accent:${theme.accent}" ondragover="allowHabitDrop(event)" ondrop="dropHabitOnGroup(event,'${chain.id}')">
       <summary class="habit-flow-summary">
@@ -2455,9 +2511,9 @@ function showEditHabit(i){
       <div id="edit-freq-wrap">${renderFreqPicker(h,'edit')}</div>
     </details>
     <div class="brow">
-      <button class="btn bp" onclick="saveEditHabit(${i})">Save</button>
-      <button class="btn bd" onclick="deleteHabit(${i})">Delete</button>
-      <button class="btn bs" onclick="closeMod()">Cancel</button>
+      <button type="button" class="btn bp" onclick="saveEditHabit(${i})">Save</button>
+      <button type="button" class="btn bd" onclick="deleteHabit(${i})">Delete</button>
+      <button type="button" class="btn bs" onclick="closeMod()">Cancel</button>
     </div>`;
   document.getElementById('mov').classList.remove('hid');
   setTimeout(()=>document.getElementById('edit-hname-label').focus(),50);
@@ -2514,7 +2570,7 @@ function showAddHabit(chainId=''){
       <label>Identity statement <em>(I am...)</em></label><input type="text" id="mi" placeholder="I am someone who..." class="mb10">
       <div id="add-freq-wrap">${renderFreqPicker(null,'add')}</div>
     </details>
-    <div class="brow"><button class="btn bp" onclick="saveHabit()">Add Habit</button><button class="btn bs" onclick="closeMod()">Cancel</button></div>`;
+    <div class="brow"><button type="button" class="btn bp" onclick="saveHabit()">Add Habit</button><button type="button" class="btn bs" onclick="closeMod()">Cancel</button></div>`;
   document.getElementById('mov').classList.remove('hid');
   if(chainId&&document.getElementById('mchain')) document.getElementById('mchain').value=chainId;
   setTimeout(()=>document.getElementById('ms').focus(),50);
@@ -2597,7 +2653,7 @@ function showAddTodayTask(){
     <label>Task name</label><input type="text" id="today-task-title" placeholder="Go to groceries" class="mb10">
     <label>Where should it fit today?</label><select id="today-task-placement" class="mb10">${renderTodayPlacementOptions()}</select>
     <label>Notes <em>(optional)</em></label><textarea id="today-task-notes" rows="3" placeholder="Anything useful to remember"></textarea>
-    <div class="brow"><button class="btn bp" onclick="saveTodayTask()">Add Task</button><button class="btn bs" onclick="closeMod()">Cancel</button></div>`;
+    <div class="brow"><button type="button" class="btn bp" onclick="saveTodayTask()">Add Task</button><button type="button" class="btn bs" onclick="closeMod()">Cancel</button></div>`;
   document.getElementById('mov').classList.remove('hid');
   setTimeout(()=>document.getElementById('today-task-title')?.focus(),50);
 }
@@ -2610,16 +2666,34 @@ function saveTodayTask(){
   D.todayTasks.push({id:createId('task'),title,notes,date:todayDateKey(),completed:false,...placement,order:nextTodayOrder(),createdAt:Date.now(),completedAt:null});
   closeMod();saveAndRender('today');
 }
-function toggleTodayTask(id){
+function completeTodayTask(taskId,targetEl=null){
+  ensureTodayFlow();
+  const t=D.todayTasks.find(x=>x.id===taskId);
+  if(!t||t.completed) return 0;
+  t.completed=true;
+  t.completedAt=Date.now();
+  const xp=maybeAwardTodayTaskXp(t,{showToast:true});
+  if(xp) showXpFloat(targetEl,xp);
+  saveAndRender('today');
+  return xp;
+}
+function toggleTodayTask(id,targetEl=null){
   ensureTodayFlow();
   const t=D.todayTasks.find(x=>x.id===id);
   if(!t) return;
-  t.completed=!t.completed;
-  t.completedAt=t.completed?Date.now():null;
-  saveAndRender('today');
+  if(t.completed){
+    removeXpEventByRewardKey(todayTaskRewardKey(t),{save:false});
+    t.completed=false;
+    t.completedAt=null;
+    saveAndRender('today');
+    return;
+  }
+  completeTodayTask(id,targetEl);
 }
 function deleteTodayTask(id){
   if(!confirm('Delete this task?')) return;
+  const task=D.todayTasks.find(t=>t.id===id);
+  if(task) removeXpEventByRewardKey(todayTaskRewardKey(task),{save:false});
   removeFromTodayFlowOrder('task',id);
   D.todayTasks=D.todayTasks.filter(t=>t.id!==id);
   saveAndRender('today');
@@ -2635,7 +2709,7 @@ function showAddFocusBlock(){
     </div>
     <label>Where should it fit today?</label><select id="focus-block-placement" class="mb10">${renderTodayPlacementOptions('midday')}</select>
     <label>Notes <em>(optional)</em></label><textarea id="focus-block-notes" rows="3" placeholder="Goal, project, or setup notes"></textarea>
-    <div class="brow"><button class="btn bp" onclick="saveFocusBlock()">Add Focus Block</button><button class="btn bs" onclick="closeMod()">Cancel</button></div>`;
+    <div class="brow"><button type="button" class="btn bp" onclick="saveFocusBlock()">Add Focus Block</button><button type="button" class="btn bs" onclick="closeMod()">Cancel</button></div>`;
   document.getElementById('mov').classList.remove('hid');
   setTimeout(()=>document.getElementById('focus-block-title')?.focus(),50);
 }
@@ -2650,16 +2724,34 @@ function saveFocusBlock(){
   D.focusBlocks.push({id:createId('focus'),title,type,duration,notes,date:todayDateKey(),completed:false,...placement,order:nextTodayOrder(),createdAt:Date.now(),completedAt:null});
   closeMod();saveAndRender('today');
 }
-function toggleFocusBlock(id){
+function completeFocusBlock(blockId,targetEl=null){
+  ensureTodayFlow();
+  const b=D.focusBlocks.find(x=>x.id===blockId);
+  if(!b||b.completed) return 0;
+  b.completed=true;
+  b.completedAt=Date.now();
+  const xp=maybeAwardFocusBlockXp(b,{showToast:true});
+  if(xp) showXpFloat(targetEl,xp);
+  saveAndRender('today');
+  return xp;
+}
+function toggleFocusBlock(id,targetEl=null){
   ensureTodayFlow();
   const b=D.focusBlocks.find(x=>x.id===id);
   if(!b) return;
-  b.completed=!b.completed;
-  b.completedAt=b.completed?Date.now():null;
-  saveAndRender('today');
+  if(b.completed){
+    removeXpEventByRewardKey(focusBlockRewardKey(b),{save:false});
+    b.completed=false;
+    b.completedAt=null;
+    saveAndRender('today');
+    return;
+  }
+  completeFocusBlock(id,targetEl);
 }
 function deleteFocusBlock(id){
   if(!confirm('Delete this focus block?')) return;
+  const block=D.focusBlocks.find(b=>b.id===id);
+  if(block) removeXpEventByRewardKey(focusBlockRewardKey(block),{save:false});
   removeFromTodayFlowOrder('focus',id);
   D.focusBlocks=D.focusBlocks.filter(b=>b.id!==id);
   saveAndRender('today');
