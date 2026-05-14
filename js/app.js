@@ -1894,6 +1894,11 @@ function getTodayHabitProgress(){
   return {done,total,percent:total?Math.round((done/total)*100):0};
 }
 function todayDateKey(){return dateStamp();}
+// ==================================================
+// Today Flow: Data Helpers
+// todayTasks / todayFocusBlocks filter and sort today's items by order then createdAt.
+// todayEntries() merges both into a unified sorted list used by buildTodayFlow().
+// ==================================================
 function todayTasks(){
   ensureTodayFlow();
   const today=todayDateKey();
@@ -1954,6 +1959,12 @@ function renderTodayXpFeed(){
     return`<div class="today-xp-item"><span>${escapeHtml(e.label||'XP gained')}</span><strong>+${Math.round(Number(e.generalXp)||0)} XP</strong><small>${time}</small></div>`;
   }).join('');
 }
+// ==================================================
+// Current Focus
+// getCurrentFocus() walks the visible Today Flow order (buildTodayFlow) and returns
+// the first incomplete actionable item. A running timer session overrides this.
+// renderCurrentFocus() reads getCurrentFocus() and writes to #today-current-focus.
+// ==================================================
 function runningFocusSnapshot(){
   if(D.phase!=='work') return null;
   const total=(_profileSteps[_profileIdx]?.mins||selectedFocusMinutes())*60;
@@ -2105,6 +2116,14 @@ function renderCurrentFocus(chains=buildHabitChains()){
     </div>
   </div>`;
 }
+// ==================================================
+// Today Flow: Data / Ordering Helpers
+// Today Flow combines habit-flow cards, quick tasks, and focus blocks.
+// buildTodayFlow() is the authoritative source of visible order.
+// D.todayFlowOrder[dateKey] stores the user's custom arrangement as an ordered key list.
+// Stale keys (deleted items) are silently skipped during sort.
+// applyTodayFlowCustomOrder() re-sorts the base list by the saved key order.
+// ==================================================
 function todayPlacementLabel(entry){
   if(entry.placementType==='start') return 'Start of day';
   if(entry.placementType==='midday') return 'Midday';
@@ -2154,6 +2173,11 @@ function saveTodayFlowOrder(orderedItems){
   }));
   sv();
 }
+// ==================================================
+// Today Flow: Rendering
+// renderTodayFlow() builds the list; renderTodayFlowItem() renders one entry.
+// habit-flow entries are handled by renderHabitChain(), defined below with habit rendering.
+// ==================================================
 function renderTodayFlowDropZone(pos){
   return`<div class="today-flow-drop-zone" data-pos="${pos}" ondragover="event.preventDefault();this.classList.add('on')" ondragleave="this.classList.remove('on')" ondrop="dropTodayFlowItem(event,${pos})"></div>`;
 }
@@ -2536,6 +2560,9 @@ function renderHabitRow(item,chain,position,active=false,primary=false){
     ${todayDesignMode?`<div class="habit-design-note">Design mode is on for this routine.</div>`:''}
   </details>`;
 }
+// renderHabitChain() is the Today Flow entry renderer for habit-flow cards.
+// It lives here with its direct dependencies (renderHabitRow, renderCurrentStepSubCard, etc.).
+// Called by renderTodayFlowItem() when entry.kind === 'habit-flow'.
 function renderHabitChain(chain,flowIndex=0){
   const doneCount=chain.items.filter(x=>habitIsDoneToday(x.habit)).length;
   const activeIndex=chain.items.findIndex(x=>!habitIsDoneToday(x.habit));
@@ -2780,6 +2807,8 @@ function parseTodayPlacement(value){
   if(['start','midday','evening','later'].includes(raw)) return {placementType:raw,placementId:''};
   return {placementType:'later',placementId:''};
 }
+// Today Flow ordering helpers — complement the Data / Ordering Helpers section above.
+// makeTodayFlowOrderKey / removeFromTodayFlowOrder are used by delete actions below.
 function makeTodayFlowOrderKey(entry){
   if(!entry) return '';
   if(entry.kind&&entry.item?.id) return `${entry.kind}:${entry.item.id}`;
