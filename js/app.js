@@ -2403,7 +2403,7 @@ function uncompleteHabitInFlow(habitIndex,chainId,targetEl=null){
           removeXpEventByRewardKey(habitRewardKey(D.habits[ci.index],k),{save:false});
         }
       });
-      sv();renHabits();renCal();
+      saveAndRender('today');
       return;
     }
   }
@@ -2582,6 +2582,11 @@ function renderHabitChain(chain,flowIndex=0){
     ${isEditing?renderFlowEditPanel(chain):''}
   </details>`;
 }
+// ==================================================
+// Actions: Habits
+// UI button → action fn → state + XP → saveAndRender.
+// Future React/Capacitor migration: call these domain actions or equivalent reducers.
+// ==================================================
 function renHabits(){
   ensureHabitData();
   ensureTodayFlow();
@@ -2677,7 +2682,7 @@ function saveEditHabit(i){
   D.habits[i].name=nameLabel;D.habits[i].id2=name;D.habits[i].sk=sk;D.habits[i].tm=tm;
   D.habits[i].startTime=startTime;
   D.habits[i].freq=window._editFreq['edit']||{type:'daily',days:[]};
-  sv();closeMod();renHabits();renCal();
+  closeMod();saveAndRender('today');
 }
 function deleteHabit(i){
   if(!confirm('Delete this habit and all its data?'))return;
@@ -2809,12 +2814,18 @@ function updateTodayEntryPlacement(kind,id,value){
   item.placementType=placement.placementType;
   item.placementId=placement.placementId;
   item.order=nextTodayOrder();
-  sv();renHabits();
+  saveAndRender('today');
 }
 function nextTodayOrder(){
   const entries=todayEntries();
   return entries.length?Math.max(...entries.map(e=>Number(e.item.order)||0))+1:0;
 }
+// ==================================================
+// Actions: Today Tasks / Focus Blocks
+// UI button → action fn → state + XP → saveAndRender.
+// Current Focus re-derives from Today Flow order on every render — no separate state to sync.
+// Future React/Capacitor migration: call these domain actions or equivalent reducers.
+// ==================================================
 function showAddTodayTask(){
   document.getElementById('mod').innerHTML=`
     <h2>New Quick Task</h2>
@@ -2932,7 +2943,7 @@ function moveTodayEntry(kind,id,dir){
   const next=pos+dir;
   if(pos<0||next<0||next>=today.length) return;
   [today[pos].order,today[next].order]=[today[next].order,today[pos].order];
-  sv();renHabits();
+  saveAndRender('today');
 }
 function startTodayFocusBlock(id){
   const b=D.focusBlocks.find(x=>x.id===id);
