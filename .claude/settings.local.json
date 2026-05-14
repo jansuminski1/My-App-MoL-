@@ -1,0 +1,7 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(/c/Users/jansu/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/bin/node.exe --check js/app.js)"
+    ]
+  }
+}
