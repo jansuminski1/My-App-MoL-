@@ -6,7 +6,8 @@ Masters of Life is a vanilla HTML/CSS/JavaScript PWA. It is not currently React,
 
 - `index.html` contains the app shell, Firebase/Chart.js script loading, tab containers, and inline handler entry points.
 - `css/styles.css` contains the full visual system and responsive styling.
-- `js/app.js` contains app state, persistence, Firebase/localStorage sync, rendering, XP/Character logic, and module handlers.
+- `js/app-today-flow-data.js` contains Today Flow data and ordering helpers: `todayTasks`, `todayFocusBlocks`, `todayEntries`, `buildTodayFlow`, `applyTodayFlowCustomOrder`, `saveTodayFlowOrder`, `makeTodayFlowOrderKey`, `removeFromTodayFlowOrder`, and placement helpers. Loads before `app.js`.
+- `js/app.js` contains app state, persistence, Firebase/localStorage sync, rendering, XP/Character logic, action functions, and module handlers.
 
 ## State
 
@@ -65,6 +66,7 @@ A future React/Capacitor migration is possible, but this codebase should stay st
 Run:
 
 ```bash
+node --check js/app-today-flow-data.js
 node --check js/app.js
 git diff --check
 ```
