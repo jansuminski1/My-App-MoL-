@@ -7,8 +7,9 @@ Masters of Life is a vanilla HTML/CSS/JavaScript PWA. It is not currently React,
 - `index.html` contains the app shell, Firebase/Chart.js script loading, tab containers, and inline handler entry points.
 - `css/styles.css` contains the full visual system and responsive styling.
 - `js/app-today-flow-data.js` contains Today Flow data and ordering helpers: `todayTasks`, `todayFocusBlocks`, `todayEntries`, `buildTodayFlow`, `applyTodayFlowCustomOrder`, `saveTodayFlowOrder`, `makeTodayFlowOrderKey`, `removeFromTodayFlowOrder`, and placement helpers. Loads first.
-- `js/app-today-flow-render.js` contains Today Flow rendering: `renderTodayFlowDropZone`, `renderTodayFlow`, `renderTodayFlowItem`. Loads after `app-today-flow-data.js` and before `app.js`.
-- `js/app.js` contains app state, persistence, Firebase/localStorage sync, Current Focus, habit rendering, XP/Character logic, action functions, drag/drop handlers, and app glue.
+- `js/app-today-flow-render.js` contains Today Flow rendering: `renderTodayFlowDropZone`, `renderTodayFlow`, `renderTodayFlowItem`. Loads second.
+- `js/app-current-focus.js` contains Current Focus selection and rendering: `getCurrentFocus`, `renderCurrentFocus`, `runningFocusSnapshot`, `flowTheme`, `activeStepTitle`, and rendering helpers. Loads third. `flowTheme` and `activeStepTitle` are shared with habit rendering in `app.js`.
+- `js/app.js` contains app state, persistence, Firebase/localStorage sync, habit rendering, XP/Character logic, action functions, drag/drop handlers, and app glue.
 
 ## State
 
@@ -69,6 +70,7 @@ Run:
 ```bash
 node --check js/app-today-flow-data.js
 node --check js/app-today-flow-render.js
+node --check js/app-current-focus.js
 node --check js/app.js
 git diff --check
 ```
