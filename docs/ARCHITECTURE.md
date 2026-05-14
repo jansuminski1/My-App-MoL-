@@ -10,7 +10,8 @@ Masters of Life is a vanilla HTML/CSS/JavaScript PWA. It is not currently React,
 - `js/app-today-flow-render.js` contains Today Flow rendering: `renderTodayFlowDropZone`, `renderTodayFlow`, `renderTodayFlowItem`. Loads second.
 - `js/app-current-focus.js` contains Current Focus selection and rendering: `getCurrentFocus`, `renderCurrentFocus`, `runningFocusSnapshot`, `flowTheme`, `activeStepTitle`, and rendering helpers. Loads third. `flowTheme` and `activeStepTitle` are shared with habit rendering in `app.js`.
 - `js/app-today-actions.js` contains Today task / focus block / Today Flow reorder actions: `showAddTodayTask`, `saveTodayTask`, `toggleTodayTask`, `deleteTodayTask`, `showAddFocusBlock`, `saveFocusBlock`, `toggleFocusBlock`, `deleteFocusBlock`, `startTodayFocusBlock`, `toggleTodayFlowReorderMode`, `moveTodayFlowItem`, `moveTodayEntry`, `updateTodayEntryPlacement`, `parseTodayPlacement`, `nextTodayOrder`, `renderTodayPlacementOptions`, `todayPlacementValue`. Loads fourth.
-- `js/app.js` contains app state, persistence, Firebase/localStorage sync, habit actions/rendering, XP/Character logic, Today Flow drag/drop, and app glue.
+- `js/app-habit-render.js` contains Habit Flow / habit card rendering: `renderHabitChain`, `renderHabitRow`, `renderCurrentStepSubCard`, `renderFlowEditPanel`, `renderNodeProgress`, `renderFlowNodeRow`, `renderFlowSegments`, `renderHabitDropZone`, `habitDetailBlock`, `renderChainMoveOptions`. Loads fifth.
+- `js/app.js` contains app state, persistence, Firebase/localStorage sync, habit actions/data helpers, XP/Character logic, Today Flow drag/drop, and app glue.
 
 ## State
 
@@ -73,6 +74,7 @@ node --check js/app-today-flow-data.js
 node --check js/app-today-flow-render.js
 node --check js/app-current-focus.js
 node --check js/app-today-actions.js
+node --check js/app-habit-render.js
 node --check js/app.js
 git diff --check
 ```
