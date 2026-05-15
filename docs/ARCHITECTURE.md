@@ -16,7 +16,8 @@ Masters of Life is a vanilla HTML/CSS/JavaScript PWA. It is not currently React,
 - `js/app-habit-actions.js` contains Habit action functions: `togH`, `uncompleteHabitInFlow`, `toggleStack`, `moveHabit`, `editHabitFlow`, `showAddHabit`, `saveHabit`, `showEditHabit`, `saveEditHabit`, `deleteHabit`, `moveHabitToGroup`, `moveHabitWithinGroup`, `rebuildHabitsFromGroups`, `renderFreqPicker`, `setFreqType`, `toggleFreqDay`, and related helpers. Loads eighth.
 - `js/app-goals.js` contains Goals rendering, creation, completion, deletion, carry-over, and weekly stats: `getWeekBounds`, `weekKey`, `monthKey`, `todayGoalKey`, `getGoalsForType`, `goalPrefix`, `carryOverGoals`, `renGoals`, `renGoalList`, `addGoal`, `togGoal`, `delGoal`, `renStats`. Loads ninth.
 - `js/app-analytics.js` contains Analytics rendering and Chart.js chart creation: `TAG_COLORS`, `chartCombo/Donut/Yearly`, `navMonth`, `navYear`, `getMonthSessions`, `renAnalytics`, `chartDefaults`, `chartScaleMax`, `renComboChart`, `renDonutChart`, `renYearlyChart`, `loadDemo`, `clearDemo`. Loads tenth.
-- `js/app.js` contains app state, persistence, Firebase/localStorage sync, habit data helpers (`buildHabitChains`, `buildHabitGroups`), Character tab rendering (`renderCharacter`, `generateRole`, `generateSuggestion`, `renStatGrid`), Today Flow drag/drop, focus timer, tags, meals, body, finance, and app glue. Loads eleventh.
+- `js/app-focus-timer.js` contains the focus timer, recall/rest phases, session profiles, study session logging, manual session logging, and alarm: `playAlarm`, `toggleAlarm`, in-session tag dropdown, `renProfilesMini`, `selectProfile`, `selectedFocusMinutes`, `updateFocusTimerPanel`, `handleFocusRingTap/Primary`, profile editor helpers, `fmt`, `setRing`, `showPh`, timer state variables, `startWork`, `startFocusPhase`, `tickW`, `pauseResume`, `finishEarly`, `abandon`, `enterRecall`, `tickR`, `startRest`, `startRestPhase`, `skipRest`, `visibilitychange` handler, `selFocus`, `logSess`, `renSCnt`, `initSlogFilter`, `renSlog`, `resetIdle`, `showManualLog`, `selManFocus`, `saveManualLog`. Loads eleventh.
+- `js/app.js` contains app state, persistence, Firebase/localStorage sync, habit data helpers (`buildHabitChains`, `buildHabitGroups`), Character tab rendering (`renderCharacter`, `generateRole`, `generateSuggestion`, `renStatGrid`), Today Flow drag/drop, tags, meals, body, finance, and app glue. Loads twelfth.
 
 ## State
 
@@ -85,6 +86,7 @@ node --check js/app-habit-render.js
 node --check js/app-habit-actions.js
 node --check js/app-goals.js
 node --check js/app-analytics.js
+node --check js/app-focus-timer.js
 node --check js/app.js
 git diff --check
 ```
