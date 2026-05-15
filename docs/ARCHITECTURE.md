@@ -14,7 +14,8 @@ Masters of Life is a vanilla HTML/CSS/JavaScript PWA. It is not currently React,
 - `js/app-today-actions.js` contains Today task / focus block / Today Flow reorder actions: `showAddTodayTask`, `saveTodayTask`, `toggleTodayTask`, `deleteTodayTask`, `showAddFocusBlock`, `saveFocusBlock`, `toggleFocusBlock`, `deleteFocusBlock`, `startTodayFocusBlock`, `toggleTodayFlowReorderMode`, `moveTodayFlowItem`, `moveTodayEntry`, `updateTodayEntryPlacement`, `parseTodayPlacement`, `nextTodayOrder`, `renderTodayPlacementOptions`, `todayPlacementValue`. Loads sixth.
 - `js/app-habit-render.js` contains Habit Flow / habit card rendering: `renderHabitChain`, `renderHabitRow`, `renderCurrentStepSubCard`, `renderFlowEditPanel`, `renderNodeProgress`, `renderFlowNodeRow`, `renderFlowSegments`, `renderHabitDropZone`, `habitDetailBlock`, `renderChainMoveOptions`. Loads seventh.
 - `js/app-habit-actions.js` contains Habit action functions: `togH`, `uncompleteHabitInFlow`, `toggleStack`, `moveHabit`, `editHabitFlow`, `showAddHabit`, `saveHabit`, `showEditHabit`, `saveEditHabit`, `deleteHabit`, `moveHabitToGroup`, `moveHabitWithinGroup`, `rebuildHabitsFromGroups`, `renderFreqPicker`, `setFreqType`, `toggleFreqDay`, and related helpers. Loads eighth.
-- `js/app.js` contains app state, persistence, Firebase/localStorage sync, habit data helpers (`buildHabitChains`, `buildHabitGroups`), Character tab rendering (`renderCharacter`, `generateRole`, `generateSuggestion`, `renStatGrid`), Today Flow drag/drop, focus timer, tags, health, finance, goals, analytics, and app glue.
+- `js/app-goals.js` contains Goals rendering, creation, completion, deletion, carry-over, and weekly stats: `getWeekBounds`, `weekKey`, `monthKey`, `todayGoalKey`, `getGoalsForType`, `goalPrefix`, `carryOverGoals`, `renGoals`, `renGoalList`, `addGoal`, `togGoal`, `delGoal`, `renStats`. Loads ninth.
+- `js/app.js` contains app state, persistence, Firebase/localStorage sync, habit data helpers (`buildHabitChains`, `buildHabitGroups`), Character tab rendering (`renderCharacter`, `generateRole`, `generateSuggestion`, `renStatGrid`), Today Flow drag/drop, focus timer, tags, health, finance, analytics, and app glue. Loads tenth.
 
 ## State
 
@@ -81,6 +82,7 @@ node --check js/app-xp.js
 node --check js/app-today-actions.js
 node --check js/app-habit-render.js
 node --check js/app-habit-actions.js
+node --check js/app-goals.js
 node --check js/app.js
 git diff --check
 ```
