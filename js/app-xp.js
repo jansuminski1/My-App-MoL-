@@ -5,7 +5,8 @@
 //   D, ensureCharacter, defaultCharacter           — js/app.js
 //   CHARACTER_STAT_KEYS, MAIN_STAT_KEYS, MEAL_LABELS — js/app.js
 //   dateStamp, todayDateKey                         — js/app.js
-//   toast, sv, renderCharacter                      — js/app.js
+//   toast, sv                                        — js/app.js
+//   renderCharacter                                  — js/app-character.js
 //   ensureBody, ensureGoalsStructure               — js/app.js
 // Load order: app-today-flow-data.js → app-today-flow-render.js → app-current-focus.js
 //             → app-xp.js → app-today-actions.js → app-habit-render.js → app-habit-actions.js → app.js
