@@ -12,7 +12,9 @@ export interface HabitFlow {
   kind: 'habit-flow';
   title: string;
   identity: string;
+  trigger: string;
   startTime?: string;
+  domain?: 'Intelligence' | 'Health' | 'Strength' | 'Wealth' | 'Connection' | 'Purpose' | 'Consistency' | 'Resolve';
   steps: HabitStep[];
 }
 

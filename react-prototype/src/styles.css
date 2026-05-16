@@ -261,42 +261,78 @@ button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 
 /* ── Current Focus Hero Card ── */
 .current-focus-card {
-  margin-bottom: 14px;
-  border-radius: var(--radius);
-  border: 1.5px solid var(--accent-border);
-  border-left: 4px solid var(--accent);
-  box-shadow: var(--shadow-focus);
-  background: linear-gradient(160deg, #f0f9ff 0%, #e8f4fd 100%);
+  margin-bottom: 20px;
+  border-radius: 20px;
+  border: 2px solid #93c5fd;
+  border-left: 5px solid var(--accent);
+  box-shadow:
+    0 0 0 4px rgba(14, 165, 233, 0.06),
+    0 8px 32px rgba(14, 165, 233, 0.16),
+    0 2px 8px rgba(14, 165, 233, 0.10);
+  background:
+    radial-gradient(ellipse at 94% 6%, rgba(255,255,255,0.75) 0%, transparent 44%),
+    linear-gradient(145deg, #f0f9ff 0%, #dbeafe 55%, #bfdbfe 100%);
   position: relative;
   overflow: hidden;
 }
 .current-focus-card.type-habit {
-  border-color: var(--green-border);
+  border-color: #86efac;
   border-left-color: var(--green);
-  box-shadow: var(--shadow-habit);
-  background: linear-gradient(160deg, #f0fdf4 0%, #eafaf0 100%);
+  box-shadow:
+    0 0 0 4px rgba(22, 163, 74, 0.06),
+    0 8px 32px rgba(22, 163, 74, 0.16),
+    0 2px 8px rgba(22, 163, 74, 0.08);
+  background:
+    radial-gradient(ellipse at 94% 6%, rgba(255,255,255,0.75) 0%, transparent 44%),
+    linear-gradient(145deg, #f0fdf4 0%, #dcfce7 55%, #bbf7d0 100%);
 }
 .current-focus-card.type-task {
-  border-color: var(--amber-border);
+  border-color: #fcd34d;
   border-left-color: var(--amber);
-  box-shadow: var(--shadow-task);
-  background: linear-gradient(160deg, #fffbeb 0%, #fef6dc 100%);
+  box-shadow:
+    0 0 0 4px rgba(245, 158, 11, 0.06),
+    0 8px 32px rgba(245, 158, 11, 0.15),
+    0 2px 8px rgba(245, 158, 11, 0.08);
+  background:
+    radial-gradient(ellipse at 94% 6%, rgba(255,255,255,0.75) 0%, transparent 44%),
+    linear-gradient(145deg, #fffbeb 0%, #fef3c7 55%, #fde68a 100%);
 }
 .current-focus-card.type-focus {
-  border-color: var(--accent-border);
+  border-color: #93c5fd;
   border-left-color: var(--accent);
-  box-shadow: var(--shadow-focus);
-  background: linear-gradient(160deg, #f0f9ff 0%, #e8f4fd 100%);
+  box-shadow:
+    0 0 0 4px rgba(14, 165, 233, 0.06),
+    0 8px 32px rgba(14, 165, 233, 0.16),
+    0 2px 8px rgba(14, 165, 233, 0.10);
+  background:
+    radial-gradient(ellipse at 94% 6%, rgba(255,255,255,0.75) 0%, transparent 44%),
+    linear-gradient(145deg, #f0f9ff 0%, #dbeafe 55%, #bfdbfe 100%);
 }
 .current-focus-card.done {
-  border-color: var(--green-border) !important;
+  border-color: #86efac !important;
   border-left-color: var(--green) !important;
-  box-shadow: var(--shadow-done) !important;
-  background: linear-gradient(160deg, #f0fdf4 0%, #dcfce7 100%) !important;
+  box-shadow:
+    0 0 0 4px rgba(22, 163, 74, 0.07),
+    0 8px 32px rgba(22, 163, 74, 0.16),
+    0 2px 8px rgba(22, 163, 74, 0.08) !important;
+  background:
+    radial-gradient(ellipse at 94% 6%, rgba(255,255,255,0.75) 0%, transparent 44%),
+    linear-gradient(145deg, #f0fdf4 0%, #dcfce7 55%, #bbf7d0 100%) !important;
 }
 .current-focus-inner {
-  padding: 18px 20px 16px 18px;
+  padding: 18px 20px 18px 18px;
 }
+
+/* Hero label: CURRENT FOCUS */
+.cfc-hero-label {
+  font-size: 0.57rem;
+  font-weight: 800;
+  letter-spacing: 0.13em;
+  text-transform: uppercase;
+  color: var(--text-mut);
+  margin-bottom: 10px;
+}
+
 .current-focus-kicker {
   display: flex;
   align-items: center;
@@ -306,61 +342,71 @@ button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 .current-focus-type-badge {
   font-size: 0.62rem;
   font-weight: 800;
-  letter-spacing: 0.1em;
+  letter-spacing: 0.09em;
   text-transform: uppercase;
-  padding: 3px 9px;
+  padding: 3px 10px;
   border-radius: 100px;
-  background: var(--accent-dim);
+  background: rgba(14, 165, 233, 0.14);
   color: var(--accent-dark);
-  border: 1px solid var(--accent-border);
+  border: 1px solid #93c5fd;
 }
 .current-focus-type-badge.habit {
-  background: var(--green-dim);
+  background: rgba(22, 163, 74, 0.12);
   color: var(--green-dark);
-  border-color: var(--green-border);
+  border-color: #86efac;
 }
 .current-focus-type-badge.task {
-  background: var(--amber-dim);
+  background: rgba(245, 158, 11, 0.13);
   color: var(--amber-dark);
-  border-color: var(--amber-border);
+  border-color: #fcd34d;
 }
 .current-focus-type-badge.focus {
-  background: var(--accent-dim);
+  background: rgba(14, 165, 233, 0.14);
   color: var(--accent-dark);
-  border-color: var(--accent-border);
+  border-color: #93c5fd;
 }
 .current-focus-chain {
-  font-size: 0.72rem;
+  font-size: 0.71rem;
   color: var(--text-sec);
   font-weight: 500;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  max-width: 180px;
+  max-width: 190px;
 }
 .current-focus-title {
-  font-size: 1.3rem;
+  font-size: 1.42rem;
   font-weight: 800;
   color: var(--text);
-  line-height: 1.25;
-  margin: 0 0 8px;
-  letter-spacing: -0.03em;
+  line-height: 1.22;
+  margin: 0 0 10px;
+  letter-spacing: -0.035em;
 }
 .current-focus-identity {
-  font-size: 0.8rem;
+  font-size: 0.78rem;
   color: var(--text-sec);
   font-style: italic;
   margin: 0 0 4px;
   line-height: 1.45;
 }
+.current-focus-field-label {
+  font-style: normal;
+  font-weight: 700;
+  font-size: 0.62rem;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  color: var(--green);
+  margin-right: 3px;
+}
 .current-focus-cue {
   font-size: 0.75rem;
-  color: var(--text-mut);
-  margin: 0 0 14px;
+  color: var(--text-sec);
+  font-style: italic;
+  margin: 0 0 16px;
   line-height: 1.4;
 }
 .current-focus-notes {
-  font-size: 0.8rem;
+  font-size: 0.79rem;
   color: var(--text-sec);
   margin: 0 0 14px;
   line-height: 1.4;
@@ -376,10 +422,10 @@ button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
   font-size: 0.7rem;
   font-weight: 700;
   color: var(--accent-dark);
-  background: var(--accent-dim);
-  border: 1px solid var(--accent-border);
+  background: rgba(14, 165, 233, 0.14);
+  border: 1px solid #93c5fd;
   border-radius: 100px;
-  padding: 3px 9px;
+  padding: 3px 10px;
 }
 .focus-xp-badge {
   font-size: 0.7rem;
@@ -388,7 +434,7 @@ button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
   background: var(--orange-dim);
   border: 1px solid var(--orange-border);
   border-radius: 100px;
-  padding: 3px 9px;
+  padding: 3px 10px;
 }
 .current-focus-actions {
   display: flex;
@@ -403,12 +449,12 @@ button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 }
 .cfc-start-session-btn {
   width: 100%;
-  padding: 13px 20px;
+  padding: 14px 20px;
   border-radius: var(--radius-sm);
   border: none;
   background: var(--accent);
   color: white;
-  font-size: 0.9rem;
+  font-size: 0.92rem;
   font-weight: 700;
   cursor: pointer;
   transition: background var(--transition), transform var(--transition);
@@ -420,7 +466,7 @@ button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
   width: 100%;
   padding: 10px 20px;
   border-radius: var(--radius-sm);
-  border: 1px solid var(--accent-border);
+  border: 1px solid rgba(14, 165, 233, 0.28);
   background: transparent;
   color: var(--text-sec);
   font-size: 0.82rem;
@@ -428,14 +474,14 @@ button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
   cursor: pointer;
   transition: all var(--transition);
 }
-.cfc-mark-done-btn:hover { background: var(--accent-dim); color: var(--accent-dark); }
+.cfc-mark-done-btn:hover { background: rgba(14, 165, 233, 0.1); color: var(--accent-dark); }
 
 .btn-complete {
   flex: 1;
-  padding: 12px 20px;
+  padding: 14px 20px;
   border-radius: var(--radius-sm);
   border: none;
-  font-size: 0.88rem;
+  font-size: 0.9rem;
   font-weight: 700;
   background: var(--green);
   color: white;
@@ -444,7 +490,7 @@ button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 }
 .btn-complete:hover { background: var(--green-dark); transform: translateY(-1px); }
 .btn-complete:active { transform: translateY(0); }
-.btn-complete.task-btn  { background: var(--amber);  }
+.btn-complete.task-btn  { background: var(--amber); }
 .btn-complete.task-btn:hover  { background: var(--amber-dark); }
 .btn-complete.focus-btn { background: var(--accent); }
 .btn-complete.focus-btn:hover { background: var(--accent-dark); }
@@ -454,18 +500,18 @@ button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 }
 .btn-complete.done-btn:hover { background: var(--green-dark); }
 .btn-uncomplete {
-  padding: 12px 14px;
+  padding: 14px 14px;
   border-radius: var(--radius-sm);
-  border: 1px solid var(--border);
+  border: 1px solid rgba(0,0,0,0.10);
   font-size: 0.8rem;
   font-weight: 600;
   color: var(--text-sec);
-  background: white;
+  background: rgba(255,255,255,0.55);
   transition: background var(--transition);
   cursor: pointer;
   white-space: nowrap;
 }
-.btn-uncomplete:hover { background: var(--surface-alt); }
+.btn-uncomplete:hover { background: rgba(255,255,255,0.85); }
 
 /* ── All Done Card ── */
 .all-done-card {
@@ -806,6 +852,21 @@ button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 }
 .habit-node-connector.done { background: var(--green-border); }
 
+/* Trigger line (collapsed) */
+.habit-flow-trigger-line {
+  font-size: 0.68rem;
+  color: var(--text-mut);
+  margin-top: 5px;
+  line-height: 1.35;
+}
+.habit-flow-trigger-label {
+  font-weight: 700;
+  color: var(--green);
+  text-transform: uppercase;
+  font-size: 0.6rem;
+  letter-spacing: 0.06em;
+}
+
 /* Step name tooltip */
 .habit-step-tooltip {
   font-size: 0.68rem;
@@ -863,6 +924,22 @@ button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
   letter-spacing: -0.01em;
 }
 .habit-step-panel-cue {
+  font-size: 0.74rem;
+  color: var(--text-sec);
+  line-height: 1.4;
+  margin-bottom: 6px;
+  font-style: italic;
+}
+.habit-step-panel-cue-label,
+.habit-step-panel-vote-label {
+  font-style: normal;
+  font-weight: 700;
+  font-size: 0.6rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--green);
+}
+.habit-step-panel-vote {
   font-size: 0.74rem;
   color: var(--text-sec);
   line-height: 1.4;
@@ -1082,13 +1159,18 @@ button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 
 /* ── Focus Session Banner ── */
 .focus-session-banner {
-  margin-bottom: 14px;
-  border-radius: var(--radius);
-  border: 1.5px solid var(--accent-border);
-  border-left: 4px solid var(--accent);
-  box-shadow: var(--shadow-focus);
-  background: linear-gradient(160deg, #f0f9ff 0%, #e4f2fb 100%);
-  padding: 16px 18px 15px 16px;
+  margin-bottom: 20px;
+  border-radius: 20px;
+  border: 2px solid #93c5fd;
+  border-left: 5px solid var(--accent);
+  box-shadow:
+    0 0 0 4px rgba(14, 165, 233, 0.06),
+    0 8px 32px rgba(14, 165, 233, 0.16),
+    0 2px 8px rgba(14, 165, 233, 0.10);
+  background:
+    radial-gradient(ellipse at 94% 6%, rgba(255,255,255,0.75) 0%, transparent 44%),
+    linear-gradient(145deg, #f0f9ff 0%, #dbeafe 55%, #bfdbfe 100%);
+  padding: 18px 20px 18px 18px;
   overflow: hidden;
 }
 .focus-session-banner.paused {
@@ -1098,10 +1180,15 @@ button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
   background: var(--surface-alt);
 }
 .focus-session-banner.over {
-  border-color: var(--green-border);
+  border-color: #86efac;
   border-left-color: var(--green);
-  box-shadow: var(--shadow-done);
-  background: linear-gradient(160deg, #f0fdf4 0%, #e4faea 100%);
+  box-shadow:
+    0 0 0 4px rgba(22, 163, 74, 0.06),
+    0 8px 32px rgba(22, 163, 74, 0.16),
+    0 2px 8px rgba(22, 163, 74, 0.08);
+  background:
+    radial-gradient(ellipse at 94% 6%, rgba(255,255,255,0.75) 0%, transparent 44%),
+    linear-gradient(145deg, #f0fdf4 0%, #dcfce7 55%, #bbf7d0 100%);
 }
 .fsb-header {
   display: flex;
@@ -1116,10 +1203,10 @@ button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
   letter-spacing: 0.1em;
   text-transform: uppercase;
   color: var(--accent-dark);
-  background: var(--accent-dim);
-  border: 1px solid var(--accent-border);
+  background: rgba(14, 165, 233, 0.14);
+  border: 1px solid #93c5fd;
   border-radius: 100px;
-  padding: 3px 9px;
+  padding: 3px 10px;
   flex-shrink: 0;
 }
 .focus-session-banner.paused .fsb-in-session-pill {
@@ -1129,8 +1216,8 @@ button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 }
 .focus-session-banner.over .fsb-in-session-pill {
   color: var(--green-dark);
-  background: var(--green-dim);
-  border-color: var(--green-border);
+  background: rgba(22, 163, 74, 0.12);
+  border-color: #86efac;
 }
 .fsb-title {
   font-size: 0.9rem;
@@ -1189,21 +1276,21 @@ button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
   gap: 7px;
 }
 .fsb-btn {
-  padding: 9px 14px;
+  padding: 11px 14px;
   border-radius: var(--radius-sm);
   border: none;
-  font-size: 0.81rem;
+  font-size: 0.84rem;
   font-weight: 700;
   cursor: pointer;
   transition: all var(--transition);
   white-space: nowrap;
 }
 .fsb-btn-pause {
-  background: var(--accent-dim);
+  background: rgba(14, 165, 233, 0.14);
   color: var(--accent-dark);
-  border: 1px solid var(--accent-border);
+  border: 1px solid #93c5fd;
 }
-.fsb-btn-pause:hover { background: var(--accent); color: white; }
+.fsb-btn-pause:hover { background: var(--accent); color: white; border-color: var(--accent); }
 .fsb-btn-resume {
   background: var(--accent);
   color: white;
@@ -1213,14 +1300,18 @@ button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
   flex: 1;
   background: var(--green);
   color: white;
+  font-size: 0.9rem;
 }
-.fsb-btn-complete:hover { background: var(--green-dark); }
+.fsb-btn-complete:hover { background: var(--green-dark); transform: translateY(-1px); }
+.fsb-btn-complete:active { transform: translateY(0); }
 .fsb-btn-cancel {
   background: transparent;
   color: var(--text-mut);
-  border: 1px solid var(--border);
+  border: 1px solid rgba(0,0,0,0.10);
+  font-weight: 600;
+  font-size: 0.78rem;
 }
-.fsb-btn-cancel:hover { color: var(--text); background: var(--surface-alt); }
+.fsb-btn-cancel:hover { color: var(--text-sec); background: rgba(0,0,0,0.04); }
 
 /* ── Add Modal ── */
 .modal-overlay {
@@ -1375,4 +1466,45 @@ button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
   animation: xpFloatUp 1.9s ease forwards;
   white-space: nowrap;
   box-shadow: 0 4px 24px rgba(15,23,42,0.25);
+}
+
+/* ── Sortable Drag ── */
+
+/* touch-action: none lets dnd-kit detect long-press before the browser scrolls.
+   Scrolling is preserved on non-Today-Flow areas (header, progress strip, etc.).
+   This is the standard web trade-off for full-card drag without a visible handle. */
+.sortable-item {
+  position: relative;
+  touch-action: none;
+  -webkit-user-select: none;
+  user-select: none;
+}
+
+.sortable-item.is-dragging {
+  opacity: 0.25;
+}
+
+/* Lifted card following the finger/cursor */
+.drag-overlay-wrapper {
+  transform: scale(1.025) rotate(-0.4deg);
+  filter:
+    drop-shadow(0 14px 44px rgba(15, 23, 42, 0.18))
+    drop-shadow(0 4px 12px rgba(15, 23, 42, 0.10));
+  opacity: 0.97;
+}
+
+/* Subtle "hold to reorder" hint in the Today Flow header */
+.today-flow-label-group {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.today-flow-reorder-hint {
+  font-size: 0.57rem;
+  color: var(--text-mut);
+  font-weight: 400;
+  opacity: 0.65;
+  letter-spacing: 0.01em;
+  user-select: none;
 }

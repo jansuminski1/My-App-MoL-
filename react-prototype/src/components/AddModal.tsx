@@ -4,7 +4,7 @@ type AddMode = 'task' | 'focus' | 'flow';
 
 interface Props {
   mode: AddMode;
-  onAdd: (data: { title: string; notes: string; duration: number; steps: string[] }) => void;
+  onAdd: (data: { title: string; notes: string; duration: number; steps: string[]; trigger: string; identity: string }) => void;
   onClose: () => void;
 }
 
@@ -21,6 +21,8 @@ export function AddModal({ mode, onAdd, onClose }: Props) {
   const [notes, setNotes] = useState('');
   const [duration, setDuration] = useState(25);
   const [steps, setSteps] = useState('');
+  const [trigger, setTrigger] = useState('');
+  const [identity, setIdentity] = useState('');
 
   const cfg = CONFIG[mode];
 
@@ -32,6 +34,8 @@ export function AddModal({ mode, onAdd, onClose }: Props) {
       notes: notes.trim(),
       duration,
       steps: steps.split(',').map(s => s.trim()).filter(Boolean),
+      trigger: trigger.trim(),
+      identity: identity.trim(),
     });
   }
 
@@ -86,15 +90,35 @@ export function AddModal({ mode, onAdd, onClose }: Props) {
           )}
 
           {mode === 'flow' && (
-            <label className="modal-label">
-              Steps (comma-separated)
-              <input
-                className="modal-input"
-                value={steps}
-                onChange={e => setSteps(e.target.value)}
-                placeholder="e.g. clear desk, plan tomorrow, shutdown"
-              />
-            </label>
+            <>
+              <label className="modal-label">
+                Trigger
+                <input
+                  className="modal-input"
+                  value={trigger}
+                  onChange={e => setTrigger(e.target.value)}
+                  placeholder="After I wake up"
+                />
+              </label>
+              <label className="modal-label">
+                Identity
+                <input
+                  className="modal-input"
+                  value={identity}
+                  onChange={e => setIdentity(e.target.value)}
+                  placeholder="I am someone who starts the day deliberately."
+                />
+              </label>
+              <label className="modal-label">
+                Steps (comma-separated)
+                <input
+                  className="modal-input"
+                  value={steps}
+                  onChange={e => setSteps(e.target.value)}
+                  placeholder="e.g. clear desk, plan tomorrow, shutdown"
+                />
+              </label>
+            </>
           )}
 
           <button

@@ -85,6 +85,10 @@ export function HabitFlowCard({ flow, isCurrent, defaultExpanded, onToggleStep }
             </div>
           )}
 
+          <div className="habit-flow-trigger-line">
+            <span className="habit-flow-trigger-label">Starts after:</span> {flow.trigger}
+          </div>
+
           {flow.startTime && (
             <span className="habit-flow-time-badge">🕐 {flow.startTime}</span>
           )}
@@ -99,7 +103,14 @@ export function HabitFlowCard({ flow, isCurrent, defaultExpanded, onToggleStep }
           <div className="habit-step-panel-label">Current Step</div>
           <div className="habit-step-panel-name">{activeStep.name}</div>
           {activeStep.cue && (
-            <div className="habit-step-panel-cue">{activeStep.cue}</div>
+            <div className="habit-step-panel-cue">
+              <span className="habit-step-panel-cue-label">Cue:</span> {activeStep.cue}
+            </div>
+          )}
+          {activeStep.identity && (
+            <div className="habit-step-panel-vote">
+              <span className="habit-step-panel-vote-label">Vote:</span> {activeStep.identity}
+            </div>
           )}
           <div className="habit-step-panel-actions">
             <button

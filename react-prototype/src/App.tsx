@@ -119,7 +119,11 @@ function App() {
     setSession(null);
   }
 
-  function handleAdd(data: { title: string; notes: string; duration: number; steps: string[] }) {
+  const handleReorder = useCallback((newItems: TodayItem[]) => {
+    setItems(newItems);
+  }, []);
+
+  function handleAdd(data: { title: string; notes: string; duration: number; steps: string[]; trigger: string; identity: string }) {
     if (addModal === 'task') {
       const newTask: QuickTask = {
         id: `task-${Date.now()}`,
@@ -141,19 +145,22 @@ function App() {
       setItems(prev => [...prev, newBlock]);
     } else if (addModal === 'flow') {
       const stepList = data.steps.length > 0 ? data.steps : ['Step 1'];
+      const flowIdentity = data.identity || 'I am someone who follows through.';
+      const flowTrigger = data.trigger || 'When I am ready';
       const steps: HabitStep[] = stepList.map((name, i) => ({
         id: `step-${Date.now()}-${i}`,
         name,
-        identity: `I am someone who ${name.toLowerCase()}.`,
-        cue: `I will ${name.toLowerCase()}.`,
-        tinyMinimum: 'Start small',
+        identity: flowIdentity,
+        cue: i === 0 ? flowTrigger : `After ${stepList[i - 1]}`,
+        tinyMinimum: '',
         completed: false,
       }));
       const newFlow: HabitFlow = {
         id: `flow-${Date.now()}`,
         kind: 'habit-flow',
         title: data.title,
-        identity: 'I am someone who follows through.',
+        identity: flowIdentity,
+        trigger: flowTrigger,
         steps,
       };
       setItems(prev => [...prev, newFlow]);
@@ -231,6 +238,7 @@ function App() {
           onAddTask={() => setAddModal('task')}
           onAddFocus={() => setAddModal('focus')}
           onAddFlow={() => setAddModal('flow')}
+          onReorder={handleReorder}
         />
       </div>
 

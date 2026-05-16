@@ -17,19 +17,29 @@ export function CurrentFocusCard({ focus, onToggleStep, onToggleTask, onToggleFo
     if (!step) return null;
     const stepIdx = flow.steps.findIndex(s => s.id === focus.stepId);
     const isLastStep = stepIdx === flow.steps.length - 1;
+    const stepPosition = isLastStep && !step.completed
+      ? `${flow.title} · final step`
+      : `${flow.title} · step ${stepIdx + 1} of ${flow.steps.length}`;
 
     return (
       <div className={`current-focus-card type-habit${step.completed ? ' done' : ''}`}>
         <div className="current-focus-inner">
+          <div className="cfc-hero-label">Current Focus</div>
           <div className="current-focus-kicker">
             <span className="current-focus-type-badge habit">Habit Step</span>
-            <span className="current-focus-chain">
-              {flow.title}{isLastStep && !step.completed && ' · final'}
-            </span>
+            <span className="current-focus-chain">{stepPosition}</span>
           </div>
           <h2 className="current-focus-title">{step.name}</h2>
-          <p className="current-focus-identity">{step.identity}</p>
-          <p className="current-focus-cue">{step.cue}</p>
+          {step.cue && (
+            <p className="current-focus-cue">
+              <span className="current-focus-field-label">Cue:</span> {step.cue}
+            </p>
+          )}
+          {step.identity && (
+            <p className="current-focus-identity">
+              <span className="current-focus-field-label">Vote:</span> {step.identity}
+            </p>
+          )}
           <div className="current-focus-actions">
             {step.completed ? (
               <>
@@ -53,6 +63,7 @@ export function CurrentFocusCard({ focus, onToggleStep, onToggleTask, onToggleFo
     return (
       <div className={`current-focus-card type-task${item.completed ? ' done' : ''}`}>
         <div className="current-focus-inner">
+          <div className="cfc-hero-label">Current Focus</div>
           <div className="current-focus-kicker">
             <span className="current-focus-type-badge task">Quick Task</span>
           </div>
@@ -81,6 +92,7 @@ export function CurrentFocusCard({ focus, onToggleStep, onToggleTask, onToggleFo
     return (
       <div className={`current-focus-card type-focus${item.completed ? ' done' : ''}`}>
         <div className="current-focus-inner">
+          <div className="cfc-hero-label">Current Focus</div>
           <div className="current-focus-kicker">
             <span className="current-focus-type-badge focus">Focus Block</span>
           </div>
