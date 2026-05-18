@@ -94,8 +94,8 @@ export function TodayFlow({
   )?.id;
 
   const sensors = useSensors(
-    useSensor(SmartPointerSensor, { activationConstraint: { distance: 6 } }),
-    useSensor(SmartTouchSensor, { activationConstraint: { delay: 300, tolerance: 8 } }),
+    useSensor(SmartPointerSensor, { activationConstraint: { distance: 8 } }),
+    useSensor(SmartTouchSensor, { activationConstraint: { delay: 400, tolerance: 8 } }),
     useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
   );
 

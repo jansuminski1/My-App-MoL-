@@ -1853,15 +1853,27 @@ button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 
 /* ── Sortable Drag ── */
 
-/* touch-action: none lets dnd-kit detect long-press before the browser scrolls.
-   Scrolling is preserved on non-Today-Flow areas (header, progress strip, etc.).
-   This is the standard web trade-off for full-card drag without a visible handle. */
+/* touch-action: pan-y lets native scroll work everywhere on the card.
+   Only the drag handle (left 20px) sets touch-action: none so dnd-kit can
+   intercept that zone for reordering without blocking scroll elsewhere. */
 .sortable-item {
   position: relative;
-  touch-action: none;
+  touch-action: pan-y;
   -webkit-user-select: none;
   user-select: none;
 }
+
+.sortable-drag-handle {
+  position: absolute;
+  top: 0;
+  left: 0;
+  bottom: 0;
+  width: 20px;
+  touch-action: none;
+  cursor: grab;
+  z-index: 2;
+}
+.sortable-drag-handle:active { cursor: grabbing; }
 
 .sortable-item.is-dragging {
   opacity: 0.25;

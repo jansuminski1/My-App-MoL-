@@ -34,6 +34,7 @@ export function SortableTodayItem({
     attributes,
     listeners,
     setNodeRef,
+    setActivatorNodeRef,
     transform,
     transition,
     isDragging,
@@ -49,9 +50,16 @@ export function SortableTodayItem({
       ref={setNodeRef}
       style={style}
       className={`sortable-item${isDragging ? ' is-dragging' : ''}`}
-      {...listeners}
       {...attributes}
     >
+      {/* Drag handle — left edge only. touch-action:none scoped here so the
+          rest of the card keeps touch-action:pan-y for natural scrolling. */}
+      <div
+        ref={setActivatorNodeRef}
+        {...listeners}
+        className="sortable-drag-handle"
+        aria-label="Hold to reorder"
+      />
       {item.kind === 'habit-flow' && (
         <HabitFlowCard
           flow={item}
