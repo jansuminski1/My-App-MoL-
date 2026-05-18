@@ -1,3 +1,5 @@
+export type TabId = 'today' | 'mind' | 'goals' | 'health' | 'analytics' | 'character';
+
 export type HabitFreq = {
   type: 'daily' | 'weekdays' | 'weekly' | 'biweekly' | 'monthly' | 'custom';
   days?: number[];

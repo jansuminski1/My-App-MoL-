@@ -1,30 +1,31 @@
 import { useState, useMemo, useCallback, useEffect, useRef } from 'react';
-import { TodayItem, CharacterState, FocusSession, FocusSessionLog, HabitFlow, QuickTask, FocusBlock, FocusType, LifeDomain } from './types';
+import {
+  TodayItem, CharacterState, FocusSession, FocusSessionLog,
+  HabitFlow, QuickTask, FocusBlock, FocusType, LifeDomain, TabId,
+} from './types';
 import { makeIdentityShort, makeStepCue, makeTinyVersion, makeFocusEntryStep } from './utils/smartDefaults';
 import { mockTodayItems, mockCharacter } from './data/mockToday';
 import {
-  getCurrentFocus,
-  getTodayProgress,
-  filterItemsForToday,
-  addXpEventOnce,
-  removeXpEventByRewardKey,
-  habitStepRewardKey,
-  taskRewardKey,
-  focusBlockRewardKey,
+  getCurrentFocus, getTodayProgress, filterItemsForToday,
+  addXpEventOnce, removeXpEventByRewardKey,
+  habitStepRewardKey, taskRewardKey, focusBlockRewardKey,
 } from './utils/todayFlow';
 import { todayDateKey, nowTs } from './utils/date';
 import { loadPrototypeState, savePrototypeState, clearPrototypeState } from './utils/storage';
 import { getFocusProfile, calculateFocusXp } from './utils/focusProfiles';
-import { ProgressStrip } from './components/ProgressStrip';
-import { CurrentFocusCard } from './components/CurrentFocusCard';
-import { CharacterMini } from './components/CharacterMini';
-import { TodayFlow } from './components/TodayFlow';
-import { FocusSessionBanner } from './components/FocusSessionBanner';
+import { BottomNav } from './components/BottomNav';
 import { AddModal } from './components/AddModal';
+import { TodayPage } from './pages/TodayPage';
+import { MindPage } from './pages/MindPage';
+import { GoalsPage } from './pages/GoalsPage';
+import { HealthPage } from './pages/HealthPage';
+import { AnalyticsPage } from './pages/AnalyticsPage';
+import { CharacterPage } from './pages/CharacterPage';
 
 type AddMode = 'task' | 'focus' | 'flow';
 
 function App() {
+  const [activeTab, setActiveTab] = useState<TabId>('today');
   const [items, setItems] = useState<TodayItem[]>(() => loadPrototypeState().items);
   const [character, setCharacter] = useState<CharacterState>(() => loadPrototypeState().character);
   const [focusSessionLogs, setFocusSessionLogs] = useState<FocusSessionLog[]>(() => loadPrototypeState().focusSessionLogs);
@@ -46,7 +47,7 @@ function App() {
     return () => { if (xpFloatTimer.current) clearTimeout(xpFloatTimer.current); };
   }, []);
 
-  // Bare effect: process session completion triggered from within setSession updater
+  // Bare effect: process session completion queued from within setSession updater
   useEffect(() => {
     if (!pendingCompletionRef.current) return;
     const completed = pendingCompletionRef.current;
@@ -126,7 +127,6 @@ function App() {
     const rewardKey = habitStepRewardKey(stepId, today);
     let isCompleting = false;
     let stepName = '';
-
     setItems(prev => prev.map(item => {
       if (item.kind !== 'habit-flow' || item.id !== flowId) return item;
       return {
@@ -139,7 +139,6 @@ function App() {
         }),
       };
     }));
-
     if (isCompleting) {
       setCharacter(c => addXpEventOnce(c, 15, stepName, 'habit', rewardKey));
       showXpFloat(`+15 XP — ${stepName}`);
@@ -153,18 +152,12 @@ function App() {
     const rewardKey = taskRewardKey(taskId, today);
     let isCompleting = false;
     let taskTitle = '';
-
     setItems(prev => prev.map(item => {
       if (item.kind !== 'quick-task' || item.id !== taskId) return item;
       isCompleting = !item.completed;
       taskTitle = item.title;
-      return {
-        ...item,
-        completed: !item.completed,
-        completedAt: !item.completed ? nowTs() : null,
-      };
+      return { ...item, completed: !item.completed, completedAt: !item.completed ? nowTs() : null };
     }));
-
     if (isCompleting) {
       setCharacter(c => addXpEventOnce(c, 10, taskTitle, 'task', rewardKey));
       showXpFloat(`+10 XP — ${taskTitle}`);
@@ -178,18 +171,12 @@ function App() {
     const rewardKey = focusBlockRewardKey(blockId, today);
     let isCompleting = false;
     let blockTitle = '';
-
     setItems(prev => prev.map(item => {
       if (item.kind !== 'focus-block' || item.id !== blockId) return item;
       isCompleting = !item.completed;
       blockTitle = item.title;
-      return {
-        ...item,
-        completed: !item.completed,
-        completedAt: !item.completed ? nowTs() : null,
-      };
+      return { ...item, completed: !item.completed, completedAt: !item.completed ? nowTs() : null };
     }));
-
     if (isCompleting) {
       setCharacter(c => addXpEventOnce(c, 40, blockTitle, 'focus', rewardKey));
       showXpFloat(`+40 XP — ${blockTitle}`);
@@ -293,9 +280,7 @@ function App() {
   const handleReorder = useCallback((newVisibleItems: TodayItem[]) => {
     setItems(prev => {
       const today = todayDateKey();
-      const historical = prev.filter(
-        item => item.kind !== 'habit-flow' && item.dateKey !== today
-      );
+      const historical = prev.filter(item => item.kind !== 'habit-flow' && item.dateKey !== today);
       return [...newVisibleItems, ...historical];
     });
   }, []);
@@ -304,15 +289,10 @@ function App() {
     const today = todayDateKey();
     const item = items.find(i => i.id === itemId);
     if (!item) return;
-
     if (item.kind === 'quick-task') {
-      if (item.completed) {
-        setCharacter(c => removeXpEventByRewardKey(c, taskRewardKey(itemId, today)));
-      }
+      if (item.completed) setCharacter(c => removeXpEventByRewardKey(c, taskRewardKey(itemId, today)));
     } else if (item.kind === 'focus-block') {
-      if (item.completed) {
-        setCharacter(c => removeXpEventByRewardKey(c, focusBlockRewardKey(itemId, today)));
-      }
+      if (item.completed) setCharacter(c => removeXpEventByRewardKey(c, focusBlockRewardKey(itemId, today)));
       if (session?.focusBlockId === itemId) setSession(null);
     } else if (item.kind === 'habit-flow') {
       const completedSteps = item.steps.filter(s => !!s.completionLog[today]);
@@ -326,7 +306,6 @@ function App() {
         });
       }
     }
-
     setItems(prev => prev.filter(i => i.id !== itemId));
   }
 
@@ -357,7 +336,6 @@ function App() {
       setItems(prev => [...prev, newTask]);
     } else if (addModal === 'focus') {
       const focusType = (data.focusType as FocusType) || 'Deep Work';
-      const generatedEntryStep = data.entryStep || makeFocusEntryStep(data.title, focusType);
       const newBlock: FocusBlock = {
         id: `focus-${now}`,
         kind: 'focus-block',
@@ -370,7 +348,7 @@ function App() {
         createdAt: now,
         order: items.filter(i => i.kind === 'focus-block').length,
         type: focusType,
-        entryStep: generatedEntryStep,
+        entryStep: data.entryStep || makeFocusEntryStep(data.title, focusType),
         difficulty: data.difficulty ? (data.difficulty as FocusBlock['difficulty']) : undefined,
         domain: data.domain ? (data.domain as LifeDomain) : undefined,
       };
@@ -380,8 +358,6 @@ function App() {
       const flowIdentity = data.identity || 'I am someone who follows through.';
       const flowTrigger = data.trigger || 'When I am ready';
       const flowIdentityShort = data.identityShort || makeIdentityShort(flowIdentity);
-      const flowPlace = data.place || undefined;
-      const flowTinyVersion = data.tinyVersion || undefined;
       const steps = stepList.map((name, i) => ({
         id: `step-${now}-${i}`,
         name,
@@ -390,7 +366,7 @@ function App() {
         cue: makeStepCue(flowTrigger, i > 0 ? stepList[i - 1] : undefined),
         tinyMinimum: '',
         tinyVersion: makeTinyVersion(name),
-        place: flowPlace,
+        place: data.place || undefined,
         completionLog: {},
         freq: { type: 'daily' as const },
       }));
@@ -402,8 +378,8 @@ function App() {
         trigger: flowTrigger,
         steps,
         identityShort: flowIdentityShort,
-        place: flowPlace,
-        tinyVersion: flowTinyVersion,
+        place: data.place || undefined,
+        tinyVersion: data.tinyVersion || undefined,
         obstacle: data.obstacle || undefined,
         obstaclePlan: data.obstaclePlan || undefined,
       };
@@ -412,83 +388,73 @@ function App() {
     setAddModal(null);
   }
 
-  const allDone = progress.completed === progress.total && progress.total > 0;
-  const showCurrentFocus = !session && currentFocus;
+  const dateLabel = new Date().toLocaleDateString('en-US', {
+    weekday: 'short', month: 'short', day: 'numeric',
+  });
 
   return (
-    <div className="app">
-      <div className="app-inner">
-        <header className="app-header">
-          <div className="app-brand">
-            <div className="brand-mark">ML</div>
-            <span className="brand-name">Masters of Life</span>
+    <div className="app-shell">
+      <header className="app-shell-header">
+        <div className="ash-left">
+          <div className="brand-mark">ML</div>
+          <div className="ash-brand-text">
+            <span className="ash-brand-name">Masters of Life</span>
+            <span className="ash-brand-date">{dateLabel}</span>
           </div>
-          <span className="prototype-pill">Prototype</span>
-        </header>
-
-        <div className="app-date-bar">
-          <span className="app-date-label">Today</span>
-          <span className="app-date-sub">
-            {new Date().toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}
-          </span>
         </div>
+        <div className="ash-right">
+          {session && <span className="ash-session-pill">● Active</span>}
+          <span className="prototype-pill">Prototype</span>
+        </div>
+      </header>
 
-        <ProgressStrip
-          completed={progress.completed}
-          total={progress.total}
-          character={character}
-        />
-
-        {session ? (
-          <FocusSessionBanner
+      <main className="app-shell-content">
+        {activeTab === 'today' && (
+          <TodayPage
+            visibleItems={visibleItems}
+            currentFocus={currentFocus}
+            progress={progress}
+            character={character}
+            focusSessionLogs={focusSessionLogs}
             session={session}
-            onPause={pauseSession}
-            onResume={resumeSession}
-            onAdvancePhase={advancePhase}
-            onAddInterruption={addInterruption}
-            onSetQuality={setSessionQuality}
-            onSetReflection={setSessionReflection}
-            onCancel={cancelSession}
-          />
-        ) : showCurrentFocus ? (
-          <CurrentFocusCard
-            focus={currentFocus}
             onToggleStep={toggleHabitStep}
             onToggleTask={toggleTask}
             onToggleFocusBlock={toggleFocusBlock}
             onStartFocus={startFocus}
+            onPauseSession={pauseSession}
+            onResumeSession={resumeSession}
+            onAdvancePhase={advancePhase}
+            onAddInterruption={addInterruption}
+            onSetSessionQuality={setSessionQuality}
+            onSetSessionReflection={setSessionReflection}
+            onCancelSession={cancelSession}
+            onReorder={handleReorder}
+            onDeleteItem={handleDeleteItem}
+            onAddTask={() => setAddModal('task')}
+            onAddFocus={() => setAddModal('focus')}
+            onAddFlow={() => setAddModal('flow')}
+            onReset={handleReset}
+            onSimulateTomorrow={handleSimulateTomorrow}
           />
-        ) : allDone ? (
-          <div className="all-done-card">
-            <div className="all-done-icon">🎯</div>
-            <h2>All done for today</h2>
-            <p>Every action was a vote for the person you are becoming.</p>
-          </div>
-        ) : null}
+        )}
+        {activeTab === 'mind' && (
+          <MindPage focusSessionLogs={focusSessionLogs} />
+        )}
+        {activeTab === 'goals' && <GoalsPage />}
+        {activeTab === 'health' && <HealthPage />}
+        {activeTab === 'analytics' && (
+          <AnalyticsPage focusSessionLogs={focusSessionLogs} character={character} />
+        )}
+        {activeTab === 'character' && (
+          <CharacterPage character={character} focusSessionLogs={focusSessionLogs} />
+        )}
+      </main>
 
-        <CharacterMini
-          character={character}
-          focusSessionLogs={focusSessionLogs}
-          onReset={handleReset}
-          onSimulateTomorrow={handleSimulateTomorrow}
-        />
-
-        <TodayFlow
-          items={visibleItems}
-          currentFocusItemId={currentFocus?.item.id}
-          currentFocusStepId={currentFocus?.stepId}
-          activeSessionBlockId={session?.focusBlockId}
-          onToggleStep={toggleHabitStep}
-          onToggleTask={toggleTask}
-          onToggleFocusBlock={toggleFocusBlock}
-          onStartFocus={startFocus}
-          onAddTask={() => setAddModal('task')}
-          onAddFocus={() => setAddModal('focus')}
-          onAddFlow={() => setAddModal('flow')}
-          onReorder={handleReorder}
-          onDeleteItem={handleDeleteItem}
-        />
-      </div>
+      <BottomNav
+        activeTab={activeTab}
+        onTabChange={setActiveTab}
+        hasActiveSession={!!session}
+      />
 
       {xpFloat && <div className="xp-float">{xpFloat}</div>}
 
