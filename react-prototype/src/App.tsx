@@ -1,5 +1,6 @@
 import { useState, useMemo, useCallback, useEffect, useRef } from 'react';
-import { TodayItem, CharacterState, FocusSession, HabitStep, HabitFlow, QuickTask, FocusBlock } from './types';
+import { TodayItem, CharacterState, FocusSession, HabitStep, HabitFlow, QuickTask, FocusBlock, FocusType, LifeDomain } from './types';
+import { makeIdentityShort, makeStepCue, makeTinyVersion, makeFocusEntryStep } from './utils/smartDefaults';
 import { mockTodayItems, mockCharacter } from './data/mockToday';
 import {
   getCurrentFocus,
@@ -196,7 +197,12 @@ function App() {
     setItems(prev => prev.filter(i => i.id !== itemId));
   }
 
-  function handleAdd(data: { title: string; notes: string; duration: number; steps: string[]; trigger: string; identity: string; identityShort: string; place: string; tinyVersion: string; obstacle: string; obstaclePlan: string }) {
+  function handleAdd(data: {
+    title: string; notes: string; duration: number; focusType: string;
+    steps: string[]; trigger: string; identity: string; identityShort: string;
+    place: string; tinyVersion: string; obstacle: string; obstaclePlan: string;
+    firstAction: string; entryStep: string; difficulty: string; domain: string;
+  }) {
     const now = nowTs();
     const today = todayDateKey();
 
@@ -211,9 +217,14 @@ function App() {
         dateKey: today,
         createdAt: now,
         order: items.filter(i => i.kind === 'quick-task').length,
+        firstAction: data.firstAction || undefined,
+        tinyVersion: data.tinyVersion || undefined,
+        domain: data.domain ? (data.domain as LifeDomain) : undefined,
       };
       setItems(prev => [...prev, newTask]);
     } else if (addModal === 'focus') {
+      const focusType = (data.focusType as FocusType) || 'Deep Work';
+      const generatedEntryStep = data.entryStep || makeFocusEntryStep(data.title, focusType);
       const newBlock: FocusBlock = {
         id: `focus-${now}`,
         kind: 'focus-block',
@@ -225,14 +236,17 @@ function App() {
         dateKey: today,
         createdAt: now,
         order: items.filter(i => i.kind === 'focus-block').length,
-        type: 'Deep Work',
+        type: focusType,
+        entryStep: generatedEntryStep,
+        difficulty: data.difficulty ? (data.difficulty as FocusBlock['difficulty']) : undefined,
+        domain: data.domain ? (data.domain as LifeDomain) : undefined,
       };
       setItems(prev => [...prev, newBlock]);
     } else if (addModal === 'flow') {
       const stepList = data.steps.length > 0 ? data.steps : ['Step 1'];
       const flowIdentity = data.identity || 'I am someone who follows through.';
       const flowTrigger = data.trigger || 'When I am ready';
-      const flowIdentityShort = data.identityShort || undefined;
+      const flowIdentityShort = data.identityShort || makeIdentityShort(flowIdentity);
       const flowPlace = data.place || undefined;
       const flowTinyVersion = data.tinyVersion || undefined;
       const steps: HabitStep[] = stepList.map((name, i) => ({
@@ -240,9 +254,9 @@ function App() {
         name,
         identity: flowIdentity,
         identityShort: flowIdentityShort,
-        cue: i === 0 ? flowTrigger : `After ${stepList[i - 1]}`,
+        cue: makeStepCue(flowTrigger, i > 0 ? stepList[i - 1] : undefined),
         tinyMinimum: '',
-        tinyVersion: i === 0 ? (flowTinyVersion || '') : '',
+        tinyVersion: makeTinyVersion(name),
         place: flowPlace,
         completionLog: {},
         freq: { type: 'daily' as const },

@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { FocusType } from '../types';
 
 type AddMode = 'task' | 'focus' | 'flow';
 
@@ -6,6 +7,7 @@ interface AddData {
   title: string;
   notes: string;
   duration: number;
+  focusType: FocusType;
   steps: string[];
   trigger: string;
   identity: string;
@@ -14,6 +16,10 @@ interface AddData {
   tinyVersion: string;
   obstacle: string;
   obstaclePlan: string;
+  firstAction: string;
+  entryStep: string;
+  difficulty: string;
+  domain: string;
 }
 
 interface Props {
@@ -23,6 +29,9 @@ interface Props {
 }
 
 const DURATIONS = [25, 45, 60, 90];
+const FOCUS_TYPES: FocusType[] = ['Deep Work', 'Study', 'Admin', 'Health', 'Recovery', 'Other'];
+const DIFFICULTIES = ['Easy', 'Medium', 'Hard'] as const;
+const DOMAINS = ['Intelligence', 'Health', 'Strength', 'Wealth', 'Connection', 'Purpose', 'Consistency', 'Resolve'];
 
 const CONFIG = {
   task:  { label: 'Quick Task',  submitClass: 'submit-task',  placeholder: 'e.g. Call dentist' },
@@ -34,6 +43,7 @@ export function AddModal({ mode, onAdd, onClose }: Props) {
   const [title, setTitle] = useState('');
   const [notes, setNotes] = useState('');
   const [duration, setDuration] = useState(25);
+  const [focusType, setFocusType] = useState<FocusType>('Deep Work');
   const [steps, setSteps] = useState('');
   const [trigger, setTrigger] = useState('');
   const [identity, setIdentity] = useState('');
@@ -43,6 +53,10 @@ export function AddModal({ mode, onAdd, onClose }: Props) {
   const [obstacle, setObstacle] = useState('');
   const [obstaclePlan, setObstaclePlan] = useState('');
   const [advancedOpen, setAdvancedOpen] = useState(false);
+  const [firstAction, setFirstAction] = useState('');
+  const [entryStep, setEntryStep] = useState('');
+  const [difficulty, setDifficulty] = useState('');
+  const [domain, setDomain] = useState('');
 
   const cfg = CONFIG[mode];
 
@@ -53,6 +67,7 @@ export function AddModal({ mode, onAdd, onClose }: Props) {
       title: title.trim(),
       notes: notes.trim(),
       duration,
+      focusType,
       steps: steps.split(',').map(s => s.trim()).filter(Boolean),
       trigger: trigger.trim(),
       identity: identity.trim(),
@@ -61,6 +76,10 @@ export function AddModal({ mode, onAdd, onClose }: Props) {
       tinyVersion: tinyVersion.trim(),
       obstacle: obstacle.trim(),
       obstaclePlan: obstaclePlan.trim(),
+      firstAction: firstAction.trim(),
+      entryStep: entryStep.trim(),
+      difficulty: difficulty.trim(),
+      domain: domain.trim(),
     });
   }
 
@@ -97,21 +116,138 @@ export function AddModal({ mode, onAdd, onClose }: Props) {
           )}
 
           {mode === 'focus' && (
-            <div className="modal-label">
-              Duration
-              <div className="modal-duration-row">
-                {DURATIONS.map(d => (
-                  <button
-                    key={d}
-                    type="button"
-                    className={`modal-duration-btn${duration === d ? ' selected' : ''}`}
-                    onClick={() => setDuration(d)}
-                  >
-                    {d} min
-                  </button>
-                ))}
+            <>
+              <div className="modal-label">
+                Duration
+                <div className="modal-duration-row">
+                  {DURATIONS.map(d => (
+                    <button
+                      key={d}
+                      type="button"
+                      className={`modal-duration-btn${duration === d ? ' selected' : ''}`}
+                      onClick={() => setDuration(d)}
+                    >
+                      {d} min
+                    </button>
+                  ))}
+                </div>
               </div>
-            </div>
+              <div className="modal-label">
+                Type
+                <div className="modal-type-row">
+                  {FOCUS_TYPES.map(t => (
+                    <button
+                      key={t}
+                      type="button"
+                      className={`modal-type-btn${focusType === t ? ' selected' : ''}`}
+                      onClick={() => setFocusType(t)}
+                    >
+                      {t}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </>
+          )}
+
+          {mode === 'task' && (
+            <>
+              <button
+                type="button"
+                className="modal-advanced-toggle"
+                onClick={() => setAdvancedOpen(o => !o)}
+              >
+                <span className={`modal-advanced-chevron${advancedOpen ? ' open' : ''}`}>▸</span>
+                Refine this task
+              </button>
+
+              {advancedOpen && (
+                <div className="modal-advanced-section">
+                  <label className="modal-label">
+                    First action
+                    <input
+                      className="modal-input"
+                      value={firstAction}
+                      onChange={e => setFirstAction(e.target.value)}
+                      placeholder="e.g. Open the document"
+                    />
+                  </label>
+                  <label className="modal-label">
+                    Tiny version
+                    <input
+                      className="modal-input"
+                      value={tinyVersion}
+                      onChange={e => setTinyVersion(e.target.value)}
+                      placeholder="Bare minimum to count"
+                    />
+                  </label>
+                  <label className="modal-label">
+                    Domain
+                    <select
+                      className="modal-input modal-select"
+                      value={domain}
+                      onChange={e => setDomain(e.target.value)}
+                    >
+                      <option value="">None</option>
+                      {DOMAINS.map(d => <option key={d} value={d}>{d}</option>)}
+                    </select>
+                  </label>
+                </div>
+              )}
+            </>
+          )}
+
+          {mode === 'focus' && (
+            <>
+              <button
+                type="button"
+                className="modal-advanced-toggle"
+                onClick={() => setAdvancedOpen(o => !o)}
+              >
+                <span className={`modal-advanced-chevron${advancedOpen ? ' open' : ''}`}>▸</span>
+                Refine this block
+              </button>
+
+              {advancedOpen && (
+                <div className="modal-advanced-section">
+                  <label className="modal-label">
+                    Entry step / tiny start
+                    <input
+                      className="modal-input"
+                      value={entryStep}
+                      onChange={e => setEntryStep(e.target.value)}
+                      placeholder="Auto-generated if empty"
+                    />
+                  </label>
+                  <div className="modal-label">
+                    Difficulty
+                    <div className="modal-difficulty-row">
+                      {DIFFICULTIES.map(d => (
+                        <button
+                          key={d}
+                          type="button"
+                          className={`modal-difficulty-btn${difficulty === d ? ' selected' : ''}`}
+                          onClick={() => setDifficulty(prev => prev === d ? '' : d)}
+                        >
+                          {d}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                  <label className="modal-label">
+                    Domain
+                    <select
+                      className="modal-input modal-select"
+                      value={domain}
+                      onChange={e => setDomain(e.target.value)}
+                    >
+                      <option value="">None</option>
+                      {DOMAINS.map(d => <option key={d} value={d}>{d}</option>)}
+                    </select>
+                  </label>
+                </div>
+              )}
+            </>
           )}
 
           {mode === 'flow' && (
@@ -161,7 +297,7 @@ export function AddModal({ mode, onAdd, onClose }: Props) {
                       className="modal-input"
                       value={identityShort}
                       onChange={e => setIdentityShort(e.target.value)}
-                      placeholder="calm mornings"
+                      placeholder="Auto-generated if empty"
                     />
                   </label>
                   <label className="modal-label">
@@ -179,7 +315,7 @@ export function AddModal({ mode, onAdd, onClose }: Props) {
                       className="modal-input"
                       value={tinyVersion}
                       onChange={e => setTinyVersion(e.target.value)}
-                      placeholder="Do only the first step"
+                      placeholder="Bare minimum to count"
                     />
                   </label>
                   <label className="modal-label">

@@ -76,6 +76,16 @@ export function CurrentFocusCard({ focus, onToggleStep, onToggleTask, onToggleFo
             <span className="current-focus-type-badge task">Quick Task</span>
           </div>
           <h2 className="current-focus-title">{item.title}</h2>
+          {item.firstAction && (
+            <p className="current-focus-first-action">
+              <span className="current-focus-field-label task-label">First action:</span> {item.firstAction}
+            </p>
+          )}
+          {item.tinyVersion && (
+            <p className="current-focus-tiny">
+              <span className="current-focus-field-label task-label">Tiny version:</span> {item.tinyVersion}
+            </p>
+          )}
           {item.notes && <p className="current-focus-notes">{item.notes}</p>}
           <div className="current-focus-actions">
             {item.completed ? (
@@ -107,8 +117,13 @@ export function CurrentFocusCard({ focus, onToggleStep, onToggleTask, onToggleFo
           <h2 className="current-focus-title">{item.title}</h2>
           <div className="current-focus-meta">
             <span className="focus-duration-badge">⏱ {item.duration} min</span>
-            <span className="focus-xp-badge">+40 XP · Deep Work</span>
+            <span className="focus-xp-badge">+40 XP · {item.type}</span>
           </div>
+          {item.entryStep && (
+            <p className="current-focus-entry-step">
+              <span className="current-focus-field-label">Start with:</span> {item.entryStep}
+            </p>
+          )}
           {item.notes && <p className="current-focus-notes">{item.notes}</p>}
           <div className="current-focus-actions">
             {item.completed ? (

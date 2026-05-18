@@ -64,6 +64,9 @@ export const mockTodayItems: TodayItem[] = [
     dateKey: TODAY,
     createdAt: Date.now() - 3_600_000,
     order: 0,
+    firstAction: 'Open shopping list and check what is missing',
+    tinyVersion: 'grab protein and vegetables only',
+    domain: 'Health',
   },
   {
     id: 'focus-thesis',
@@ -77,6 +80,9 @@ export const mockTodayItems: TodayItem[] = [
     createdAt: Date.now() - 7_200_000,
     order: 0,
     type: 'Deep Work',
+    entryStep: 'Open Chapter 2 and write one sentence',
+    difficulty: 'Hard',
+    domain: 'Intelligence',
   },
   {
     id: 'flow-midday',
@@ -123,6 +129,9 @@ export const mockTodayItems: TodayItem[] = [
     dateKey: TODAY,
     createdAt: Date.now() - 10_800_000,
     order: 1,
+    firstAction: 'Put on running shoes',
+    tinyVersion: 'go outside for 5 minutes',
+    domain: 'Health',
   },
   {
     id: 'flow-evening',

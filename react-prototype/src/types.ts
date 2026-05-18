@@ -25,7 +25,7 @@ export interface HabitFlow {
   identity: string;
   trigger: string;
   startTime?: string;
-  domain?: 'Intelligence' | 'Health' | 'Strength' | 'Wealth' | 'Connection' | 'Purpose' | 'Consistency' | 'Resolve';
+  domain?: LifeDomain;
   steps: HabitStep[];
   identityShort?: string;
   place?: string;
@@ -37,6 +37,8 @@ export interface HabitFlow {
 
 export type FocusType = 'Deep Work' | 'Study' | 'Admin' | 'Health' | 'Recovery' | 'Other';
 
+export type LifeDomain = 'Intelligence' | 'Health' | 'Strength' | 'Wealth' | 'Connection' | 'Purpose' | 'Consistency' | 'Resolve';
+
 export interface QuickTask {
   id: string;
   kind: 'quick-task';
@@ -47,6 +49,9 @@ export interface QuickTask {
   dateKey: string;
   createdAt: number;
   order: number;
+  firstAction?: string;
+  tinyVersion?: string;
+  domain?: LifeDomain;
 }
 
 export interface FocusBlock {
@@ -61,6 +66,9 @@ export interface FocusBlock {
   createdAt: number;
   order: number;
   type: FocusType;
+  entryStep?: string;
+  difficulty?: 'Easy' | 'Medium' | 'Hard';
+  domain?: LifeDomain;
 }
 
 export type TodayItem = HabitFlow | QuickTask | FocusBlock;
