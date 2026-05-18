@@ -11,6 +11,7 @@ import {
   focusBlockRewardKey,
 } from './utils/todayFlow';
 import { todayDateKey, nowTs } from './utils/date';
+import { loadPrototypeState, savePrototypeState, clearPrototypeState } from './utils/storage';
 import { ProgressStrip } from './components/ProgressStrip';
 import { CurrentFocusCard } from './components/CurrentFocusCard';
 import { CharacterMini } from './components/CharacterMini';
@@ -21,8 +22,8 @@ import { AddModal } from './components/AddModal';
 type AddMode = 'task' | 'focus' | 'flow';
 
 function App() {
-  const [items, setItems] = useState<TodayItem[]>(mockTodayItems);
-  const [character, setCharacter] = useState<CharacterState>(mockCharacter);
+  const [items, setItems] = useState<TodayItem[]>(() => loadPrototypeState().items);
+  const [character, setCharacter] = useState<CharacterState>(() => loadPrototypeState().character);
   const [xpFloat, setXpFloat] = useState<string | null>(null);
   const [session, setSession] = useState<FocusSession | null>(null);
   const [addModal, setAddModal] = useState<AddMode | null>(null);
@@ -31,15 +32,29 @@ function App() {
   const currentFocus = useMemo(() => getCurrentFocus(items), [items]);
   const progress = useMemo(() => getTodayProgress(items), [items]);
 
+  // Persist on every items/character change
+  useEffect(() => {
+    savePrototypeState(items, character);
+  }, [items, character]);
+
+  useEffect(() => {
+    return () => { if (xpFloatTimer.current) clearTimeout(xpFloatTimer.current); };
+  }, []);
+
   function showXpFloat(label: string) {
     if (xpFloatTimer.current) clearTimeout(xpFloatTimer.current);
     setXpFloat(label);
     xpFloatTimer.current = setTimeout(() => setXpFloat(null), 1900);
   }
 
-  useEffect(() => {
-    return () => { if (xpFloatTimer.current) clearTimeout(xpFloatTimer.current); };
-  }, []);
+  function handleReset() {
+    if (!window.confirm('Reset prototype? All progress will be cleared and demo data restored.')) return;
+    clearPrototypeState();
+    setItems(mockTodayItems);
+    setCharacter(mockCharacter);
+    setSession(null);
+    setAddModal(null);
+  }
 
   const toggleHabitStep = useCallback((flowId: string, stepId: string) => {
     const today = todayDateKey();
@@ -150,6 +165,36 @@ function App() {
   const handleReorder = useCallback((newItems: TodayItem[]) => {
     setItems(newItems);
   }, []);
+
+  function handleDeleteItem(itemId: string) {
+    const today = todayDateKey();
+    const item = items.find(i => i.id === itemId);
+    if (!item) return;
+
+    if (item.kind === 'quick-task') {
+      if (item.completed) {
+        setCharacter(c => removeXpEventByRewardKey(c, taskRewardKey(itemId, today)));
+      }
+    } else if (item.kind === 'focus-block') {
+      if (item.completed) {
+        setCharacter(c => removeXpEventByRewardKey(c, focusBlockRewardKey(itemId, today)));
+      }
+      if (session?.blockId === itemId) setSession(null);
+    } else if (item.kind === 'habit-flow') {
+      const completedSteps = item.steps.filter(s => !!s.completionLog[today]);
+      if (completedSteps.length > 0) {
+        setCharacter(c => {
+          let updated = c;
+          for (const step of completedSteps) {
+            updated = removeXpEventByRewardKey(updated, habitStepRewardKey(step.id, today));
+          }
+          return updated;
+        });
+      }
+    }
+
+    setItems(prev => prev.filter(i => i.id !== itemId));
+  }
 
   function handleAdd(data: { title: string; notes: string; duration: number; steps: string[]; trigger: string; identity: string }) {
     const now = nowTs();
@@ -265,7 +310,7 @@ function App() {
           </div>
         ) : null}
 
-        <CharacterMini character={character} />
+        <CharacterMini character={character} onReset={handleReset} />
 
         <TodayFlow
           items={items}
@@ -280,6 +325,7 @@ function App() {
           onAddFocus={() => setAddModal('focus')}
           onAddFlow={() => setAddModal('flow')}
           onReorder={handleReorder}
+          onDeleteItem={handleDeleteItem}
         />
       </div>
 

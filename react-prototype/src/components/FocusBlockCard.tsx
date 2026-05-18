@@ -6,9 +6,14 @@ interface Props {
   isActive: boolean;
   onToggle: (blockId: string) => void;
   onStart: (blockId: string) => void;
+  onDelete?: (blockId: string) => void;
 }
 
-export function FocusBlockCard({ block, isCurrent, isActive, onToggle, onStart }: Props) {
+export function FocusBlockCard({ block, isCurrent, isActive, onToggle, onStart, onDelete }: Props) {
+  function handleDelete() {
+    if (window.confirm(`Delete "${block.title}"?`)) onDelete?.(block.id);
+  }
+
   return (
     <div className={`focus-block-card${isCurrent ? ' is-current' : ''}${block.completed ? ' done' : ''}${isActive ? ' is-active-session' : ''}`}>
       <div className="focus-block-icon">🎯</div>
@@ -38,6 +43,11 @@ export function FocusBlockCard({ block, isCurrent, isActive, onToggle, onStart }
         >
           {block.completed ? '✓' : ''}
         </button>
+        {onDelete && (
+          <button className="item-more-btn" onClick={handleDelete} aria-label="Delete focus block">
+            ×
+          </button>
+        )}
       </div>
     </div>
   );

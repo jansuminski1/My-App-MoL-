@@ -68,6 +68,7 @@ interface Props {
   onAddFocus: () => void;
   onAddFlow: () => void;
   onReorder: (newItems: TodayItem[]) => void;
+  onDeleteItem: (itemId: string) => void;
 }
 
 export function TodayFlow({
@@ -83,6 +84,7 @@ export function TodayFlow({
   onAddFocus,
   onAddFlow,
   onReorder,
+  onDeleteItem,
 }: Props) {
   const [activeId, setActiveId] = useState<string | null>(null);
 
@@ -152,9 +154,15 @@ export function TodayFlow({
               onToggleTask={onToggleTask}
               onToggleFocusBlock={onToggleFocusBlock}
               onStartFocus={onStartFocus}
+              onDeleteItem={onDeleteItem}
             />
           ))}
         </SortableContext>
+        {items.length === 0 && (
+          <div className="today-flow-empty">
+            No items yet — add something above.
+          </div>
+        )}
       </div>
 
       <DragOverlay

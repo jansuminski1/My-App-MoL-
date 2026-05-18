@@ -15,6 +15,7 @@ interface Props {
   onToggleTask: (taskId: string) => void;
   onToggleFocusBlock: (blockId: string) => void;
   onStartFocus: (blockId: string) => void;
+  onDeleteItem: (itemId: string) => void;
 }
 
 export function SortableTodayItem({
@@ -27,6 +28,7 @@ export function SortableTodayItem({
   onToggleTask,
   onToggleFocusBlock,
   onStartFocus,
+  onDeleteItem,
 }: Props) {
   const {
     attributes,
@@ -57,6 +59,7 @@ export function SortableTodayItem({
           currentStepId={isCurrent ? currentFocusStepId : undefined}
           defaultExpanded={item.id === firstIncompleteFlowId}
           onToggleStep={onToggleStep}
+          onDelete={onDeleteItem}
         />
       )}
       {item.kind === 'quick-task' && (
@@ -64,6 +67,7 @@ export function SortableTodayItem({
           task={item}
           isCurrent={isCurrent}
           onToggle={onToggleTask}
+          onDelete={onDeleteItem}
         />
       )}
       {item.kind === 'focus-block' && (
@@ -73,6 +77,7 @@ export function SortableTodayItem({
           isActive={item.id === activeSessionBlockId}
           onToggle={onToggleFocusBlock}
           onStart={onStartFocus}
+          onDelete={onDeleteItem}
         />
       )}
     </div>

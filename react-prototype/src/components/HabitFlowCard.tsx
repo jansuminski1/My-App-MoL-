@@ -8,9 +8,10 @@ interface Props {
   currentStepId?: string;
   defaultExpanded: boolean;
   onToggleStep: (flowId: string, stepId: string) => void;
+  onDelete?: (flowId: string) => void;
 }
 
-export function HabitFlowCard({ flow, isCurrent, defaultExpanded, onToggleStep }: Props) {
+export function HabitFlowCard({ flow, isCurrent, defaultExpanded, onToggleStep, onDelete }: Props) {
   const [expanded, setExpanded] = useState(defaultExpanded);
   const [hoveredStep, setHoveredStep] = useState<string | null>(null);
 
@@ -34,6 +35,11 @@ export function HabitFlowCard({ flow, isCurrent, defaultExpanded, onToggleStep }
   function handleNodeClick(e: React.MouseEvent, flowId: string, stepId: string) {
     e.stopPropagation();
     onToggleStep(flowId, stepId);
+  }
+
+  function handleDelete(e: React.MouseEvent) {
+    e.stopPropagation();
+    if (window.confirm(`Remove "${flow.title}" from Today?`)) onDelete?.(flow.id);
   }
 
   return (
@@ -97,6 +103,11 @@ export function HabitFlowCard({ flow, isCurrent, defaultExpanded, onToggleStep }
           )}
         </div>
 
+        {onDelete && (
+          <button className="item-more-btn" onClick={handleDelete} aria-label="Delete flow">
+            ×
+          </button>
+        )}
         <span className={`habit-flow-chevron${expanded ? ' open' : ''}`}>▾</span>
       </div>
 

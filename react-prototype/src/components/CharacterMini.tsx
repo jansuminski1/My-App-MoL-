@@ -4,6 +4,7 @@ import { formatRelativeTime } from '../utils/todayFlow';
 
 interface Props {
   character: CharacterState;
+  onReset?: () => void;
 }
 
 const STAT_LABELS: Record<string, string> = {
@@ -17,7 +18,7 @@ const STAT_LABELS: Record<string, string> = {
   resolve: 'Resolve',
 };
 
-export function CharacterMini({ character }: Props) {
+export function CharacterMini({ character, onReset }: Props) {
   const [open, setOpen] = useState(false);
 
   const strongest = STAT_LABELS[character.strongestStat] ?? character.strongestStat;
@@ -84,6 +85,14 @@ export function CharacterMini({ character }: Props) {
                 ))}
               </div>
             </>
+          )}
+
+          {onReset && (
+            <div className="character-mini-reset-row">
+              <button className="character-mini-reset-btn" onClick={onReset}>
+                Reset prototype
+              </button>
+            </div>
           )}
         </div>
       )}
