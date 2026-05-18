@@ -18,6 +18,7 @@ import {
   verticalListSortingStrategy,
 } from '@dnd-kit/sortable';
 import { TodayItem } from '../types';
+import { todayDateKey } from '../utils/date';
 import { SortableTodayItem } from './SortableTodayItem';
 import { HabitFlowCard } from './HabitFlowCard';
 import { TaskCard } from './TaskCard';
@@ -85,8 +86,9 @@ export function TodayFlow({
 }: Props) {
   const [activeId, setActiveId] = useState<string | null>(null);
 
+  const today = todayDateKey();
   const firstIncompleteFlowId = items.find(
-    i => i.kind === 'habit-flow' && !i.steps.every(s => s.completed)
+    i => i.kind === 'habit-flow' && !i.steps.every(s => !!s.completionLog[today])
   )?.id;
 
   const sensors = useSensors(

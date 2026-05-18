@@ -4,8 +4,13 @@ import { mockTodayItems, mockCharacter } from './data/mockToday';
 import {
   getCurrentFocus,
   getTodayProgress,
-  awardXp,
+  addXpEventOnce,
+  removeXpEventByRewardKey,
+  habitStepRewardKey,
+  taskRewardKey,
+  focusBlockRewardKey,
 } from './utils/todayFlow';
+import { todayDateKey, nowTs } from './utils/date';
 import { ProgressStrip } from './components/ProgressStrip';
 import { CurrentFocusCard } from './components/CurrentFocusCard';
 import { CharacterMini } from './components/CharacterMini';
@@ -37,7 +42,9 @@ function App() {
   }, []);
 
   const toggleHabitStep = useCallback((flowId: string, stepId: string) => {
-    let completing = false;
+    const today = todayDateKey();
+    const rewardKey = habitStepRewardKey(stepId, today);
+    let isCompleting = false;
     let stepName = '';
 
     setItems(prev => prev.map(item => {
@@ -46,47 +53,68 @@ function App() {
         ...item,
         steps: item.steps.map(s => {
           if (s.id !== stepId) return s;
-          if (!s.completed) { completing = true; stepName = s.name; }
-          return { ...s, completed: !s.completed };
+          isCompleting = !s.completionLog[today];
+          stepName = s.name;
+          return { ...s, completionLog: { ...s.completionLog, [today]: isCompleting } };
         }),
       };
     }));
 
-    if (completing) {
-      setCharacter(c => awardXp(c, 15, stepName, 'habit'));
+    if (isCompleting) {
+      setCharacter(c => addXpEventOnce(c, 15, stepName, 'habit', rewardKey));
       showXpFloat(`+15 XP — ${stepName}`);
+    } else {
+      setCharacter(c => removeXpEventByRewardKey(c, rewardKey));
     }
   }, []);
 
   const toggleTask = useCallback((taskId: string) => {
-    let completing = false;
+    const today = todayDateKey();
+    const rewardKey = taskRewardKey(taskId, today);
+    let isCompleting = false;
     let taskTitle = '';
 
     setItems(prev => prev.map(item => {
       if (item.kind !== 'quick-task' || item.id !== taskId) return item;
-      if (!item.completed) { completing = true; taskTitle = item.title; }
-      return { ...item, completed: !item.completed };
+      isCompleting = !item.completed;
+      taskTitle = item.title;
+      return {
+        ...item,
+        completed: !item.completed,
+        completedAt: !item.completed ? nowTs() : null,
+      };
     }));
 
-    if (completing) {
-      setCharacter(c => awardXp(c, 10, taskTitle, 'task'));
+    if (isCompleting) {
+      setCharacter(c => addXpEventOnce(c, 10, taskTitle, 'task', rewardKey));
       showXpFloat(`+10 XP — ${taskTitle}`);
+    } else {
+      setCharacter(c => removeXpEventByRewardKey(c, rewardKey));
     }
   }, []);
 
   const toggleFocusBlock = useCallback((blockId: string) => {
-    let completing = false;
+    const today = todayDateKey();
+    const rewardKey = focusBlockRewardKey(blockId, today);
+    let isCompleting = false;
     let blockTitle = '';
 
     setItems(prev => prev.map(item => {
       if (item.kind !== 'focus-block' || item.id !== blockId) return item;
-      if (!item.completed) { completing = true; blockTitle = item.title; }
-      return { ...item, completed: !item.completed };
+      isCompleting = !item.completed;
+      blockTitle = item.title;
+      return {
+        ...item,
+        completed: !item.completed,
+        completedAt: !item.completed ? nowTs() : null,
+      };
     }));
 
-    if (completing) {
-      setCharacter(c => awardXp(c, 40, blockTitle, 'focus'));
+    if (isCompleting) {
+      setCharacter(c => addXpEventOnce(c, 40, blockTitle, 'focus', rewardKey));
       showXpFloat(`+40 XP — ${blockTitle}`);
+    } else {
+      setCharacter(c => removeXpEventByRewardKey(c, rewardKey));
     }
   }, []);
 
@@ -124,23 +152,35 @@ function App() {
   }, []);
 
   function handleAdd(data: { title: string; notes: string; duration: number; steps: string[]; trigger: string; identity: string }) {
+    const now = nowTs();
+    const today = todayDateKey();
+
     if (addModal === 'task') {
       const newTask: QuickTask = {
-        id: `task-${Date.now()}`,
+        id: `task-${now}`,
         kind: 'quick-task',
         title: data.title,
         notes: data.notes || undefined,
         completed: false,
+        completedAt: null,
+        dateKey: today,
+        createdAt: now,
+        order: items.filter(i => i.kind === 'quick-task').length,
       };
       setItems(prev => [...prev, newTask]);
     } else if (addModal === 'focus') {
       const newBlock: FocusBlock = {
-        id: `focus-${Date.now()}`,
+        id: `focus-${now}`,
         kind: 'focus-block',
         title: data.title,
         notes: data.notes || undefined,
         duration: data.duration,
         completed: false,
+        completedAt: null,
+        dateKey: today,
+        createdAt: now,
+        order: items.filter(i => i.kind === 'focus-block').length,
+        type: 'Deep Work',
       };
       setItems(prev => [...prev, newBlock]);
     } else if (addModal === 'flow') {
@@ -148,15 +188,16 @@ function App() {
       const flowIdentity = data.identity || 'I am someone who follows through.';
       const flowTrigger = data.trigger || 'When I am ready';
       const steps: HabitStep[] = stepList.map((name, i) => ({
-        id: `step-${Date.now()}-${i}`,
+        id: `step-${now}-${i}`,
         name,
         identity: flowIdentity,
         cue: i === 0 ? flowTrigger : `After ${stepList[i - 1]}`,
         tinyMinimum: '',
-        completed: false,
+        completionLog: {},
+        freq: { type: 'daily' as const },
       }));
       const newFlow: HabitFlow = {
-        id: `flow-${Date.now()}`,
+        id: `flow-${now}`,
         kind: 'habit-flow',
         title: data.title,
         identity: flowIdentity,

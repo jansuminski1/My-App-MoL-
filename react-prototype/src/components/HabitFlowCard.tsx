@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { HabitFlow } from '../types';
+import { todayDateKey } from '../utils/date';
 
 interface Props {
   flow: HabitFlow;
@@ -13,10 +14,11 @@ export function HabitFlowCard({ flow, isCurrent, defaultExpanded, onToggleStep }
   const [expanded, setExpanded] = useState(defaultExpanded);
   const [hoveredStep, setHoveredStep] = useState<string | null>(null);
 
-  const doneCount = flow.steps.filter(s => s.completed).length;
+  const today = todayDateKey();
+  const doneCount = flow.steps.filter(s => !!s.completionLog[today]).length;
   const total = flow.steps.length;
   const allDone = doneCount === total;
-  const firstIncompleteIdx = flow.steps.findIndex(s => !s.completed);
+  const firstIncompleteIdx = flow.steps.findIndex(s => !s.completionLog[today]);
   const activeStep = firstIncompleteIdx >= 0 ? flow.steps[firstIncompleteIdx] : null;
 
   function nodeState(idx: number, completed: boolean): 'done' | 'current' | 'upcoming' {
@@ -59,7 +61,8 @@ export function HabitFlowCard({ flow, isCurrent, defaultExpanded, onToggleStep }
 
           <div className="habit-nodes" onClick={e => e.stopPropagation()}>
             {flow.steps.map((step, idx) => {
-              const state = nodeState(idx, step.completed);
+              const stepDone = !!step.completionLog[today];
+              const state = nodeState(idx, stepDone);
               return (
                 <div key={step.id} className="habit-node-wrap">
                   <button
@@ -72,7 +75,7 @@ export function HabitFlowCard({ flow, isCurrent, defaultExpanded, onToggleStep }
                     {state === 'done' ? '✓' : state === 'current' ? '·' : ''}
                   </button>
                   {idx < flow.steps.length - 1 && (
-                    <div className={`habit-node-connector${step.completed ? ' done' : ''}`} />
+                    <div className={`habit-node-connector${stepDone ? ' done' : ''}`} />
                   )}
                 </div>
               );

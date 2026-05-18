@@ -1,4 +1,7 @@
 import { TodayItem, CharacterState } from '../types';
+import { todayDateKey } from '../utils/date';
+
+const TODAY = todayDateKey();
 
 export const mockTodayItems: TodayItem[] = [
   {
@@ -15,7 +18,8 @@ export const mockTodayItems: TodayItem[] = [
         identity: 'I am someone who starts the day calm, deliberate, and embodied.',
         cue: 'After I wake up',
         tinyMinimum: 'One sip counts',
-        completed: true,
+        completionLog: { [TODAY]: true },
+        freq: { type: 'daily' },
       },
       {
         id: 'step-movement',
@@ -23,7 +27,8 @@ export const mockTodayItems: TodayItem[] = [
         identity: 'I am someone who starts the day calm, deliberate, and embodied.',
         cue: 'After drink water',
         tinyMinimum: 'One stretch counts',
-        completed: true,
+        completionLog: { [TODAY]: true },
+        freq: { type: 'daily' },
       },
       {
         id: 'step-review',
@@ -31,7 +36,8 @@ export const mockTodayItems: TodayItem[] = [
         identity: 'I am someone who starts the day calm, deliberate, and embodied.',
         cue: 'After morning movement',
         tinyMinimum: 'Read one task',
-        completed: false,
+        completionLog: {},
+        freq: { type: 'daily' },
       },
     ],
   },
@@ -41,6 +47,10 @@ export const mockTodayItems: TodayItem[] = [
     title: 'Groceries',
     notes: 'Protein, vegetables, oats',
     completed: false,
+    completedAt: null,
+    dateKey: TODAY,
+    createdAt: Date.now() - 3_600_000,
+    order: 0,
   },
   {
     id: 'focus-thesis',
@@ -49,6 +59,11 @@ export const mockTodayItems: TodayItem[] = [
     notes: 'Chapter 2 introduction draft',
     duration: 90,
     completed: false,
+    completedAt: null,
+    dateKey: TODAY,
+    createdAt: Date.now() - 7_200_000,
+    order: 0,
+    type: 'Deep Work',
   },
   {
     id: 'flow-midday',
@@ -64,7 +79,8 @@ export const mockTodayItems: TodayItem[] = [
         identity: 'I am someone who returns to direction instead of drifting.',
         cue: 'After lunch',
         tinyMinimum: 'Eat something real',
-        completed: false,
+        completionLog: {},
+        freq: { type: 'daily' },
       },
       {
         id: 'step-walk',
@@ -72,7 +88,8 @@ export const mockTodayItems: TodayItem[] = [
         identity: 'I am someone who returns to direction instead of drifting.',
         cue: 'After nourishing lunch',
         tinyMinimum: 'Five minutes outside',
-        completed: false,
+        completionLog: {},
+        freq: { type: 'daily' },
       },
     ],
   },
@@ -82,6 +99,10 @@ export const mockTodayItems: TodayItem[] = [
     title: 'Cardio session',
     notes: '30 min run or bike',
     completed: false,
+    completedAt: null,
+    dateKey: TODAY,
+    createdAt: Date.now() - 10_800_000,
+    order: 1,
   },
   {
     id: 'flow-evening',
@@ -96,7 +117,8 @@ export const mockTodayItems: TodayItem[] = [
         identity: 'I am someone who ends the day with clarity.',
         cue: 'After I close work',
         tinyMinimum: 'Write one thing',
-        completed: false,
+        completionLog: {},
+        freq: { type: 'daily' },
       },
       {
         id: 'step-shutdown',
@@ -104,7 +126,8 @@ export const mockTodayItems: TodayItem[] = [
         identity: 'I am someone who ends the day with clarity.',
         cue: 'After plan tomorrow',
         tinyMinimum: 'Close one tab',
-        completed: false,
+        completionLog: {},
+        freq: { type: 'daily' },
       },
     ],
   },
@@ -136,6 +159,8 @@ export const mockCharacter: CharacterState = {
       statXp: { intelligence: 38, purpose: 16 },
       timestamp: Date.now() - 3_600_000,
       type: 'study',
+      rewardKey: 'mock-e1',
+      createdAt: Date.now() - 3_600_000,
     },
     {
       id: 'e2',
@@ -144,6 +169,8 @@ export const mockCharacter: CharacterState = {
       statXp: { consistency: 12, health: 8 },
       timestamp: Date.now() - 7_200_000,
       type: 'habit',
+      rewardKey: 'mock-e2',
+      createdAt: Date.now() - 7_200_000,
     },
     {
       id: 'e3',
@@ -152,9 +179,16 @@ export const mockCharacter: CharacterState = {
       statXp: { purpose: 10, resolve: 5 },
       timestamp: Date.now() - 86_400_000,
       type: 'goal',
+      rewardKey: 'mock-e3',
+      createdAt: Date.now() - 86_400_000,
     },
   ],
   role: 'Philosopher',
   strongestStat: 'intelligence',
   weakestStat: 'wealth',
+  rewarded: {
+    'mock-e1': true,
+    'mock-e2': true,
+    'mock-e3': true,
+  },
 };

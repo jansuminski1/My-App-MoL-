@@ -1,4 +1,5 @@
 import { CurrentFocus, HabitFlow } from '../types';
+import { todayDateKey } from '../utils/date';
 
 interface Props {
   focus: CurrentFocus;
@@ -15,14 +16,16 @@ export function CurrentFocusCard({ focus, onToggleStep, onToggleTask, onToggleFo
     const flow = item as HabitFlow;
     const step = flow.steps.find(s => s.id === focus.stepId);
     if (!step) return null;
+    const today = todayDateKey();
+    const stepDone = !!step.completionLog[today];
     const stepIdx = flow.steps.findIndex(s => s.id === focus.stepId);
     const isLastStep = stepIdx === flow.steps.length - 1;
-    const stepPosition = isLastStep && !step.completed
+    const stepPosition = isLastStep && !stepDone
       ? `${flow.title} · final step`
       : `${flow.title} · step ${stepIdx + 1} of ${flow.steps.length}`;
 
     return (
-      <div className={`current-focus-card type-habit${step.completed ? ' done' : ''}`}>
+      <div className={`current-focus-card type-habit${stepDone ? ' done' : ''}`}>
         <div className="current-focus-inner">
           <div className="cfc-hero-label">Current Focus</div>
           <div className="current-focus-kicker">
@@ -41,7 +44,7 @@ export function CurrentFocusCard({ focus, onToggleStep, onToggleTask, onToggleFo
             </p>
           )}
           <div className="current-focus-actions">
-            {step.completed ? (
+            {stepDone ? (
               <>
                 <button className="btn-complete done-btn" onClick={() => onToggleStep(flow.id, step.id)}>
                   <span>✓</span> Completed

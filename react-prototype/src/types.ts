@@ -1,10 +1,16 @@
+export type HabitFreq = {
+  type: 'daily' | 'weekdays' | 'weekly' | 'biweekly' | 'monthly' | 'custom';
+  days?: number[];
+};
+
 export interface HabitStep {
   id: string;
   name: string;
   identity: string;
   cue: string;
   tinyMinimum: string;
-  completed: boolean;
+  completionLog: Record<string, boolean>;
+  freq: HabitFreq;
 }
 
 export interface HabitFlow {
@@ -18,12 +24,18 @@ export interface HabitFlow {
   steps: HabitStep[];
 }
 
+export type FocusType = 'Deep Work' | 'Study' | 'Admin' | 'Health' | 'Recovery' | 'Other';
+
 export interface QuickTask {
   id: string;
   kind: 'quick-task';
   title: string;
   notes?: string;
   completed: boolean;
+  completedAt: number | null;
+  dateKey: string;
+  createdAt: number;
+  order: number;
 }
 
 export interface FocusBlock {
@@ -33,6 +45,11 @@ export interface FocusBlock {
   notes?: string;
   duration: number;
   completed: boolean;
+  completedAt: number | null;
+  dateKey: string;
+  createdAt: number;
+  order: number;
+  type: FocusType;
 }
 
 export type TodayItem = HabitFlow | QuickTask | FocusBlock;
@@ -55,6 +72,8 @@ export interface XpEvent {
   statXp: Partial<LifeStats>;
   timestamp: number;
   type: string;
+  rewardKey: string;
+  createdAt: number;
 }
 
 export interface CharacterState {
@@ -70,6 +89,7 @@ export interface CharacterState {
   role: string;
   strongestStat: keyof LifeStats;
   weakestStat: keyof LifeStats;
+  rewarded: Record<string, boolean>;
 }
 
 export interface CurrentFocus {
