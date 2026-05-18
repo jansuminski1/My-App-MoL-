@@ -22,14 +22,12 @@ export function HabitFlowCard({ flow, isCurrent, defaultExpanded, onToggleStep, 
   const firstIncompleteIdx = flow.steps.findIndex(s => !s.completionLog[today]);
   const activeStep = firstIncompleteIdx >= 0 ? flow.steps[firstIncompleteIdx] : null;
 
+  const hasDetails = !!(flow.place || flow.obstacle || flow.obstaclePlan || flow.tinyVersion || flow.automaticityScore !== undefined);
+
   function nodeState(idx: number, completed: boolean): 'done' | 'current' | 'upcoming' {
     if (completed) return 'done';
     if (idx === firstIncompleteIdx) return 'current';
     return 'upcoming';
-  }
-
-  function handleHeaderClick() {
-    setExpanded(e => !e);
   }
 
   function handleNodeClick(e: React.MouseEvent, flowId: string, stepId: string) {
@@ -47,7 +45,7 @@ export function HabitFlowCard({ flow, isCurrent, defaultExpanded, onToggleStep, 
       {/* Always-visible header: click to expand/collapse */}
       <div
         className="habit-flow-header"
-        onClick={handleHeaderClick}
+        onClick={() => setExpanded(e => !e)}
         role="button"
         tabIndex={0}
         aria-expanded={expanded}
@@ -117,13 +115,21 @@ export function HabitFlowCard({ flow, isCurrent, defaultExpanded, onToggleStep, 
           <div className="habit-step-panel-label">Current Step</div>
           <div className="habit-step-panel-name">{activeStep.name}</div>
           {activeStep.cue && (
-            <div className="habit-step-panel-cue">
-              <span className="habit-step-panel-cue-label">Cue:</span> {activeStep.cue}
+            <div className="habit-step-panel-row">
+              <span className="habit-step-panel-field-label">Cue</span>
+              <span>{activeStep.cue}</span>
             </div>
           )}
           {activeStep.identity && (
-            <div className="habit-step-panel-vote">
-              <span className="habit-step-panel-vote-label">Vote:</span> {activeStep.identity}
+            <div className="habit-step-panel-row">
+              <span className="habit-step-panel-field-label">Identity vote</span>
+              <span>{activeStep.identity}</span>
+            </div>
+          )}
+          {(activeStep.tinyVersion || activeStep.tinyMinimum) && (
+            <div className="habit-step-panel-row tiny">
+              <span className="habit-step-panel-field-label">Tiny version</span>
+              <span>{activeStep.tinyVersion || activeStep.tinyMinimum}</span>
             </div>
           )}
           <div className="habit-step-panel-actions">
@@ -141,6 +147,45 @@ export function HabitFlowCard({ flow, isCurrent, defaultExpanded, onToggleStep, 
         <div className="habit-step-panel done">
           <span>✓ All {total} steps complete</span>
         </div>
+      )}
+
+      {/* Collapsible details: only shown when expanded and data exists */}
+      {expanded && hasDetails && (
+        <details className="habit-flow-details">
+          <summary className="habit-flow-details-summary">Behavior design</summary>
+          <div className="habit-flow-details-body">
+            {flow.place && (
+              <div className="habit-detail-row">
+                <span className="habit-detail-label">Place</span>
+                <span className="habit-detail-value">{flow.place}</span>
+              </div>
+            )}
+            {flow.tinyVersion && (
+              <div className="habit-detail-row">
+                <span className="habit-detail-label">Tiny version</span>
+                <span className="habit-detail-value">{flow.tinyVersion}</span>
+              </div>
+            )}
+            {flow.obstacle && (
+              <div className="habit-detail-row">
+                <span className="habit-detail-label">Obstacle</span>
+                <span className="habit-detail-value">{flow.obstacle}</span>
+              </div>
+            )}
+            {flow.obstaclePlan && (
+              <div className="habit-detail-row">
+                <span className="habit-detail-label">Plan</span>
+                <span className="habit-detail-value">{flow.obstaclePlan}</span>
+              </div>
+            )}
+            {flow.automaticityScore !== undefined && (
+              <div className="habit-detail-row">
+                <span className="habit-detail-label">Automaticity</span>
+                <span className="habit-detail-value">{flow.automaticityScore}/100</span>
+              </div>
+            )}
+          </div>
+        </details>
       )}
     </div>
   );

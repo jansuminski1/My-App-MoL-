@@ -43,6 +43,11 @@ export function CurrentFocusCard({ focus, onToggleStep, onToggleTask, onToggleFo
               <span className="current-focus-field-label">Vote:</span> {step.identity}
             </p>
           )}
+          {(step.tinyVersion || step.tinyMinimum) && (
+            <p className="current-focus-tiny">
+              <span className="current-focus-field-label">Tiny version:</span> {step.tinyVersion || step.tinyMinimum}
+            </p>
+          )}
           <div className="current-focus-actions">
             {stepDone ? (
               <>

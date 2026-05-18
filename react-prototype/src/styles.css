@@ -389,6 +389,14 @@ button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
   margin: 0 0 4px;
   line-height: 1.45;
 }
+.current-focus-tiny {
+  font-size: 0.75rem;
+  color: var(--text-mut);
+  margin: 2px 0 8px;
+}
+.current-focus-tiny .current-focus-field-label {
+  font-style: normal;
+}
 .current-focus-field-label {
   font-style: normal;
   font-weight: 700;
@@ -1036,6 +1044,72 @@ button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
   color: var(--green-dark);
 }
 
+/* Step panel rows (Cue / Identity vote / Tiny version) */
+.habit-step-panel-row {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin-bottom: 9px;
+  font-size: 0.76rem;
+  color: var(--text-sec);
+  line-height: 1.4;
+}
+.habit-step-panel-row.tiny { color: var(--text-mut); }
+.habit-step-panel-field-label {
+  font-size: 0.6rem;
+  font-weight: 700;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  color: var(--green);
+  font-style: normal;
+}
+.habit-step-panel-row.tiny .habit-step-panel-field-label { color: var(--text-mut); }
+
+/* Behavior design details (collapsible <details> inside expanded flow) */
+.habit-flow-details {
+  border-top: 1px solid var(--border-soft);
+  margin: 0;
+}
+.habit-flow-details-summary {
+  font-size: 0.65rem;
+  font-weight: 700;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  color: var(--text-mut);
+  padding: 9px 16px;
+  cursor: pointer;
+  list-style: none;
+  user-select: none;
+}
+.habit-flow-details-summary::-webkit-details-marker { display: none; }
+.habit-flow-details-summary::marker { display: none; }
+.habit-flow-details-body {
+  padding: 2px 16px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.habit-detail-row {
+  display: flex;
+  gap: 8px;
+  font-size: 0.74rem;
+  line-height: 1.4;
+}
+.habit-detail-label {
+  flex-shrink: 0;
+  width: 80px;
+  font-size: 0.62rem;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--text-mut);
+  padding-top: 2px;
+}
+.habit-detail-value {
+  color: var(--text-sec);
+  font-style: italic;
+}
+
 /* ── Quick Task Card ── */
 .task-card {
   border-radius: var(--radius);
@@ -1497,6 +1571,38 @@ button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 .modal-submit.submit-task:hover  { background: var(--amber-dark); }
 .modal-submit.submit-flow  { background: var(--green); }
 .modal-submit.submit-flow:hover  { background: var(--green-dark); }
+
+/* Advanced section toggle (flow creation) */
+.modal-advanced-toggle {
+  background: none;
+  border: none;
+  padding: 6px 0;
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: var(--text-mut);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  letter-spacing: 0.02em;
+  margin-bottom: 2px;
+  transition: color 0.15s;
+}
+.modal-advanced-toggle:hover { color: var(--text-sec); }
+.modal-advanced-chevron {
+  display: inline-block;
+  transition: transform 0.2s;
+  font-size: 0.65rem;
+}
+.modal-advanced-chevron.open { transform: rotate(90deg); }
+.modal-advanced-section {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 8px 0 4px;
+  border-top: 1px solid var(--border-soft);
+  margin-bottom: 4px;
+}
 
 /* ── XP Float Toast ── */
 @keyframes xpFloatUp {

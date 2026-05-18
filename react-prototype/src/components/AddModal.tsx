@@ -2,9 +2,23 @@ import { useState } from 'react';
 
 type AddMode = 'task' | 'focus' | 'flow';
 
+interface AddData {
+  title: string;
+  notes: string;
+  duration: number;
+  steps: string[];
+  trigger: string;
+  identity: string;
+  identityShort: string;
+  place: string;
+  tinyVersion: string;
+  obstacle: string;
+  obstaclePlan: string;
+}
+
 interface Props {
   mode: AddMode;
-  onAdd: (data: { title: string; notes: string; duration: number; steps: string[]; trigger: string; identity: string }) => void;
+  onAdd: (data: AddData) => void;
   onClose: () => void;
 }
 
@@ -23,6 +37,12 @@ export function AddModal({ mode, onAdd, onClose }: Props) {
   const [steps, setSteps] = useState('');
   const [trigger, setTrigger] = useState('');
   const [identity, setIdentity] = useState('');
+  const [identityShort, setIdentityShort] = useState('');
+  const [place, setPlace] = useState('');
+  const [tinyVersion, setTinyVersion] = useState('');
+  const [obstacle, setObstacle] = useState('');
+  const [obstaclePlan, setObstaclePlan] = useState('');
+  const [advancedOpen, setAdvancedOpen] = useState(false);
 
   const cfg = CONFIG[mode];
 
@@ -36,6 +56,11 @@ export function AddModal({ mode, onAdd, onClose }: Props) {
       steps: steps.split(',').map(s => s.trim()).filter(Boolean),
       trigger: trigger.trim(),
       identity: identity.trim(),
+      identityShort: identityShort.trim(),
+      place: place.trim(),
+      tinyVersion: tinyVersion.trim(),
+      obstacle: obstacle.trim(),
+      obstaclePlan: obstaclePlan.trim(),
     });
   }
 
@@ -92,7 +117,7 @@ export function AddModal({ mode, onAdd, onClose }: Props) {
           {mode === 'flow' && (
             <>
               <label className="modal-label">
-                Trigger
+                Starts after
                 <input
                   className="modal-input"
                   value={trigger}
@@ -115,9 +140,68 @@ export function AddModal({ mode, onAdd, onClose }: Props) {
                   className="modal-input"
                   value={steps}
                   onChange={e => setSteps(e.target.value)}
-                  placeholder="e.g. clear desk, plan tomorrow, shutdown"
+                  placeholder="e.g. drink water, stretch, review tasks"
                 />
               </label>
+
+              <button
+                type="button"
+                className="modal-advanced-toggle"
+                onClick={() => setAdvancedOpen(o => !o)}
+              >
+                <span className={`modal-advanced-chevron${advancedOpen ? ' open' : ''}`}>▸</span>
+                Refine this flow
+              </button>
+
+              {advancedOpen && (
+                <div className="modal-advanced-section">
+                  <label className="modal-label">
+                    Short identity label
+                    <input
+                      className="modal-input"
+                      value={identityShort}
+                      onChange={e => setIdentityShort(e.target.value)}
+                      placeholder="calm mornings"
+                    />
+                  </label>
+                  <label className="modal-label">
+                    Place / context
+                    <input
+                      className="modal-input"
+                      value={place}
+                      onChange={e => setPlace(e.target.value)}
+                      placeholder="kitchen, desk, bedroom…"
+                    />
+                  </label>
+                  <label className="modal-label">
+                    Tiny version
+                    <input
+                      className="modal-input"
+                      value={tinyVersion}
+                      onChange={e => setTinyVersion(e.target.value)}
+                      placeholder="Do only the first step"
+                    />
+                  </label>
+                  <label className="modal-label">
+                    What might get in the way?
+                    <input
+                      className="modal-input"
+                      value={obstacle}
+                      onChange={e => setObstacle(e.target.value)}
+                      placeholder="I check my phone first"
+                    />
+                  </label>
+                  <label className="modal-label">
+                    If that happens, I will…
+                    <input
+                      className="modal-input"
+                      value={obstaclePlan}
+                      onChange={e => setObstaclePlan(e.target.value)}
+                      placeholder="Put phone across the room"
+                    />
+                  </label>
+                </div>
+              )}
             </>
           )}
 

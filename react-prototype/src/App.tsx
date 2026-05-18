@@ -196,7 +196,7 @@ function App() {
     setItems(prev => prev.filter(i => i.id !== itemId));
   }
 
-  function handleAdd(data: { title: string; notes: string; duration: number; steps: string[]; trigger: string; identity: string }) {
+  function handleAdd(data: { title: string; notes: string; duration: number; steps: string[]; trigger: string; identity: string; identityShort: string; place: string; tinyVersion: string; obstacle: string; obstaclePlan: string }) {
     const now = nowTs();
     const today = todayDateKey();
 
@@ -232,12 +232,18 @@ function App() {
       const stepList = data.steps.length > 0 ? data.steps : ['Step 1'];
       const flowIdentity = data.identity || 'I am someone who follows through.';
       const flowTrigger = data.trigger || 'When I am ready';
+      const flowIdentityShort = data.identityShort || undefined;
+      const flowPlace = data.place || undefined;
+      const flowTinyVersion = data.tinyVersion || undefined;
       const steps: HabitStep[] = stepList.map((name, i) => ({
         id: `step-${now}-${i}`,
         name,
         identity: flowIdentity,
+        identityShort: flowIdentityShort,
         cue: i === 0 ? flowTrigger : `After ${stepList[i - 1]}`,
         tinyMinimum: '',
+        tinyVersion: i === 0 ? (flowTinyVersion || '') : '',
+        place: flowPlace,
         completionLog: {},
         freq: { type: 'daily' as const },
       }));
@@ -248,6 +254,11 @@ function App() {
         identity: flowIdentity,
         trigger: flowTrigger,
         steps,
+        identityShort: flowIdentityShort,
+        place: flowPlace,
+        tinyVersion: flowTinyVersion,
+        obstacle: data.obstacle || undefined,
+        obstaclePlan: data.obstaclePlan || undefined,
       };
       setItems(prev => [...prev, newFlow]);
     }

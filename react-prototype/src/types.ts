@@ -11,6 +11,11 @@ export interface HabitStep {
   tinyMinimum: string;
   completionLog: Record<string, boolean>;
   freq: HabitFreq;
+  tinyVersion?: string;
+  place?: string;
+  obstacle?: string;
+  obstaclePlan?: string;
+  identityShort?: string;
 }
 
 export interface HabitFlow {
@@ -22,6 +27,12 @@ export interface HabitFlow {
   startTime?: string;
   domain?: 'Intelligence' | 'Health' | 'Strength' | 'Wealth' | 'Connection' | 'Purpose' | 'Consistency' | 'Resolve';
   steps: HabitStep[];
+  identityShort?: string;
+  place?: string;
+  obstacle?: string;
+  obstaclePlan?: string;
+  tinyVersion?: string;
+  automaticityScore?: number;
 }
 
 export type FocusType = 'Deep Work' | 'Study' | 'Admin' | 'Health' | 'Recovery' | 'Other';
