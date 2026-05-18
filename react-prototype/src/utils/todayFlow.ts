@@ -38,6 +38,15 @@ export function isItemFullyComplete(item: TodayItem): boolean {
   return item.completed;
 }
 
+// Habit flows persist across days; tasks and focus blocks are date-scoped.
+export function filterItemsForToday(items: TodayItem[]): TodayItem[] {
+  const today = todayDateKey();
+  return items.filter(item => {
+    if (item.kind === 'habit-flow') return true;
+    return item.dateKey === today;
+  });
+}
+
 // =====================
 // Level math (ported from vanilla js/app-xp.js)
 // =====================

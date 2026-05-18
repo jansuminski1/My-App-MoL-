@@ -5,6 +5,7 @@ import { mockTodayItems, mockCharacter } from './data/mockToday';
 import {
   getCurrentFocus,
   getTodayProgress,
+  filterItemsForToday,
   addXpEventOnce,
   removeXpEventByRewardKey,
   habitStepRewardKey,
@@ -30,8 +31,10 @@ function App() {
   const [addModal, setAddModal] = useState<AddMode | null>(null);
   const xpFloatTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  const currentFocus = useMemo(() => getCurrentFocus(items), [items]);
-  const progress = useMemo(() => getTodayProgress(items), [items]);
+  // Habit flows persist across days; tasks/focus blocks only appear on their dateKey.
+  const visibleItems = useMemo(() => filterItemsForToday(items), [items]);
+  const currentFocus = useMemo(() => getCurrentFocus(visibleItems), [visibleItems]);
+  const progress = useMemo(() => getTodayProgress(visibleItems), [visibleItems]);
 
   // Persist on every items/character change
   useEffect(() => {
@@ -55,6 +58,21 @@ function App() {
     setCharacter(mockCharacter);
     setSession(null);
     setAddModal(null);
+  }
+
+  function handleSimulateTomorrow() {
+    const today = todayDateKey();
+    // Move today's task/focus dateKeys to yesterday so they age out of Today view,
+    // simulating what happens when you open the app on the next real day.
+    const d = new Date();
+    d.setDate(d.getDate() - 1);
+    const yesterday = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+    setItems(prev => prev.map(item => {
+      if (item.kind === 'habit-flow') return item;
+      if (item.dateKey === today) return { ...item, dateKey: yesterday };
+      return item;
+    }));
+    setSession(null);
   }
 
   const toggleHabitStep = useCallback((flowId: string, stepId: string) => {
@@ -163,8 +181,15 @@ function App() {
     setSession(null);
   }
 
-  const handleReorder = useCallback((newItems: TodayItem[]) => {
-    setItems(newItems);
+  const handleReorder = useCallback((newVisibleItems: TodayItem[]) => {
+    setItems(prev => {
+      const today = todayDateKey();
+      // Keep historical tasks/focus blocks (not shown today) appended after visible items
+      const historical = prev.filter(
+        item => item.kind !== 'habit-flow' && item.dateKey !== today
+      );
+      return [...newVisibleItems, ...historical];
+    });
   }, []);
 
   function handleDeleteItem(itemId: string) {
@@ -335,10 +360,10 @@ function App() {
           </div>
         ) : null}
 
-        <CharacterMini character={character} onReset={handleReset} />
+        <CharacterMini character={character} onReset={handleReset} onSimulateTomorrow={handleSimulateTomorrow} />
 
         <TodayFlow
-          items={items}
+          items={visibleItems}
           currentFocusItemId={currentFocus?.item.id}
           currentFocusStepId={currentFocus?.stepId}
           activeSessionBlockId={session?.blockId}

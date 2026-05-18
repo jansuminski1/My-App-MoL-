@@ -5,6 +5,7 @@ import { formatRelativeTime } from '../utils/todayFlow';
 interface Props {
   character: CharacterState;
   onReset?: () => void;
+  onSimulateTomorrow?: () => void;
 }
 
 const STAT_LABELS: Record<string, string> = {
@@ -18,7 +19,7 @@ const STAT_LABELS: Record<string, string> = {
   resolve: 'Resolve',
 };
 
-export function CharacterMini({ character, onReset }: Props) {
+export function CharacterMini({ character, onReset, onSimulateTomorrow }: Props) {
   const [open, setOpen] = useState(false);
 
   const strongest = STAT_LABELS[character.strongestStat] ?? character.strongestStat;
@@ -87,11 +88,18 @@ export function CharacterMini({ character, onReset }: Props) {
             </>
           )}
 
-          {onReset && (
+          {(onReset || onSimulateTomorrow) && (
             <div className="character-mini-reset-row">
-              <button className="character-mini-reset-btn" onClick={onReset}>
-                Reset prototype
-              </button>
+              {onSimulateTomorrow && (
+                <button className="character-mini-reset-btn" onClick={onSimulateTomorrow} title="Move today's tasks and focus blocks to yesterday to test daily rollover">
+                  Next day ↷
+                </button>
+              )}
+              {onReset && (
+                <button className="character-mini-reset-btn" onClick={onReset}>
+                  Reset prototype
+                </button>
+              )}
             </div>
           )}
         </div>
