@@ -116,9 +116,44 @@ export interface CurrentFocus {
   stepId?: string;
 }
 
+export type FocusPhase = 'work' | 'recall' | 'rest' | 'complete';
+export type FocusSessionStatus = 'running' | 'paused' | 'completed' | 'cancelled';
+
 export interface FocusSession {
-  blockId: string;
+  id: string;
+  focusBlockId: string;
+  title: string;
+  type: FocusType;
+  domain?: LifeDomain;
+  plannedMinutes: number;
+  workMinutes: number;
+  recallMinutes: number;
+  restMinutes: number;
+  phase: FocusPhase;
+  status: FocusSessionStatus;
   startedAt: number;
-  accumulatedSeconds: number;
-  paused: boolean;
+  phaseStartedAt: number;
+  phaseElapsedSeconds: number;
+  workDoneSeconds: number;
+  interruptions: number;
+  quality: 'Low' | 'Normal' | 'High';
+  reflection: string;
+  entryStep?: string;
+}
+
+export interface FocusSessionLog {
+  id: string;
+  focusBlockId: string;
+  title: string;
+  type: FocusType;
+  domain?: LifeDomain;
+  plannedMinutes: number;
+  actualMinutes: number;
+  startedAt: number;
+  completedAt: number;
+  quality: 'Low' | 'Normal' | 'High';
+  reflection?: string;
+  interruptions: number;
+  xpAwarded: number;
+  rewardKey: string;
 }

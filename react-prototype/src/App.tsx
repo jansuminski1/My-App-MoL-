@@ -1,5 +1,5 @@
 import { useState, useMemo, useCallback, useEffect, useRef } from 'react';
-import { TodayItem, CharacterState, FocusSession, HabitStep, HabitFlow, QuickTask, FocusBlock, FocusType, LifeDomain } from './types';
+import { TodayItem, CharacterState, FocusSession, FocusSessionLog, HabitFlow, QuickTask, FocusBlock, FocusType, LifeDomain } from './types';
 import { makeIdentityShort, makeStepCue, makeTinyVersion, makeFocusEntryStep } from './utils/smartDefaults';
 import { mockTodayItems, mockCharacter } from './data/mockToday';
 import {
@@ -14,6 +14,7 @@ import {
 } from './utils/todayFlow';
 import { todayDateKey, nowTs } from './utils/date';
 import { loadPrototypeState, savePrototypeState, clearPrototypeState } from './utils/storage';
+import { getFocusProfile, calculateFocusXp } from './utils/focusProfiles';
 import { ProgressStrip } from './components/ProgressStrip';
 import { CurrentFocusCard } from './components/CurrentFocusCard';
 import { CharacterMini } from './components/CharacterMini';
@@ -26,24 +27,32 @@ type AddMode = 'task' | 'focus' | 'flow';
 function App() {
   const [items, setItems] = useState<TodayItem[]>(() => loadPrototypeState().items);
   const [character, setCharacter] = useState<CharacterState>(() => loadPrototypeState().character);
+  const [focusSessionLogs, setFocusSessionLogs] = useState<FocusSessionLog[]>(() => loadPrototypeState().focusSessionLogs);
   const [xpFloat, setXpFloat] = useState<string | null>(null);
   const [session, setSession] = useState<FocusSession | null>(null);
   const [addModal, setAddModal] = useState<AddMode | null>(null);
   const xpFloatTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const pendingCompletionRef = useRef<FocusSession | null>(null);
 
-  // Habit flows persist across days; tasks/focus blocks only appear on their dateKey.
   const visibleItems = useMemo(() => filterItemsForToday(items), [items]);
   const currentFocus = useMemo(() => getCurrentFocus(visibleItems), [visibleItems]);
   const progress = useMemo(() => getTodayProgress(visibleItems), [visibleItems]);
 
-  // Persist on every items/character change
   useEffect(() => {
-    savePrototypeState(items, character);
-  }, [items, character]);
+    savePrototypeState(items, character, focusSessionLogs);
+  }, [items, character, focusSessionLogs]);
 
   useEffect(() => {
     return () => { if (xpFloatTimer.current) clearTimeout(xpFloatTimer.current); };
   }, []);
+
+  // Bare effect: process session completion triggered from within setSession updater
+  useEffect(() => {
+    if (!pendingCompletionRef.current) return;
+    const completed = pendingCompletionRef.current;
+    pendingCompletionRef.current = null;
+    doFinishSession(completed);
+  });
 
   function showXpFloat(label: string) {
     if (xpFloatTimer.current) clearTimeout(xpFloatTimer.current);
@@ -51,19 +60,56 @@ function App() {
     xpFloatTimer.current = setTimeout(() => setXpFloat(null), 1900);
   }
 
+  function doFinishSession(s: FocusSession) {
+    const today = todayDateKey();
+    const rewardKey = focusBlockRewardKey(s.focusBlockId, today);
+    const actualMinutes = Math.max(1, Math.round(s.workDoneSeconds / 60));
+    const xpAwarded = calculateFocusXp({
+      actualMinutes,
+      plannedMinutes: s.plannedMinutes,
+      type: s.type,
+      quality: s.quality,
+    });
+    const log: FocusSessionLog = {
+      id: s.id,
+      focusBlockId: s.focusBlockId,
+      title: s.title,
+      type: s.type,
+      domain: s.domain,
+      plannedMinutes: s.plannedMinutes,
+      actualMinutes,
+      startedAt: s.startedAt,
+      completedAt: Date.now(),
+      quality: s.quality,
+      reflection: s.reflection || undefined,
+      interruptions: s.interruptions,
+      xpAwarded,
+      rewardKey,
+    };
+    setFocusSessionLogs(prev => {
+      if (prev.some(l => l.id === log.id)) return prev;
+      return [log, ...prev.slice(0, 49)];
+    });
+    setCharacter(c => addXpEventOnce(c, xpAwarded, s.title, 'focus', rewardKey));
+    showXpFloat(`+${xpAwarded} XP — ${s.title}`);
+    setItems(prev => prev.map(item => {
+      if (item.kind !== 'focus-block' || item.id !== s.focusBlockId) return item;
+      return { ...item, completed: true, completedAt: Date.now() };
+    }));
+  }
+
   function handleReset() {
     if (!window.confirm('Reset prototype? All progress will be cleared and demo data restored.')) return;
     clearPrototypeState();
     setItems(mockTodayItems);
     setCharacter(mockCharacter);
+    setFocusSessionLogs([]);
     setSession(null);
     setAddModal(null);
   }
 
   function handleSimulateTomorrow() {
     const today = todayDateKey();
-    // Move today's task/focus dateKeys to yesterday so they age out of Today view,
-    // simulating what happens when you open the app on the next real day.
     const d = new Date();
     d.setDate(d.getDate() - 1);
     const yesterday = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
@@ -153,28 +199,91 @@ function App() {
   }, []);
 
   function startFocus(blockId: string) {
-    setSession({ blockId, startedAt: Date.now(), accumulatedSeconds: 0, paused: false });
+    const block = items.find(i => i.id === blockId && i.kind === 'focus-block') as FocusBlock | undefined;
+    if (!block) return;
+    const profile = getFocusProfile(block.type);
+    const now = Date.now();
+    setSession({
+      id: `session-${now}`,
+      focusBlockId: blockId,
+      title: block.title,
+      type: block.type,
+      domain: block.domain,
+      plannedMinutes: block.duration,
+      workMinutes: block.duration,
+      recallMinutes: profile.recallMinutes,
+      restMinutes: profile.restMinutes,
+      phase: 'work',
+      status: 'running',
+      startedAt: now,
+      phaseStartedAt: now,
+      phaseElapsedSeconds: 0,
+      workDoneSeconds: 0,
+      interruptions: 0,
+      quality: 'Normal',
+      reflection: '',
+      entryStep: block.entryStep,
+    });
   }
 
   function pauseSession() {
     setSession(s => {
-      if (!s || s.paused) return s;
-      const elapsed = s.accumulatedSeconds + Math.floor((Date.now() - s.startedAt) / 1000);
-      return { ...s, accumulatedSeconds: elapsed, paused: true };
+      if (!s || s.status !== 'running') return s;
+      const elapsed = s.phaseElapsedSeconds + Math.floor((Date.now() - s.phaseStartedAt) / 1000);
+      return { ...s, status: 'paused', phaseElapsedSeconds: elapsed };
     });
   }
 
   function resumeSession() {
     setSession(s => {
-      if (!s || !s.paused) return s;
-      return { ...s, startedAt: Date.now(), paused: false };
+      if (!s || s.status !== 'paused') return s;
+      return { ...s, status: 'running', phaseStartedAt: Date.now() };
     });
   }
 
-  function completeSession() {
-    if (!session) return;
-    toggleFocusBlock(session.blockId);
-    setSession(null);
+  function advancePhase() {
+    setSession(s => {
+      if (!s) return s;
+      const phaseElapsed = s.status === 'running'
+        ? s.phaseElapsedSeconds + Math.floor((Date.now() - s.phaseStartedAt) / 1000)
+        : s.phaseElapsedSeconds;
+      const workDoneSeconds = s.phase === 'work' ? phaseElapsed : s.workDoneSeconds;
+
+      let nextPhase: 'recall' | 'rest' | 'complete';
+      if (s.phase === 'work') {
+        nextPhase = s.recallMinutes > 0 ? 'recall' : (s.restMinutes > 0 ? 'rest' : 'complete');
+      } else if (s.phase === 'recall') {
+        nextPhase = s.restMinutes > 0 ? 'rest' : 'complete';
+      } else {
+        nextPhase = 'complete';
+      }
+
+      if (nextPhase === 'complete') {
+        pendingCompletionRef.current = { ...s, phase: 'complete', workDoneSeconds };
+        return null;
+      }
+
+      return {
+        ...s,
+        phase: nextPhase,
+        status: 'running',
+        phaseStartedAt: Date.now(),
+        phaseElapsedSeconds: 0,
+        workDoneSeconds,
+      };
+    });
+  }
+
+  function addInterruption() {
+    setSession(s => s ? { ...s, interruptions: s.interruptions + 1 } : s);
+  }
+
+  function setSessionQuality(q: 'Low' | 'Normal' | 'High') {
+    setSession(s => s ? { ...s, quality: q } : s);
+  }
+
+  function setSessionReflection(text: string) {
+    setSession(s => s ? { ...s, reflection: text } : s);
   }
 
   function cancelSession() {
@@ -184,7 +293,6 @@ function App() {
   const handleReorder = useCallback((newVisibleItems: TodayItem[]) => {
     setItems(prev => {
       const today = todayDateKey();
-      // Keep historical tasks/focus blocks (not shown today) appended after visible items
       const historical = prev.filter(
         item => item.kind !== 'habit-flow' && item.dateKey !== today
       );
@@ -205,7 +313,7 @@ function App() {
       if (item.completed) {
         setCharacter(c => removeXpEventByRewardKey(c, focusBlockRewardKey(itemId, today)));
       }
-      if (session?.blockId === itemId) setSession(null);
+      if (session?.focusBlockId === itemId) setSession(null);
     } else if (item.kind === 'habit-flow') {
       const completedSteps = item.steps.filter(s => !!s.completionLog[today]);
       if (completedSteps.length > 0) {
@@ -274,7 +382,7 @@ function App() {
       const flowIdentityShort = data.identityShort || makeIdentityShort(flowIdentity);
       const flowPlace = data.place || undefined;
       const flowTinyVersion = data.tinyVersion || undefined;
-      const steps: HabitStep[] = stepList.map((name, i) => ({
+      const steps = stepList.map((name, i) => ({
         id: `step-${now}-${i}`,
         name,
         identity: flowIdentity,
@@ -304,10 +412,6 @@ function App() {
     setAddModal(null);
   }
 
-  const sessionBlock = session
-    ? (items.find(i => i.id === session.blockId && i.kind === 'focus-block') as FocusBlock | undefined)
-    : undefined;
-
   const allDone = progress.completed === progress.total && progress.total > 0;
   const showCurrentFocus = !session && currentFocus;
 
@@ -335,13 +439,15 @@ function App() {
           character={character}
         />
 
-        {session && sessionBlock ? (
+        {session ? (
           <FocusSessionBanner
             session={session}
-            block={sessionBlock}
             onPause={pauseSession}
             onResume={resumeSession}
-            onComplete={completeSession}
+            onAdvancePhase={advancePhase}
+            onAddInterruption={addInterruption}
+            onSetQuality={setSessionQuality}
+            onSetReflection={setSessionReflection}
             onCancel={cancelSession}
           />
         ) : showCurrentFocus ? (
@@ -360,13 +466,18 @@ function App() {
           </div>
         ) : null}
 
-        <CharacterMini character={character} onReset={handleReset} onSimulateTomorrow={handleSimulateTomorrow} />
+        <CharacterMini
+          character={character}
+          focusSessionLogs={focusSessionLogs}
+          onReset={handleReset}
+          onSimulateTomorrow={handleSimulateTomorrow}
+        />
 
         <TodayFlow
           items={visibleItems}
           currentFocusItemId={currentFocus?.item.id}
           currentFocusStepId={currentFocus?.stepId}
-          activeSessionBlockId={session?.blockId}
+          activeSessionBlockId={session?.focusBlockId}
           onToggleStep={toggleHabitStep}
           onToggleTask={toggleTask}
           onToggleFocusBlock={toggleFocusBlock}

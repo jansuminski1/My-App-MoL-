@@ -1462,6 +1462,146 @@ button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 }
 .fsb-btn-cancel:hover { color: var(--text-sec); background: rgba(0,0,0,0.04); }
 
+/* Phase pill */
+.fsb-phase-pill {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 8px;
+  border-radius: 20px;
+  font-size: 0.70rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+.fsb-phase-pill.phase-work   { background: var(--accent-dim); color: var(--accent-dark); }
+.fsb-phase-pill.phase-recall { background: rgba(124, 58, 237, 0.08); color: #6d28d9; }
+.fsb-phase-pill.phase-rest   { background: var(--green-dim); color: var(--green-dark); }
+.fsb-phase-pill.phase-complete { background: var(--green-dim); color: var(--green-dark); }
+
+/* Entry step hint */
+.fsb-entry-step {
+  font-size: 0.80rem;
+  color: var(--text-sec);
+  background: var(--surface-alt);
+  border-left: 3px solid var(--accent-border);
+  padding: 6px 10px;
+  border-radius: 0 6px 6px 0;
+  margin-bottom: 10px;
+}
+
+/* Recall section */
+.fsb-recall-section {
+  margin: 10px 0;
+}
+.fsb-recall-label {
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--text-sec);
+  margin-bottom: 6px;
+}
+.fsb-reflection {
+  width: 100%;
+  box-sizing: border-box;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 8px 10px;
+  font-size: 0.82rem;
+  font-family: inherit;
+  color: var(--text);
+  background: var(--surface-alt);
+  resize: vertical;
+  min-height: 64px;
+}
+.fsb-reflection:focus {
+  outline: none;
+  border-color: var(--accent);
+  background: var(--surface);
+}
+
+/* Rest section — quality buttons */
+.fsb-rest-section {
+  margin: 10px 0;
+}
+.fsb-quality-label {
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--text-sec);
+  margin-bottom: 6px;
+}
+.fsb-quality-row {
+  display: flex;
+  gap: 8px;
+}
+.fsb-quality-btn {
+  flex: 1;
+  padding: 6px 0;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background: var(--surface-alt);
+  color: var(--text-sec);
+  font-size: 0.80rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s, border-color 0.15s;
+}
+.fsb-quality-btn:hover { background: var(--border); color: var(--text); }
+.fsb-quality-btn.selected {
+  background: var(--accent);
+  color: white;
+  border-color: var(--accent-dark);
+}
+
+/* Interruption + advance buttons */
+.fsb-btn-interrupt {
+  background: transparent;
+  color: var(--amber);
+  border: 1px solid var(--amber-border);
+  font-weight: 600;
+  font-size: 0.78rem;
+}
+.fsb-btn-interrupt:hover { background: var(--amber-dim); }
+.fsb-btn-advance {
+  background: var(--purple-dim);
+  color: var(--purple);
+  border: 1px solid var(--purple-border);
+  font-weight: 700;
+  font-size: 0.78rem;
+}
+.fsb-btn-advance:hover { background: var(--purple); color: white; border-color: var(--purple); }
+
+/* Recent Focus log in CharacterMini */
+.focus-log-list {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-bottom: 4px;
+}
+.focus-log-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 4px 0;
+  border-bottom: 1px solid var(--border-soft);
+}
+.focus-log-row:last-child { border-bottom: none; }
+.focus-log-title {
+  font-size: 0.80rem;
+  color: var(--text);
+  font-weight: 500;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  flex: 1;
+}
+.focus-log-meta {
+  font-size: 0.74rem;
+  color: var(--text-sec);
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
 /* ── Add Modal ── */
 .modal-overlay {
   position: fixed;

@@ -1,9 +1,10 @@
 import { useState } from 'react';
-import { CharacterState } from '../types';
+import { CharacterState, FocusSessionLog } from '../types';
 import { formatRelativeTime } from '../utils/todayFlow';
 
 interface Props {
   character: CharacterState;
+  focusSessionLogs?: FocusSessionLog[];
   onReset?: () => void;
   onSimulateTomorrow?: () => void;
 }
@@ -19,7 +20,7 @@ const STAT_LABELS: Record<string, string> = {
   resolve: 'Resolve',
 };
 
-export function CharacterMini({ character, onReset, onSimulateTomorrow }: Props) {
+export function CharacterMini({ character, focusSessionLogs, onReset, onSimulateTomorrow }: Props) {
   const [open, setOpen] = useState(false);
 
   const strongest = STAT_LABELS[character.strongestStat] ?? character.strongestStat;
@@ -82,6 +83,22 @@ export function CharacterMini({ character, onReset, onSimulateTomorrow }: Props)
                     <span className="xp-event-label">{e.label}</span>
                     <span className="xp-event-amount">+{Math.round(e.generalXp)}</span>
                     <span className="xp-event-time">{formatRelativeTime(e.timestamp)}</span>
+                  </div>
+                ))}
+              </div>
+            </>
+          )}
+
+          {focusSessionLogs && focusSessionLogs.length > 0 && (
+            <>
+              <div className="xp-events-label">Recent Focus</div>
+              <div className="focus-log-list">
+                {focusSessionLogs.slice(0, 3).map(log => (
+                  <div key={log.id} className="focus-log-row">
+                    <span className="focus-log-title">{log.title}</span>
+                    <span className="focus-log-meta">
+                      {log.actualMinutes}m · {log.quality} · +{log.xpAwarded} XP
+                    </span>
                   </div>
                 ))}
               </div>
