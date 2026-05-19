@@ -207,6 +207,7 @@ export interface FocusTag {
 }
 
 export type MealType = 'Breakfast' | 'Lunch' | 'Dinner' | 'Snack';
+export type MealQuality = 'Light' | 'Balanced' | 'Heavy';
 
 export interface MealLog {
   id: string;
@@ -214,7 +215,7 @@ export interface MealLog {
   type: MealType;
   label?: string;
   time?: string;
-  quality?: 'Light' | 'Balanced' | 'Heavy';
+  quality?: MealQuality;
   note?: string;
   completedAt: number;
   xpReward?: number;
@@ -222,13 +223,14 @@ export interface MealLog {
 }
 
 export type CardioType = 'Walk' | 'Run' | 'Bike' | 'Gym Cardio' | 'Other';
+export type CardioIntensity = 'Easy' | 'Moderate' | 'Hard';
 
 export interface CardioLog {
   id: string;
   dateKey: string;
   type: CardioType;
   minutes: number;
-  intensity?: 'Easy' | 'Moderate' | 'Hard';
+  intensity?: CardioIntensity;
   distanceKm?: number;
   note?: string;
   completedAt: number;

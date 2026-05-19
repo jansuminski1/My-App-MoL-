@@ -1,17 +1,17 @@
 import { useState } from 'react';
-import { HealthState, MealType, CardioType } from '../types';
+import { HealthState, MealType, MealQuality, CardioType, CardioIntensity } from '../types';
 import { todayDateKey } from '../utils/date';
 
 export interface MealFormData {
   type: MealType;
   label?: string;
-  quality?: 'Light' | 'Balanced' | 'Heavy';
+  quality?: MealQuality;
 }
 
 export interface CardioFormData {
   type: CardioType;
   minutes: number;
-  intensity?: 'Easy' | 'Moderate' | 'Hard';
+  intensity?: CardioIntensity;
   distanceKm?: number;
 }
 
@@ -35,12 +35,13 @@ interface Props {
   onAddWeight: (data: WeightFormData) => void;
   onDeleteWeight: (id: string) => void;
   onSaveRecovery: (data: RecoveryFormData) => void;
+  onDeleteRecovery: () => void;
 }
 
-const MEAL_TYPES: MealType[] = ['Breakfast', 'Lunch', 'Dinner', 'Snack'];
 const CARDIO_TYPES: CardioType[] = ['Walk', 'Run', 'Bike', 'Gym Cardio', 'Other'];
+const STRUCTURED_MEALS: MealType[] = ['Breakfast', 'Lunch', 'Dinner'];
 
-function cardioXpPreview(minutes: number, intensity: string): number {
+function cardioXpPreview(minutes: number, intensity: CardioIntensity): number {
   const mult = intensity === 'Easy' ? 0.8 : intensity === 'Hard' ? 1.2 : 1.0;
   return Math.min(80, Math.round(minutes * mult));
 }
@@ -56,7 +57,7 @@ function mealChipStyle(type: MealType): React.CSSProperties {
 
 export function HealthPage({
   health, onAddMeal, onDeleteMeal, onAddCardio, onDeleteCardio,
-  onAddWeight, onDeleteWeight, onSaveRecovery,
+  onAddWeight, onDeleteWeight, onSaveRecovery, onDeleteRecovery,
 }: Props) {
   const today = todayDateKey();
   const todayMeals = health.meals.filter(m => m.dateKey === today);
@@ -65,15 +66,14 @@ export function HealthPage({
   const latestWeight = health.weight[0];
   const todayRecovery = health.recovery.find(r => r.dateKey === today);
 
-  const [showMealForm, setShowMealForm] = useState(false);
-  const [mealType, setMealType] = useState<MealType>('Breakfast');
+  const [activeMealType, setActiveMealType] = useState<MealType | null>(null);
   const [mealLabel, setMealLabel] = useState('');
-  const [mealQuality, setMealQuality] = useState('');
+  const [mealQuality, setMealQuality] = useState<MealQuality | ''>('');
 
   const [showCardioForm, setShowCardioForm] = useState(false);
   const [cardioType, setCardioType] = useState<CardioType>('Walk');
   const [cardioMin, setCardioMin] = useState(30);
-  const [cardioIntensity, setCardioIntensity] = useState('Moderate');
+  const [cardioIntensity, setCardioIntensity] = useState<CardioIntensity>('Moderate');
   const [cardioDist, setCardioDist] = useState('');
 
   const [showWeightForm, setShowWeightForm] = useState(false);
@@ -85,13 +85,20 @@ export function HealthPage({
   const [recoveryNote, setRecoveryNote] = useState(todayRecovery?.note ?? '');
   const [recoverySaved, setRecoverySaved] = useState(!!todayRecovery);
 
+  function openMealForm(type: MealType) {
+    setActiveMealType(type);
+    setMealLabel('');
+    setMealQuality('');
+  }
+
   function submitMeal() {
+    if (!activeMealType) return;
     onAddMeal({
-      type: mealType,
+      type: activeMealType,
       label: mealLabel.trim() || undefined,
-      quality: (mealQuality as 'Light' | 'Balanced' | 'Heavy') || undefined,
+      quality: mealQuality || undefined,
     });
-    setShowMealForm(false);
+    setActiveMealType(null);
     setMealLabel('');
     setMealQuality('');
   }
@@ -101,7 +108,7 @@ export function HealthPage({
     onAddCardio({
       type: cardioType,
       minutes: cardioMin,
-      intensity: (cardioIntensity as 'Easy' | 'Moderate' | 'Hard') || undefined,
+      intensity: cardioIntensity,
       distanceKm: cardioDist ? parseFloat(cardioDist) : undefined,
     });
     setShowCardioForm(false);
@@ -126,8 +133,22 @@ export function HealthPage({
     setRecoverySaved(true);
   }
 
+  function handleDeleteRecovery() {
+    onDeleteRecovery();
+    setSleepQ('');
+    setEnergyVal(0);
+    setMoodVal(0);
+    setRecoveryNote('');
+    setRecoverySaved(false);
+  }
+
   return (
     <div className="page health-page">
+      <div className="health-page-header">
+        <h1 className="health-page-title">Health</h1>
+        <p className="health-page-sub">Body, energy, and recovery.</p>
+      </div>
+
       <div className="health-summary-row">
         <div className="health-summary-card">
           <div className="hsc-value">{todayMeals.length > 0 ? todayMeals.length : '—'}</div>
@@ -139,7 +160,7 @@ export function HealthPage({
         </div>
         <div className="health-summary-card">
           <div className="hsc-value">{latestWeight ? `${latestWeight.weightKg}` : '—'}</div>
-          <div className="hsc-label">kg</div>
+          <div className="hsc-label">Weight</div>
         </div>
         <div className="health-summary-card">
           <div className="hsc-value">{energyVal > 0 ? energyVal : (todayRecovery?.energy ?? '—')}</div>
@@ -147,27 +168,52 @@ export function HealthPage({
         </div>
       </div>
 
-      <div className="page-section-label">Meals</div>
+      <div className="page-section-label">Meals today</div>
       <div className="health-section">
-        {todayMeals.length === 0 && !showMealForm && (
-          <div className="health-empty">No meals logged today</div>
-        )}
-        {todayMeals.map(m => (
-          <div key={m.id} className="health-log-entry">
-            <span className="meal-type-chip" style={mealChipStyle(m.type)}>{m.type}</span>
-            <span className="hle-label">{m.label || m.type}</span>
+        {STRUCTURED_MEALS.map(mtype => {
+          const entry = todayMeals.find(m => m.type === mtype);
+          return (
+            <div key={mtype} className="meal-section-row">
+              <span className="meal-type-chip" style={mealChipStyle(mtype)}>{mtype}</span>
+              {entry ? (
+                <>
+                  <span className="hle-label meal-row-label">{entry.label || entry.type}</span>
+                  {entry.quality && <span className="hle-badge">{entry.quality}</span>}
+                  {entry.xpReward != null && entry.xpReward > 0 && <span className="hle-xp">+{entry.xpReward} XP</span>}
+                  <button className="hle-delete" onClick={() => onDeleteMeal(entry.id)}>×</button>
+                </>
+              ) : activeMealType === mtype ? (
+                <span className="meal-form-active-hint">logging…</span>
+              ) : (
+                <button className="meal-log-quick-btn" onClick={() => openMealForm(mtype)}>+ Log</button>
+              )}
+            </div>
+          );
+        })}
+
+        {todayMeals.filter(m => m.type === 'Snack').map(m => (
+          <div key={m.id} className="meal-section-row">
+            <span className="meal-type-chip" style={mealChipStyle('Snack')}>Snack</span>
+            <span className="hle-label meal-row-label">{m.label || 'Snack'}</span>
             {m.quality && <span className="hle-badge">{m.quality}</span>}
             {m.xpReward != null && m.xpReward > 0 && <span className="hle-xp">+{m.xpReward} XP</span>}
             <button className="hle-delete" onClick={() => onDeleteMeal(m.id)}>×</button>
           </div>
         ))}
-        {showMealForm ? (
+        {activeMealType !== 'Snack' && (
+          <div className="meal-empty-row">
+            <button className="meal-log-quick-btn" onClick={() => openMealForm('Snack')}>+ Snack</button>
+          </div>
+        )}
+
+        {activeMealType && (
           <div className="health-form">
             <div className="hf-row">
-              <select value={mealType} onChange={e => setMealType(e.target.value as MealType)} className="hf-select">
-                {MEAL_TYPES.map(t => <option key={t} value={t}>{t}</option>)}
-              </select>
-              <select value={mealQuality} onChange={e => setMealQuality(e.target.value)} className="hf-select">
+              <select
+                value={mealQuality}
+                onChange={e => setMealQuality(e.target.value as MealQuality | '')}
+                className="hf-select"
+              >
                 <option value="">Quality</option>
                 <option value="Light">Light</option>
                 <option value="Balanced">Balanced</option>
@@ -176,22 +222,21 @@ export function HealthPage({
             </div>
             <input
               type="text"
-              placeholder="Description (optional)"
+              placeholder={`${activeMealType} description (optional)`}
               value={mealLabel}
               onChange={e => setMealLabel(e.target.value)}
               className="hf-input"
+              autoFocus
             />
             <div className="hf-actions">
-              <button className="hf-btn-primary" onClick={submitMeal}>Log Meal +8 XP</button>
-              <button className="hf-btn-cancel" onClick={() => setShowMealForm(false)}>Cancel</button>
+              <button className="hf-btn-primary" onClick={submitMeal}>Log {activeMealType} +8 XP</button>
+              <button className="hf-btn-cancel" onClick={() => setActiveMealType(null)}>Cancel</button>
             </div>
           </div>
-        ) : (
-          <button className="health-add-btn" onClick={() => setShowMealForm(true)}>+ Log Meal</button>
         )}
       </div>
 
-      <div className="page-section-label">Cardio</div>
+      <div className="page-section-label">Move your body</div>
       <div className="health-section">
         {todayCardio.length === 0 && !showCardioForm && (
           <div className="health-empty">No cardio logged today</div>
@@ -212,7 +257,7 @@ export function HealthPage({
               <select value={cardioType} onChange={e => setCardioType(e.target.value as CardioType)} className="hf-select">
                 {CARDIO_TYPES.map(t => <option key={t} value={t}>{t}</option>)}
               </select>
-              <select value={cardioIntensity} onChange={e => setCardioIntensity(e.target.value)} className="hf-select">
+              <select value={cardioIntensity} onChange={e => setCardioIntensity(e.target.value as CardioIntensity)} className="hf-select">
                 <option value="Easy">Easy (×0.8)</option>
                 <option value="Moderate">Moderate (×1.0)</option>
                 <option value="Hard">Hard (×1.2)</option>
@@ -249,7 +294,7 @@ export function HealthPage({
         )}
       </div>
 
-      <div className="page-section-label">Weight</div>
+      <div className="page-section-label">Body log</div>
       <div className="health-section">
         {health.weight.length === 0 && !showWeightForm && (
           <div className="health-empty">No weight logged yet</div>
@@ -287,7 +332,7 @@ export function HealthPage({
         )}
       </div>
 
-      <div className="page-section-label">Recovery</div>
+      <div className="page-section-label">Recovery check-in</div>
       <div className="health-section">
         <div className="recovery-form">
           <div className="recovery-row">
@@ -333,9 +378,14 @@ export function HealthPage({
             onChange={e => setRecoveryNote(e.target.value)}
             rows={2}
           />
-          <button className="hf-btn-primary" onClick={submitRecovery}>
-            {recoverySaved ? 'Update Recovery' : 'Save Recovery +8 XP'}
-          </button>
+          <div className="recovery-actions">
+            <button className="hf-btn-primary" onClick={submitRecovery}>
+              {recoverySaved ? 'Update Recovery' : 'Save Recovery +8 XP'}
+            </button>
+            {recoverySaved && (
+              <button className="recovery-clear-btn" onClick={handleDeleteRecovery}>Clear</button>
+            )}
+          </div>
         </div>
       </div>
     </div>

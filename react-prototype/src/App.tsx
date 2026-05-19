@@ -486,6 +486,14 @@ function App() {
     }
   }
 
+  function deleteRecoveryLog() {
+    const today = todayDateKey();
+    const entry = health.recovery.find(r => r.dateKey === today);
+    if (!entry) return;
+    setHealth(prev => ({ ...prev, recovery: prev.recovery.filter(r => r.dateKey !== today) }));
+    if (entry.rewardKey) setCharacter(c => removeXpEventByRewardKey(c, entry.rewardKey!));
+  }
+
   function saveRecoveryLog(data: RecoveryFormData) {
     const now = nowTs();
     const today = todayDateKey();
@@ -710,6 +718,7 @@ function App() {
             onAddWeight={addWeightLog}
             onDeleteWeight={deleteWeightLog}
             onSaveRecovery={saveRecoveryLog}
+            onDeleteRecovery={deleteRecoveryLog}
           />
         )}
         {activeTab === 'analytics' && (
