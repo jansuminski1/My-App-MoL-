@@ -3679,3 +3679,22 @@ button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 .recovery-chip.active { background: var(--accent); color: white; border-color: var(--accent-dark); }
 .recovery-chip-num { min-width: 32px; text-align: center; }
 .recovery-note { resize: vertical; min-height: 56px; }
+
+/* ── Habit Flow edit action ── */
+.habit-flow-edit-row {
+  padding: 6px 0 2px;
+  border-top: 1px solid var(--border-soft);
+  margin-top: 6px;
+}
+.habit-flow-edit-btn {
+  background: none;
+  border: none;
+  padding: 3px 0;
+  font-size: 0.71rem;
+  font-weight: 600;
+  color: var(--text-mut);
+  cursor: pointer;
+  letter-spacing: 0.01em;
+  transition: color var(--transition);
+}
+.habit-flow-edit-btn:hover { color: var(--text-sec); }

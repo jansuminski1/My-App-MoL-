@@ -393,6 +393,27 @@ function App() {
     setSession(null);
   }
 
+  function handleUpdateFlow(updatedFlow: HabitFlow) {
+    const today = todayDateKey();
+    const existing = items.find(i => i.id === updatedFlow.id && i.kind === 'habit-flow') as HabitFlow | undefined;
+    if (existing) {
+      const newStepIds = new Set(updatedFlow.steps.map(s => s.id));
+      const removedCompleted = existing.steps.filter(
+        s => !newStepIds.has(s.id) && !!s.completionLog[today]
+      );
+      if (removedCompleted.length > 0) {
+        setCharacter(c => {
+          let updated = c;
+          for (const step of removedCompleted) {
+            updated = removeXpEventByRewardKey(updated, habitStepRewardKey(step.id, today));
+          }
+          return updated;
+        });
+      }
+    }
+    setItems(prev => prev.map(i => i.id === updatedFlow.id ? updatedFlow : i));
+  }
+
   function addMealLog(data: MealFormData) {
     const now = nowTs();
     const today = todayDateKey();
@@ -638,6 +659,7 @@ function App() {
             onStartFocus={startFocus}
             onOpenMind={() => setActiveTab('mind')}
             onCancelSession={cancelSession}
+            onUpdateFlow={handleUpdateFlow}
             onReorder={handleReorder}
             onDeleteItem={handleDeleteItem}
             onAddTask={() => setAddModal('task')}

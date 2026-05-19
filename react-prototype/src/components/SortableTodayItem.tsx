@@ -1,6 +1,6 @@
 import { useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
-import { TodayItem } from '../types';
+import { TodayItem, HabitFlow } from '../types';
 import { HabitFlowCard } from './HabitFlowCard';
 import { TaskCard } from './TaskCard';
 import { FocusBlockCard } from './FocusBlockCard';
@@ -16,6 +16,7 @@ interface Props {
   onToggleFocusBlock: (blockId: string) => void;
   onStartFocus: (blockId: string) => void;
   onDeleteItem: (itemId: string) => void;
+  onUpdateFlow: (flow: HabitFlow) => void;
 }
 
 export function SortableTodayItem({
@@ -29,6 +30,7 @@ export function SortableTodayItem({
   onToggleFocusBlock,
   onStartFocus,
   onDeleteItem,
+  onUpdateFlow,
 }: Props) {
   const {
     attributes,
@@ -68,6 +70,7 @@ export function SortableTodayItem({
           defaultExpanded={item.id === firstIncompleteFlowId}
           onToggleStep={onToggleStep}
           onDelete={onDeleteItem}
+          onUpdateFlow={onUpdateFlow}
         />
       )}
       {item.kind === 'quick-task' && (

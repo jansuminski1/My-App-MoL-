@@ -1,4 +1,4 @@
-import { TodayItem, CharacterState, FocusSession, FocusSessionLog, CurrentFocus, Goal } from '../types';
+import { TodayItem, CharacterState, FocusSession, FocusSessionLog, CurrentFocus, Goal, HabitFlow } from '../types';
 import { ProgressStrip } from '../components/ProgressStrip';
 import { CurrentFocusCard } from '../components/CurrentFocusCard';
 import { CharacterMini } from '../components/CharacterMini';
@@ -19,6 +19,7 @@ interface Props {
   onStartFocus: (blockId: string) => void;
   onOpenMind: () => void;
   onCancelSession: () => void;
+  onUpdateFlow: (flow: HabitFlow) => void;
   onReorder: (items: TodayItem[]) => void;
   onDeleteItem: (id: string) => void;
   onAddTask: () => void;
@@ -32,7 +33,7 @@ export function TodayPage({
   visibleItems, currentFocus, progress, character, focusSessionLogs, goals, session,
   onToggleStep, onToggleTask, onToggleFocusBlock, onStartFocus,
   onOpenMind, onCancelSession,
-  onReorder, onDeleteItem, onAddTask, onAddFocus, onAddFlow,
+  onUpdateFlow, onReorder, onDeleteItem, onAddTask, onAddFocus, onAddFlow,
   onReset, onSimulateTomorrow,
 }: Props) {
   const allDone = progress.completed === progress.total && progress.total > 0;
@@ -88,6 +89,7 @@ export function TodayPage({
         onAddTask={onAddTask}
         onAddFocus={onAddFocus}
         onAddFlow={onAddFlow}
+        onUpdateFlow={onUpdateFlow}
         onReorder={onReorder}
         onDeleteItem={onDeleteItem}
       />

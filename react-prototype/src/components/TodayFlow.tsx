@@ -17,7 +17,7 @@ import {
   sortableKeyboardCoordinates,
   verticalListSortingStrategy,
 } from '@dnd-kit/sortable';
-import { TodayItem } from '../types';
+import { TodayItem, HabitFlow } from '../types';
 import { todayDateKey } from '../utils/date';
 import { SortableTodayItem } from './SortableTodayItem';
 import { HabitFlowCard } from './HabitFlowCard';
@@ -69,6 +69,7 @@ interface Props {
   onAddFlow: () => void;
   onReorder: (newItems: TodayItem[]) => void;
   onDeleteItem: (itemId: string) => void;
+  onUpdateFlow: (flow: HabitFlow) => void;
 }
 
 export function TodayFlow({
@@ -85,6 +86,7 @@ export function TodayFlow({
   onAddFlow,
   onReorder,
   onDeleteItem,
+  onUpdateFlow,
 }: Props) {
   const [activeId, setActiveId] = useState<string | null>(null);
 
@@ -155,6 +157,7 @@ export function TodayFlow({
               onToggleFocusBlock={onToggleFocusBlock}
               onStartFocus={onStartFocus}
               onDeleteItem={onDeleteItem}
+              onUpdateFlow={onUpdateFlow}
             />
           ))}
         </SortableContext>

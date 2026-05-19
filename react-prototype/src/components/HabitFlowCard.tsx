@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { HabitFlow } from '../types';
 import { todayDateKey } from '../utils/date';
+import { EditFlowModal } from './EditFlowModal';
 
 interface Props {
   flow: HabitFlow;
@@ -9,11 +10,13 @@ interface Props {
   defaultExpanded: boolean;
   onToggleStep: (flowId: string, stepId: string) => void;
   onDelete?: (flowId: string) => void;
+  onUpdateFlow?: (flow: HabitFlow) => void;
 }
 
-export function HabitFlowCard({ flow, isCurrent, defaultExpanded, onToggleStep, onDelete }: Props) {
+export function HabitFlowCard({ flow, isCurrent, defaultExpanded, onToggleStep, onDelete, onUpdateFlow }: Props) {
   const [expanded, setExpanded] = useState(defaultExpanded);
   const [hoveredStep, setHoveredStep] = useState<string | null>(null);
+  const [showEdit, setShowEdit] = useState(false);
 
   const today = todayDateKey();
   const doneCount = flow.steps.filter(s => !!s.completionLog[today]).length;
@@ -186,6 +189,26 @@ export function HabitFlowCard({ flow, isCurrent, defaultExpanded, onToggleStep, 
             )}
           </div>
         </details>
+      )}
+
+      {expanded && onUpdateFlow && (
+        <div className="habit-flow-edit-row">
+          <button
+            type="button"
+            className="habit-flow-edit-btn"
+            onClick={e => { e.stopPropagation(); setShowEdit(true); }}
+          >
+            Edit flow
+          </button>
+        </div>
+      )}
+
+      {showEdit && (
+        <EditFlowModal
+          flow={flow}
+          onSave={updated => { onUpdateFlow?.(updated); setShowEdit(false); }}
+          onClose={() => setShowEdit(false)}
+        />
       )}
     </div>
   );
