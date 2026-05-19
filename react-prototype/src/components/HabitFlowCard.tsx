@@ -198,7 +198,7 @@ export function HabitFlowCard({ flow, isCurrent, defaultExpanded, onToggleStep, 
             className="habit-flow-edit-btn"
             onClick={e => { e.stopPropagation(); setShowEdit(true); }}
           >
-            Edit flow
+            ✎ Edit flow
           </button>
         </div>
       )}

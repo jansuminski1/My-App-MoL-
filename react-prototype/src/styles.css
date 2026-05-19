@@ -3682,19 +3682,26 @@ button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 
 /* ── Habit Flow edit action ── */
 .habit-flow-edit-row {
-  padding: 6px 0 2px;
+  display: flex;
+  justify-content: flex-end;
+  padding: 8px 14px 10px;
   border-top: 1px solid var(--border-soft);
-  margin-top: 6px;
+  margin-top: 2px;
 }
 .habit-flow-edit-btn {
-  background: none;
-  border: none;
-  padding: 3px 0;
-  font-size: 0.71rem;
+  background: var(--surface-alt);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-xs);
+  padding: 5px 11px;
+  font-size: 0.73rem;
   font-weight: 600;
-  color: var(--text-mut);
+  color: var(--text-sec);
   cursor: pointer;
   letter-spacing: 0.01em;
-  transition: color var(--transition);
+  transition: all var(--transition);
 }
-.habit-flow-edit-btn:hover { color: var(--text-sec); }
+.habit-flow-edit-btn:hover {
+  background: var(--green-dim);
+  color: var(--green-dark);
+  border-color: var(--green-border);
+}
