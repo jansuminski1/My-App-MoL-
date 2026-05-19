@@ -389,6 +389,34 @@ function App() {
     }
   }
 
+  function startQuickFocus() {
+    const selectedProfile = focusTimerProfiles.find(p => p.id === selectedFocusTimerProfileId) ?? focusTimerProfiles[0];
+    const now = Date.now();
+    setSession({
+      id: `session-${now}`,
+      focusBlockId: `quick-${now}`,
+      title: selectedProfile?.name ?? 'Quick Focus',
+      type: 'Deep Work',
+      domain: undefined,
+      plannedMinutes: selectedProfile?.focusMinutes ?? 25,
+      workMinutes: selectedProfile?.focusMinutes ?? 25,
+      recallMinutes: selectedProfile?.recallMinutes ?? 3,
+      restMinutes: selectedProfile?.restMinutes ?? 5,
+      phase: 'work',
+      status: 'running',
+      startedAt: now,
+      phaseStartedAt: now,
+      phaseElapsedSeconds: 0,
+      workDoneSeconds: 0,
+      interruptions: 0,
+      quality: 'Normal',
+      reflection: '',
+      entryStep: undefined,
+      tagId: undefined,
+      tagName: undefined,
+    });
+  }
+
   function cancelSession() {
     setSession(null);
   }
@@ -686,6 +714,7 @@ function App() {
             onSelectProfile={setSelectedFocusTimerProfileId}
             onAddProfile={addTimerProfile}
             onDeleteProfile={deleteTimerProfile}
+            onStartQuickFocus={startQuickFocus}
           />
         )}
         {activeTab === 'goals' && (

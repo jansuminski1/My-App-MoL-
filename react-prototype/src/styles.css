@@ -3273,6 +3273,22 @@ button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
   line-height: 1.5;
 }
 
+.mind-start-btn {
+  margin-top: 18px;
+  padding: 11px 32px;
+  background: linear-gradient(135deg, #4f46e5, #1d4ed8);
+  color: #fff;
+  border: none;
+  border-radius: 999px;
+  font-size: 0.95rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  cursor: pointer;
+  transition: opacity 0.15s, transform 0.1s;
+}
+.mind-start-btn:hover { opacity: 0.88; }
+.mind-start-btn:active { transform: scale(0.97); }
+
 /* ── Timer Profiles row ── */
 .mind-profiles-row {
   display: flex;

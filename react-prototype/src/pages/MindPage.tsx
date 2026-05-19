@@ -22,6 +22,7 @@ interface Props {
   onSelectProfile: (id: string) => void;
   onAddProfile: (data: { name: string; focusMinutes: number; recallMinutes: number; restMinutes: number }) => void;
   onDeleteProfile: (id: string) => void;
+  onStartQuickFocus: () => void;
 }
 
 const QUALITY_LABEL: Record<string, string> = { Low: 'Low', Normal: 'Good', High: 'Deep' };
@@ -37,7 +38,7 @@ export function MindPage({
   session, focusSessionLogs, focusTags, focusTimerProfiles, selectedProfileId,
   onPause, onResume, onAdvancePhase, onAddInterruption,
   onSetQuality, onSetReflection, onSetTag, onAddTag, onCancelSession,
-  onSelectProfile, onAddProfile, onDeleteProfile,
+  onSelectProfile, onAddProfile, onDeleteProfile, onStartQuickFocus,
 }: Props) {
   const [showAddProfile, setShowAddProfile] = useState(false);
 
@@ -91,6 +92,9 @@ export function MindPage({
                 {selectedProfile.name} · {selectedProfile.focusMinutes}m focus{selectedProfile.recallMinutes > 0 ? ` · ${selectedProfile.recallMinutes}m recall` : ''}{selectedProfile.restMinutes > 0 ? ` · ${selectedProfile.restMinutes}m rest` : ''}
               </div>
             )}
+            <button type="button" className="mind-start-btn" onClick={onStartQuickFocus}>
+              ▶ Start Focus
+            </button>
           </div>
 
           <div className="page-section-label" style={{ marginTop: 20 }}>Timer Profiles</div>
