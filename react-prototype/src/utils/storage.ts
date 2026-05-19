@@ -1,4 +1,4 @@
-import { TodayItem, CharacterState, FocusSessionLog, Goal, FocusTimerProfile, FocusTag } from '../types';
+import { TodayItem, CharacterState, FocusSessionLog, Goal, FocusTimerProfile, FocusTag, HealthState } from '../types';
 import { mockTodayItems, mockCharacter } from '../data/mockToday';
 import { mockGoals } from '../data/mockGoals';
 import { DEFAULT_TIMER_PROFILES, DEFAULT_FOCUS_TAGS } from '../data/focusDefaults';
@@ -17,7 +17,10 @@ export interface PrototypeState {
   focusTimerProfiles?: FocusTimerProfile[];
   selectedFocusTimerProfileId?: string;
   focusTags?: FocusTag[];
+  health?: HealthState;
 }
+
+const EMPTY_HEALTH: HealthState = { meals: [], cardio: [], weight: [], recovery: [] };
 
 export function loadPrototypeState(): {
   items: TodayItem[];
@@ -27,6 +30,7 @@ export function loadPrototypeState(): {
   focusTimerProfiles: FocusTimerProfile[];
   selectedFocusTimerProfileId: string;
   focusTags: FocusTag[];
+  health: HealthState;
 } {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
@@ -38,6 +42,7 @@ export function loadPrototypeState(): {
       focusTimerProfiles: DEFAULT_TIMER_PROFILES,
       selectedFocusTimerProfileId: DEFAULT_TIMER_PROFILES[0].id,
       focusTags: DEFAULT_FOCUS_TAGS,
+      health: EMPTY_HEALTH,
     };
     const parsed = JSON.parse(raw) as PrototypeState;
     if (
@@ -54,6 +59,7 @@ export function loadPrototypeState(): {
         focusTimerProfiles: DEFAULT_TIMER_PROFILES,
         selectedFocusTimerProfileId: DEFAULT_TIMER_PROFILES[0].id,
         focusTags: DEFAULT_FOCUS_TAGS,
+        health: EMPTY_HEALTH,
       };
     }
     return {
@@ -64,6 +70,7 @@ export function loadPrototypeState(): {
       focusTimerProfiles: parsed.focusTimerProfiles ?? DEFAULT_TIMER_PROFILES,
       selectedFocusTimerProfileId: parsed.selectedFocusTimerProfileId ?? DEFAULT_TIMER_PROFILES[0].id,
       focusTags: parsed.focusTags ?? DEFAULT_FOCUS_TAGS,
+      health: parsed.health ?? EMPTY_HEALTH,
     };
   } catch {
     return {
@@ -74,6 +81,7 @@ export function loadPrototypeState(): {
       focusTimerProfiles: DEFAULT_TIMER_PROFILES,
       selectedFocusTimerProfileId: DEFAULT_TIMER_PROFILES[0].id,
       focusTags: DEFAULT_FOCUS_TAGS,
+      health: EMPTY_HEALTH,
     };
   }
 }
@@ -86,6 +94,7 @@ export function savePrototypeState(
   focusTimerProfiles: FocusTimerProfile[],
   selectedFocusTimerProfileId: string,
   focusTags: FocusTag[],
+  health: HealthState,
 ): void {
   try {
     const state: PrototypeState = {
@@ -99,6 +108,7 @@ export function savePrototypeState(
       focusTimerProfiles,
       selectedFocusTimerProfileId,
       focusTags,
+      health,
     };
     localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
   } catch {

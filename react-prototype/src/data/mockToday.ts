@@ -225,5 +225,7 @@ export const mockCharacter: CharacterState = {
     'mock-e1': true,
     'mock-e2': true,
     'mock-e3': true,
+    'mock-h1': true,
+    'mock-h2': true,
   },
 };

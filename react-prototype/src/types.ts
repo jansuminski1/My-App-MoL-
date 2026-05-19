@@ -205,3 +205,62 @@ export interface FocusTag {
   name: string;
   createdAt: number;
 }
+
+export type MealType = 'Breakfast' | 'Lunch' | 'Dinner' | 'Snack';
+
+export interface MealLog {
+  id: string;
+  dateKey: string;
+  type: MealType;
+  label?: string;
+  time?: string;
+  quality?: 'Light' | 'Balanced' | 'Heavy';
+  note?: string;
+  completedAt: number;
+  xpReward?: number;
+  rewardKey: string;
+}
+
+export type CardioType = 'Walk' | 'Run' | 'Bike' | 'Gym Cardio' | 'Other';
+
+export interface CardioLog {
+  id: string;
+  dateKey: string;
+  type: CardioType;
+  minutes: number;
+  intensity?: 'Easy' | 'Moderate' | 'Hard';
+  distanceKm?: number;
+  note?: string;
+  completedAt: number;
+  xpReward?: number;
+  rewardKey: string;
+}
+
+export interface WeightLog {
+  id: string;
+  dateKey: string;
+  weightKg: number;
+  note?: string;
+  loggedAt: number;
+  rewardKey?: string;
+  xpReward?: number;
+}
+
+export interface RecoveryLog {
+  id: string;
+  dateKey: string;
+  sleepQuality?: 'Poor' | 'Okay' | 'Good';
+  energy?: 1 | 2 | 3 | 4 | 5;
+  mood?: 1 | 2 | 3 | 4 | 5;
+  note?: string;
+  loggedAt: number;
+  rewardKey?: string;
+  xpReward?: number;
+}
+
+export interface HealthState {
+  meals: MealLog[];
+  cardio: CardioLog[];
+  weight: WeightLog[];
+  recovery: RecoveryLog[];
+}

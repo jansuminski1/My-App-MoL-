@@ -3407,3 +3407,275 @@ button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
   border-radius: var(--radius-sm);
   font-variant-numeric: tabular-nums;
 }
+
+/* ── Health Page ── */
+.health-summary-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr 1fr;
+  gap: 8px;
+  margin-bottom: 20px;
+}
+.health-summary-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 10px 6px;
+  text-align: center;
+  box-shadow: var(--shadow-xs);
+}
+.hsc-value {
+  font-size: 1.05rem;
+  font-weight: 800;
+  color: var(--text);
+  line-height: 1.2;
+  font-variant-numeric: tabular-nums;
+}
+.hsc-label {
+  font-size: 0.60rem;
+  color: var(--text-mut);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin-top: 3px;
+}
+.health-section {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 12px 14px;
+  margin-bottom: 20px;
+  box-shadow: var(--shadow-xs);
+}
+.health-empty {
+  font-size: 0.80rem;
+  color: var(--text-mut);
+  text-align: center;
+  padding: 10px 0;
+}
+.health-log-entry {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  padding: 8px 0;
+  border-bottom: 1px solid var(--border-soft);
+}
+.health-log-entry:last-of-type { border-bottom: none; }
+.meal-type-chip {
+  font-size: 0.65rem;
+  font-weight: 700;
+  padding: 2px 7px;
+  border-radius: 100px;
+  flex-shrink: 0;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+.hle-type-badge {
+  font-size: 0.65rem;
+  font-weight: 700;
+  padding: 2px 7px;
+  border-radius: 100px;
+  flex-shrink: 0;
+}
+.hle-cardio-badge {
+  background: var(--green-dim);
+  color: var(--green-dark);
+}
+.hle-label {
+  font-size: 0.83rem;
+  color: var(--text);
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.hle-badge {
+  font-size: 0.65rem;
+  color: var(--text-sec);
+  background: var(--surface-alt);
+  border: 1px solid var(--border);
+  border-radius: 100px;
+  padding: 1px 6px;
+  flex-shrink: 0;
+}
+.hle-xp {
+  font-size: 0.65rem;
+  font-weight: 700;
+  color: var(--accent-dark);
+  background: var(--accent-dim);
+  border-radius: 100px;
+  padding: 1px 6px;
+  flex-shrink: 0;
+}
+.hle-date {
+  font-size: 0.72rem;
+  color: var(--text-mut);
+  flex: 1;
+}
+.hle-weight-value {
+  font-size: 0.88rem;
+  font-weight: 700;
+  color: var(--text);
+  font-variant-numeric: tabular-nums;
+}
+.hle-delete {
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  border: 1px solid var(--border);
+  background: var(--surface-alt);
+  color: var(--text-mut);
+  font-size: 1rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  flex-shrink: 0;
+  line-height: 1;
+  padding: 0;
+  transition: all 0.14s;
+}
+.hle-delete:hover { background: #fee2e2; color: #dc2626; border-color: #fca5a5; }
+.health-add-btn {
+  display: block;
+  width: 100%;
+  padding: 9px;
+  border: 1.5px dashed var(--border);
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--text-mut);
+  font-size: 0.82rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all var(--transition);
+  margin-top: 8px;
+}
+.health-add-btn:hover {
+  border-color: var(--accent-border);
+  color: var(--accent-dark);
+  background: var(--accent-dim);
+}
+.health-form {
+  margin-top: 10px;
+  padding: 12px;
+  background: var(--surface-alt);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.hf-row {
+  display: flex;
+  gap: 8px;
+}
+.hf-field {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.hf-label {
+  font-size: 0.67rem;
+  font-weight: 700;
+  color: var(--text-sec);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+.hf-input {
+  padding: 9px 11px;
+  border-radius: var(--radius-xs);
+  border: 1.5px solid var(--border);
+  background: var(--surface);
+  font-size: 0.86rem;
+  color: var(--text);
+  font-family: inherit;
+  outline: none;
+  transition: border-color var(--transition);
+  width: 100%;
+  box-sizing: border-box;
+}
+.hf-input:focus { border-color: var(--accent); }
+.hf-input::placeholder { color: var(--text-mut); }
+.hf-input-sm { font-size: 0.84rem; }
+.hf-select {
+  flex: 1;
+  padding: 9px 11px;
+  border-radius: var(--radius-xs);
+  border: 1.5px solid var(--border);
+  background: var(--surface);
+  font-size: 0.84rem;
+  color: var(--text);
+  font-family: inherit;
+  outline: none;
+  -webkit-appearance: none;
+  appearance: none;
+  cursor: pointer;
+}
+.hf-select:focus { border-color: var(--accent); }
+.hf-actions {
+  display: flex;
+  gap: 8px;
+}
+.hf-btn-primary {
+  flex: 1;
+  padding: 10px;
+  border-radius: var(--radius-sm);
+  border: none;
+  background: var(--green);
+  color: white;
+  font-size: 0.84rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background var(--transition);
+}
+.hf-btn-primary:hover { background: var(--green-dark); }
+.hf-btn-cancel {
+  padding: 10px 14px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border);
+  background: transparent;
+  color: var(--text-sec);
+  font-size: 0.84rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background var(--transition);
+}
+.hf-btn-cancel:hover { background: var(--border); }
+.recovery-form {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+.recovery-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.recovery-row-label {
+  font-size: 0.74rem;
+  font-weight: 700;
+  color: var(--text-sec);
+  min-width: 52px;
+  flex-shrink: 0;
+}
+.recovery-chips {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+.recovery-chip {
+  padding: 5px 10px;
+  border-radius: 100px;
+  border: 1.5px solid var(--border);
+  background: var(--surface-alt);
+  color: var(--text-sec);
+  font-size: 0.78rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all var(--transition);
+}
+.recovery-chip:hover { border-color: var(--accent-border); color: var(--accent-dark); }
+.recovery-chip.active { background: var(--accent); color: white; border-color: var(--accent-dark); }
+.recovery-chip-num { min-width: 32px; text-align: center; }
+.recovery-note { resize: vertical; min-height: 56px; }

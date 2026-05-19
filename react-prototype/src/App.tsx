@@ -3,10 +3,12 @@ import {
   TodayItem, CharacterState, FocusSession, FocusSessionLog,
   HabitFlow, QuickTask, FocusBlock, FocusType, LifeDomain, TabId,
   Goal, GoalPeriod, FocusTimerProfile, FocusTag,
+  HealthState, MealLog, CardioLog, WeightLog, RecoveryLog,
 } from './types';
 import { makeIdentityShort, makeStepCue, makeTinyVersion, makeFocusEntryStep } from './utils/smartDefaults';
 import { mockTodayItems, mockCharacter } from './data/mockToday';
 import { mockGoals } from './data/mockGoals';
+import { mockHealth } from './data/mockHealth';
 import { DEFAULT_TIMER_PROFILES, DEFAULT_FOCUS_TAGS } from './data/focusDefaults';
 import {
   getCurrentFocus, getTodayProgress, filterItemsForToday,
@@ -22,7 +24,7 @@ import { TodayPage } from './pages/TodayPage';
 import { MindPage } from './pages/MindPage';
 import { GoalsPage } from './pages/GoalsPage';
 import { GoalFormData } from './components/AddGoalModal';
-import { HealthPage } from './pages/HealthPage';
+import { HealthPage, MealFormData, CardioFormData, WeightFormData, RecoveryFormData } from './pages/HealthPage';
 import { AnalyticsPage } from './pages/AnalyticsPage';
 import { CharacterPage } from './pages/CharacterPage';
 
@@ -37,6 +39,7 @@ function App() {
   const [focusTimerProfiles, setFocusTimerProfiles] = useState<FocusTimerProfile[]>(() => loadPrototypeState().focusTimerProfiles);
   const [selectedFocusTimerProfileId, setSelectedFocusTimerProfileId] = useState<string>(() => loadPrototypeState().selectedFocusTimerProfileId);
   const [focusTags, setFocusTags] = useState<FocusTag[]>(() => loadPrototypeState().focusTags);
+  const [health, setHealth] = useState<HealthState>(() => loadPrototypeState().health);
   const [xpFloat, setXpFloat] = useState<string | null>(null);
   const [session, setSession] = useState<FocusSession | null>(null);
   const [addModal, setAddModal] = useState<AddMode | null>(null);
@@ -48,8 +51,8 @@ function App() {
   const progress = useMemo(() => getTodayProgress(visibleItems), [visibleItems]);
 
   useEffect(() => {
-    savePrototypeState(items, character, focusSessionLogs, goals, focusTimerProfiles, selectedFocusTimerProfileId, focusTags);
-  }, [items, character, focusSessionLogs, goals, focusTimerProfiles, selectedFocusTimerProfileId, focusTags]);
+    savePrototypeState(items, character, focusSessionLogs, goals, focusTimerProfiles, selectedFocusTimerProfileId, focusTags, health);
+  }, [items, character, focusSessionLogs, goals, focusTimerProfiles, selectedFocusTimerProfileId, focusTags, health]);
 
   useEffect(() => {
     return () => { if (xpFloatTimer.current) clearTimeout(xpFloatTimer.current); };
@@ -121,6 +124,7 @@ function App() {
     setFocusTimerProfiles(DEFAULT_TIMER_PROFILES);
     setSelectedFocusTimerProfileId(DEFAULT_TIMER_PROFILES[0].id);
     setFocusTags(DEFAULT_FOCUS_TAGS);
+    setHealth(mockHealth);
   }
 
   function handleSimulateTomorrow() {
@@ -389,6 +393,100 @@ function App() {
     setSession(null);
   }
 
+  function addMealLog(data: MealFormData) {
+    const now = nowTs();
+    const today = todayDateKey();
+    const id = `meal-${now}`;
+    const rewardKey = `meal:${today}:${id}`;
+    const xp = 8;
+    const entry: MealLog = {
+      id, dateKey: today, type: data.type,
+      label: data.label, quality: data.quality,
+      completedAt: now, xpReward: xp, rewardKey,
+    };
+    setHealth(prev => ({ ...prev, meals: [entry, ...prev.meals] }));
+    setCharacter(c => addXpEventOnce(c, xp, `Meal: ${data.type}${data.label ? ' — ' + data.label : ''}`, 'meal', rewardKey));
+    showXpFloat(`+${xp} XP — ${data.type}`);
+  }
+
+  function deleteMealLog(id: string) {
+    const entry = health.meals.find(m => m.id === id);
+    if (!entry) return;
+    setHealth(prev => ({ ...prev, meals: prev.meals.filter(m => m.id !== id) }));
+    setCharacter(c => removeXpEventByRewardKey(c, entry.rewardKey));
+  }
+
+  function addCardioLog(data: CardioFormData) {
+    const now = nowTs();
+    const today = todayDateKey();
+    const id = `cardio-${now}`;
+    const rewardKey = `cardio:${today}:${id}`;
+    const mult = data.intensity === 'Easy' ? 0.8 : data.intensity === 'Hard' ? 1.2 : 1.0;
+    const xp = Math.min(80, Math.round(data.minutes * mult));
+    const entry: CardioLog = {
+      id, dateKey: today, type: data.type,
+      minutes: data.minutes, intensity: data.intensity,
+      distanceKm: data.distanceKm,
+      completedAt: now, xpReward: xp, rewardKey,
+    };
+    setHealth(prev => ({ ...prev, cardio: [entry, ...prev.cardio] }));
+    setCharacter(c => addXpEventOnce(c, xp, `Cardio: ${data.type} ${data.minutes}min`, 'cardio', rewardKey));
+    showXpFloat(`+${xp} XP — ${data.type}`);
+  }
+
+  function deleteCardioLog(id: string) {
+    const entry = health.cardio.find(c => c.id === id);
+    if (!entry) return;
+    setHealth(prev => ({ ...prev, cardio: prev.cardio.filter(c => c.id !== id) }));
+    setCharacter(c => removeXpEventByRewardKey(c, entry.rewardKey));
+  }
+
+  function addWeightLog(data: WeightFormData) {
+    const now = nowTs();
+    const today = todayDateKey();
+    const id = `weight-${now}`;
+    const rewardKey = `weight:${today}:${id}`;
+    const xp = 5;
+    const entry: WeightLog = {
+      id, dateKey: today, weightKg: data.weightKg,
+      loggedAt: now, rewardKey, xpReward: xp,
+    };
+    setHealth(prev => ({ ...prev, weight: [entry, ...prev.weight] }));
+    setCharacter(c => addXpEventOnce(c, xp, `Weight logged: ${data.weightKg} kg`, 'weight', rewardKey));
+    showXpFloat(`+${xp} XP — Weight logged`);
+  }
+
+  function deleteWeightLog(id: string) {
+    const entry = health.weight.find(w => w.id === id);
+    if (!entry) return;
+    setHealth(prev => ({ ...prev, weight: prev.weight.filter(w => w.id !== id) }));
+    if (entry.rewardKey) {
+      setCharacter(c => removeXpEventByRewardKey(c, entry.rewardKey!));
+    }
+  }
+
+  function saveRecoveryLog(data: RecoveryFormData) {
+    const now = nowTs();
+    const today = todayDateKey();
+    const id = `recovery-${today}`;
+    const rewardKey = `recovery:${today}`;
+    const xp = 8;
+    const entry: RecoveryLog = {
+      id, dateKey: today,
+      sleepQuality: data.sleepQuality,
+      energy: data.energy,
+      mood: data.mood,
+      note: data.note,
+      loggedAt: now, rewardKey, xpReward: xp,
+    };
+    setHealth(prev => ({
+      ...prev,
+      recovery: [entry, ...prev.recovery.filter(r => r.dateKey !== today)],
+    }));
+    setCharacter(c => addXpEventOnce(c, xp, 'Recovery logged', 'recovery', rewardKey));
+    showXpFloat(`+${xp} XP — Recovery logged`);
+  }
+
   const handleReorder = useCallback((newVisibleItems: TodayItem[]) => {
     setItems(prev => {
       const today = todayDateKey();
@@ -580,7 +678,18 @@ function App() {
             onDeleteGoal={deleteGoal}
           />
         )}
-        {activeTab === 'health' && <HealthPage />}
+        {activeTab === 'health' && (
+          <HealthPage
+            health={health}
+            onAddMeal={addMealLog}
+            onDeleteMeal={deleteMealLog}
+            onAddCardio={addCardioLog}
+            onDeleteCardio={deleteCardioLog}
+            onAddWeight={addWeightLog}
+            onDeleteWeight={deleteWeightLog}
+            onSaveRecovery={saveRecoveryLog}
+          />
+        )}
         {activeTab === 'analytics' && (
           <AnalyticsPage focusSessionLogs={focusSessionLogs} character={character} />
         )}
