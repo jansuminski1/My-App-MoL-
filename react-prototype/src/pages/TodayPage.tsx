@@ -1,7 +1,6 @@
 import { TodayItem, CharacterState, FocusSession, FocusSessionLog, CurrentFocus, Goal, HabitFlow } from '../types';
 import { ProgressStrip } from '../components/ProgressStrip';
 import { CurrentFocusCard } from '../components/CurrentFocusCard';
-import { CharacterMini } from '../components/CharacterMini';
 import { TodayFlow } from '../components/TodayFlow';
 import { CompactSessionBanner } from '../components/CompactSessionBanner';
 
@@ -10,8 +9,6 @@ interface Props {
   currentFocus: CurrentFocus | null;
   progress: { completed: number; total: number };
   character: CharacterState;
-  focusSessionLogs: FocusSessionLog[];
-  goals: Goal[];
   session: FocusSession | null;
   onToggleStep: (flowId: string, stepId: string) => void;
   onToggleTask: (taskId: string) => void;
@@ -25,16 +22,13 @@ interface Props {
   onAddTask: () => void;
   onAddFocus: () => void;
   onAddFlow: () => void;
-  onReset: () => void;
-  onSimulateTomorrow: () => void;
 }
 
 export function TodayPage({
-  visibleItems, currentFocus, progress, character, focusSessionLogs, goals, session,
+  visibleItems, currentFocus, progress, character, session,
   onToggleStep, onToggleTask, onToggleFocusBlock, onStartFocus,
   onOpenMind, onCancelSession,
   onUpdateFlow, onReorder, onDeleteItem, onAddTask, onAddFocus, onAddFlow,
-  onReset, onSimulateTomorrow,
 }: Props) {
   const allDone = progress.completed === progress.total && progress.total > 0;
   const showCurrentFocus = !session && currentFocus;
@@ -68,14 +62,6 @@ export function TodayPage({
           <p>Every action was a vote for the person you are becoming.</p>
         </div>
       ) : null}
-
-      <CharacterMini
-        character={character}
-        focusSessionLogs={focusSessionLogs}
-        goals={goals}
-        onReset={onReset}
-        onSimulateTomorrow={onSimulateTomorrow}
-      />
 
       <TodayFlow
         items={visibleItems}

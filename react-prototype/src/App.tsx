@@ -552,8 +552,7 @@ function App() {
     title: string; notes: string; duration: number; focusType: string;
     steps: string[]; trigger: string; identity: string; identityShort: string;
     place: string; tinyVersion: string; obstacle: string; obstaclePlan: string;
-    firstAction: string; entryStep: string; difficulty: string; domain: string;
-    tagId: string;
+    firstAction: string; entryStep: string; difficulty: string;
   }) {
     const now = nowTs();
     const today = todayDateKey();
@@ -571,12 +570,10 @@ function App() {
         order: items.filter(i => i.kind === 'quick-task').length,
         firstAction: data.firstAction || undefined,
         tinyVersion: data.tinyVersion || undefined,
-        domain: data.domain ? (data.domain as LifeDomain) : undefined,
       };
       setItems(prev => [...prev, newTask]);
     } else if (addModal === 'focus') {
       const focusType = (data.focusType as FocusType) || 'Deep Work';
-      const tagEntry = data.tagId ? focusTags.find(t => t.id === data.tagId) : undefined;
       const newBlock: FocusBlock = {
         id: `focus-${now}`,
         kind: 'focus-block',
@@ -591,9 +588,6 @@ function App() {
         type: focusType,
         entryStep: data.entryStep || makeFocusEntryStep(data.title, focusType),
         difficulty: data.difficulty ? (data.difficulty as FocusBlock['difficulty']) : undefined,
-        domain: data.domain ? (data.domain as LifeDomain) : undefined,
-        tagId: tagEntry?.id,
-        tagName: tagEntry?.name,
       };
       setItems(prev => [...prev, newBlock]);
     } else if (addModal === 'flow') {
@@ -647,7 +641,7 @@ function App() {
         </div>
         <div className="ash-right">
           {session && <span className="ash-session-pill">● Active</span>}
-          <span className="prototype-pill">Prototype</span>
+          <span className="lvl-pill">Lvl {character.level}</span>
         </div>
       </header>
 
@@ -658,8 +652,6 @@ function App() {
             currentFocus={currentFocus}
             progress={progress}
             character={character}
-            focusSessionLogs={focusSessionLogs}
-            goals={goals}
             session={session}
             onToggleStep={toggleHabitStep}
             onToggleTask={toggleTask}
@@ -673,8 +665,6 @@ function App() {
             onAddTask={() => setAddModal('task')}
             onAddFocus={() => setAddModal('focus')}
             onAddFlow={() => setAddModal('flow')}
-            onReset={handleReset}
-            onSimulateTomorrow={handleSimulateTomorrow}
           />
         )}
         {activeTab === 'mind' && (
@@ -740,9 +730,9 @@ function App() {
       {addModal && (
         <AddModal
           mode={addModal}
-          focusTags={focusTags}
           onAdd={handleAdd}
           onClose={() => setAddModal(null)}
+          onCustomDuration={() => { setAddModal(null); setActiveTab('mind'); }}
         />
       )}
     </div>

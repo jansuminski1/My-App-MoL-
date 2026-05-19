@@ -127,6 +127,16 @@ button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
   border-radius: 100px;
   padding: 2px 8px;
 }
+.lvl-pill {
+  font-size: 0.65rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  background: var(--accent-dim);
+  color: var(--accent-dark);
+  border: 1px solid var(--accent-border);
+  border-radius: 100px;
+  padding: 3px 10px;
+}
 
 /* ── Date bar ── */
 .app-date-bar {
@@ -959,6 +969,17 @@ button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
   font-weight: 500;
 }
 
+/* Expand animation for flow panels */
+@keyframes flow-expand {
+  from { opacity: 0; transform: translateY(-6px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.habit-step-panel,
+.habit-flow-details,
+.habit-flow-edit-row {
+  animation: flow-expand 0.18s ease;
+}
+
 /* Expand chevron */
 .habit-flow-chevron {
   color: var(--text-mut);
@@ -1712,6 +1733,16 @@ button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
   background: var(--accent-dim);
   color: var(--accent-dark);
 }
+.modal-duration-custom {
+  border-style: dashed;
+  color: var(--text-mut);
+}
+.modal-duration-custom:hover {
+  border-style: dashed;
+  border-color: var(--accent-border);
+  color: var(--accent-dark);
+  background: var(--accent-dim);
+}
 .modal-submit {
   margin-top: 2px;
   padding: 13px;
@@ -2029,8 +2060,10 @@ button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 .bnav-item.active { color: var(--accent); }
 
 .bnav-icon {
-  font-size: 1.0rem;
-  line-height: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 0;
   transition: transform 0.14s;
 }
 

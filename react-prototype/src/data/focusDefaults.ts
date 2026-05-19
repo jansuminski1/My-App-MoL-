@@ -8,12 +8,10 @@ export const DEFAULT_TIMER_PROFILES: FocusTimerProfile[] = [
 ];
 
 export const DEFAULT_FOCUS_TAGS: FocusTag[] = [
-  { id: 'tag-research', name: 'Research', createdAt: 0 },
-  { id: 'tag-writing', name: 'Writing', createdAt: 0 },
-  { id: 'tag-reading', name: 'Reading', createdAt: 0 },
-  { id: 'tag-app', name: 'App', createdAt: 0 },
-  { id: 'tag-study', name: 'Study', createdAt: 0 },
-  { id: 'tag-admin', name: 'Admin', createdAt: 0 },
   { id: 'tag-philosophy', name: 'Philosophy', createdAt: 0 },
-  { id: 'tag-clinical', name: 'Clinical', createdAt: 0 },
+  { id: 'tag-psychoanalysis', name: 'Psychoanalysis', createdAt: 0 },
+  { id: 'tag-writing', name: 'Writing', createdAt: 0 },
+  { id: 'tag-appdev', name: 'App Development', createdAt: 0 },
+  { id: 'tag-marxism', name: 'Marxism', createdAt: 0 },
+  { id: 'tag-history', name: 'History', createdAt: 0 },
 ];

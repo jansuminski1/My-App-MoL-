@@ -19,21 +19,18 @@ interface AddData {
   firstAction: string;
   entryStep: string;
   difficulty: string;
-  domain: string;
-  tagId: string;
 }
 
 interface Props {
   mode: AddMode;
-  focusTags?: { id: string; name: string }[];
   onAdd: (data: AddData) => void;
   onClose: () => void;
+  onCustomDuration?: () => void;
 }
 
 const DURATIONS = [25, 45, 60, 90];
 const FOCUS_TYPES: FocusType[] = ['Deep Work', 'Study', 'Admin', 'Health', 'Recovery', 'Other'];
 const DIFFICULTIES = ['Easy', 'Medium', 'Hard'] as const;
-const DOMAINS = ['Intelligence', 'Health', 'Strength', 'Wealth', 'Connection', 'Purpose', 'Consistency', 'Resolve'];
 
 const CONFIG = {
   task:  { label: 'Quick Task',  submitClass: 'submit-task',  placeholder: 'e.g. Call dentist' },
@@ -41,7 +38,7 @@ const CONFIG = {
   flow:  { label: 'Habit Flow',  submitClass: 'submit-flow',  placeholder: 'e.g. Evening Reset' },
 };
 
-export function AddModal({ mode, focusTags, onAdd, onClose }: Props) {
+export function AddModal({ mode, onAdd, onClose, onCustomDuration }: Props) {
   const [title, setTitle] = useState('');
   const [notes, setNotes] = useState('');
   const [duration, setDuration] = useState(25);
@@ -58,8 +55,6 @@ export function AddModal({ mode, focusTags, onAdd, onClose }: Props) {
   const [firstAction, setFirstAction] = useState('');
   const [entryStep, setEntryStep] = useState('');
   const [difficulty, setDifficulty] = useState('');
-  const [domain, setDomain] = useState('');
-  const [tagId, setTagId] = useState('');
 
   const cfg = CONFIG[mode];
 
@@ -82,8 +77,6 @@ export function AddModal({ mode, focusTags, onAdd, onClose }: Props) {
       firstAction: firstAction.trim(),
       entryStep: entryStep.trim(),
       difficulty: difficulty.trim(),
-      domain: domain.trim(),
-      tagId: tagId.trim(),
     });
   }
 
@@ -134,6 +127,13 @@ export function AddModal({ mode, focusTags, onAdd, onClose }: Props) {
                       {d} min
                     </button>
                   ))}
+                  <button
+                    type="button"
+                    className="modal-duration-btn modal-duration-custom"
+                    onClick={() => onCustomDuration?.()}
+                  >
+                    Custom
+                  </button>
                 </div>
               </div>
               <div className="modal-label">
@@ -185,17 +185,6 @@ export function AddModal({ mode, focusTags, onAdd, onClose }: Props) {
                       placeholder="Bare minimum to count"
                     />
                   </label>
-                  <label className="modal-label">
-                    Domain
-                    <select
-                      className="modal-input modal-select"
-                      value={domain}
-                      onChange={e => setDomain(e.target.value)}
-                    >
-                      <option value="">None</option>
-                      {DOMAINS.map(d => <option key={d} value={d}>{d}</option>)}
-                    </select>
-                  </label>
                 </div>
               )}
             </>
@@ -238,30 +227,6 @@ export function AddModal({ mode, focusTags, onAdd, onClose }: Props) {
                       ))}
                     </div>
                   </div>
-                  <label className="modal-label">
-                    Domain
-                    <select
-                      className="modal-input modal-select"
-                      value={domain}
-                      onChange={e => setDomain(e.target.value)}
-                    >
-                      <option value="">None</option>
-                      {DOMAINS.map(d => <option key={d} value={d}>{d}</option>)}
-                    </select>
-                  </label>
-                  {focusTags && focusTags.length > 0 && (
-                    <label className="modal-label">
-                      Subject
-                      <select
-                        className="modal-input modal-select"
-                        value={tagId}
-                        onChange={e => setTagId(e.target.value)}
-                      >
-                        <option value="">None</option>
-                        {focusTags.map(t => <option key={t.id} value={t.id}>{t.name}</option>)}
-                      </select>
-                    </label>
-                  )}
                 </div>
               )}
             </>
