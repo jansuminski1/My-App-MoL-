@@ -2,15 +2,17 @@ import { useState, useMemo, useCallback, useEffect, useRef } from 'react';
 import {
   TodayItem, CharacterState, FocusSession, FocusSessionLog,
   HabitFlow, QuickTask, FocusBlock, FocusType, LifeDomain, TabId,
+  Goal, GoalPeriod,
 } from './types';
 import { makeIdentityShort, makeStepCue, makeTinyVersion, makeFocusEntryStep } from './utils/smartDefaults';
 import { mockTodayItems, mockCharacter } from './data/mockToday';
+import { mockGoals } from './data/mockGoals';
 import {
   getCurrentFocus, getTodayProgress, filterItemsForToday,
   addXpEventOnce, removeXpEventByRewardKey,
   habitStepRewardKey, taskRewardKey, focusBlockRewardKey,
 } from './utils/todayFlow';
-import { todayDateKey, nowTs } from './utils/date';
+import { todayDateKey, nowTs, currentWeekKey, currentMonthKey } from './utils/date';
 import { loadPrototypeState, savePrototypeState, clearPrototypeState } from './utils/storage';
 import { getFocusProfile, calculateFocusXp } from './utils/focusProfiles';
 import { BottomNav } from './components/BottomNav';
@@ -18,6 +20,7 @@ import { AddModal } from './components/AddModal';
 import { TodayPage } from './pages/TodayPage';
 import { MindPage } from './pages/MindPage';
 import { GoalsPage } from './pages/GoalsPage';
+import { GoalFormData } from './components/AddGoalModal';
 import { HealthPage } from './pages/HealthPage';
 import { AnalyticsPage } from './pages/AnalyticsPage';
 import { CharacterPage } from './pages/CharacterPage';
@@ -29,6 +32,7 @@ function App() {
   const [items, setItems] = useState<TodayItem[]>(() => loadPrototypeState().items);
   const [character, setCharacter] = useState<CharacterState>(() => loadPrototypeState().character);
   const [focusSessionLogs, setFocusSessionLogs] = useState<FocusSessionLog[]>(() => loadPrototypeState().focusSessionLogs);
+  const [goals, setGoals] = useState<Goal[]>(() => loadPrototypeState().goals);
   const [xpFloat, setXpFloat] = useState<string | null>(null);
   const [session, setSession] = useState<FocusSession | null>(null);
   const [addModal, setAddModal] = useState<AddMode | null>(null);
@@ -40,8 +44,8 @@ function App() {
   const progress = useMemo(() => getTodayProgress(visibleItems), [visibleItems]);
 
   useEffect(() => {
-    savePrototypeState(items, character, focusSessionLogs);
-  }, [items, character, focusSessionLogs]);
+    savePrototypeState(items, character, focusSessionLogs, goals);
+  }, [items, character, focusSessionLogs, goals]);
 
   useEffect(() => {
     return () => { if (xpFloatTimer.current) clearTimeout(xpFloatTimer.current); };
@@ -105,6 +109,7 @@ function App() {
     setItems(mockTodayItems);
     setCharacter(mockCharacter);
     setFocusSessionLogs([]);
+    setGoals(mockGoals);
     setSession(null);
     setAddModal(null);
   }
@@ -120,6 +125,59 @@ function App() {
       return item;
     }));
     setSession(null);
+  }
+
+  function addGoal(data: GoalFormData) {
+    const now = nowTs();
+    const wk = currentWeekKey();
+    const mk = currentMonthKey();
+    const id = `goal-${now}`;
+    const periodKey = data.period === 'weekly' ? wk : mk;
+    const newGoal: Goal = {
+      id,
+      title: data.title,
+      period: data.period as GoalPeriod,
+      domain: data.domain,
+      why: data.why || undefined,
+      target: data.target || undefined,
+      status: 'active',
+      createdAt: now,
+      completedAt: null,
+      weekKey: data.period === 'weekly' ? wk : undefined,
+      monthKey: data.period === 'monthly' ? mk : undefined,
+      order: goals.filter(g => g.period === data.period).length,
+      xpReward: data.xpReward,
+      rewardKey: `goal:${data.period}:${periodKey}:${id}`,
+    };
+    setGoals(prev => [...prev, newGoal]);
+  }
+
+  function completeGoal(goalId: string) {
+    const goal = goals.find(g => g.id === goalId);
+    if (!goal || goal.status === 'completed') return;
+    setGoals(prev => prev.map(g =>
+      g.id === goalId ? { ...g, status: 'completed' as const, completedAt: Date.now() } : g
+    ));
+    setCharacter(c => addXpEventOnce(c, goal.xpReward, goal.title, 'goal', goal.rewardKey));
+    showXpFloat(`+${goal.xpReward} XP — ${goal.title}`);
+  }
+
+  function uncompleteGoal(goalId: string) {
+    const goal = goals.find(g => g.id === goalId);
+    if (!goal || goal.status !== 'completed') return;
+    setGoals(prev => prev.map(g =>
+      g.id === goalId ? { ...g, status: 'active' as const, completedAt: null } : g
+    ));
+    setCharacter(c => removeXpEventByRewardKey(c, goal.rewardKey));
+  }
+
+  function deleteGoal(goalId: string) {
+    const goal = goals.find(g => g.id === goalId);
+    if (!goal) return;
+    if (goal.status === 'completed') {
+      setCharacter(c => removeXpEventByRewardKey(c, goal.rewardKey));
+    }
+    setGoals(prev => prev.filter(g => g.id !== goalId));
   }
 
   const toggleHabitStep = useCallback((flowId: string, stepId: string) => {
@@ -416,6 +474,7 @@ function App() {
             progress={progress}
             character={character}
             focusSessionLogs={focusSessionLogs}
+            goals={goals}
             session={session}
             onToggleStep={toggleHabitStep}
             onToggleTask={toggleTask}
@@ -440,13 +499,22 @@ function App() {
         {activeTab === 'mind' && (
           <MindPage focusSessionLogs={focusSessionLogs} />
         )}
-        {activeTab === 'goals' && <GoalsPage />}
+        {activeTab === 'goals' && (
+          <GoalsPage
+            goals={goals}
+            character={character}
+            onAddGoal={addGoal}
+            onCompleteGoal={completeGoal}
+            onUncompleteGoal={uncompleteGoal}
+            onDeleteGoal={deleteGoal}
+          />
+        )}
         {activeTab === 'health' && <HealthPage />}
         {activeTab === 'analytics' && (
           <AnalyticsPage focusSessionLogs={focusSessionLogs} character={character} />
         )}
         {activeTab === 'character' && (
-          <CharacterPage character={character} focusSessionLogs={focusSessionLogs} />
+          <CharacterPage character={character} focusSessionLogs={focusSessionLogs} goals={goals} />
         )}
       </main>
 

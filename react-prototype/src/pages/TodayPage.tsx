@@ -1,4 +1,4 @@
-import { TodayItem, CharacterState, FocusSession, FocusSessionLog, CurrentFocus } from '../types';
+import { TodayItem, CharacterState, FocusSession, FocusSessionLog, CurrentFocus, Goal } from '../types';
 import { ProgressStrip } from '../components/ProgressStrip';
 import { CurrentFocusCard } from '../components/CurrentFocusCard';
 import { CharacterMini } from '../components/CharacterMini';
@@ -11,6 +11,7 @@ interface Props {
   progress: { completed: number; total: number };
   character: CharacterState;
   focusSessionLogs: FocusSessionLog[];
+  goals: Goal[];
   session: FocusSession | null;
   onToggleStep: (flowId: string, stepId: string) => void;
   onToggleTask: (taskId: string) => void;
@@ -33,7 +34,7 @@ interface Props {
 }
 
 export function TodayPage({
-  visibleItems, currentFocus, progress, character, focusSessionLogs, session,
+  visibleItems, currentFocus, progress, character, focusSessionLogs, goals, session,
   onToggleStep, onToggleTask, onToggleFocusBlock, onStartFocus,
   onPauseSession, onResumeSession, onAdvancePhase, onAddInterruption,
   onSetSessionQuality, onSetSessionReflection, onCancelSession,
@@ -81,6 +82,7 @@ export function TodayPage({
       <CharacterMini
         character={character}
         focusSessionLogs={focusSessionLogs}
+        goals={goals}
         onReset={onReset}
         onSimulateTomorrow={onSimulateTomorrow}
       />

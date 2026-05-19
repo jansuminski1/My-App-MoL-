@@ -54,6 +54,7 @@ export interface QuickTask {
   firstAction?: string;
   tinyVersion?: string;
   domain?: LifeDomain;
+  linkedGoalId?: string;
 }
 
 export interface FocusBlock {
@@ -71,6 +72,7 @@ export interface FocusBlock {
   entryStep?: string;
   difficulty?: 'Easy' | 'Medium' | 'Hard';
   domain?: LifeDomain;
+  linkedGoalId?: string;
 }
 
 export type TodayItem = HabitFlow | QuickTask | FocusBlock;
@@ -141,6 +143,28 @@ export interface FocusSession {
   quality: 'Low' | 'Normal' | 'High';
   reflection: string;
   entryStep?: string;
+}
+
+export type GoalPeriod = 'weekly' | 'monthly';
+export type GoalStatus = 'active' | 'completed' | 'archived';
+
+export interface Goal {
+  id: string;
+  title: string;
+  period: GoalPeriod;
+  domain: LifeDomain;
+  why?: string;
+  target?: string;
+  progressNote?: string;
+  status: GoalStatus;
+  createdAt: number;
+  completedAt?: number | null;
+  weekKey?: string;
+  monthKey?: string;
+  order: number;
+  linkedItemIds?: string[];
+  xpReward: number;
+  rewardKey: string;
 }
 
 export interface FocusSessionLog {

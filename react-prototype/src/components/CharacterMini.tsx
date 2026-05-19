@@ -1,10 +1,12 @@
 import { useState } from 'react';
-import { CharacterState, FocusSessionLog } from '../types';
+import { CharacterState, FocusSessionLog, Goal } from '../types';
 import { formatRelativeTime } from '../utils/todayFlow';
+import { currentWeekKey } from '../utils/date';
 
 interface Props {
   character: CharacterState;
   focusSessionLogs?: FocusSessionLog[];
+  goals?: Goal[];
   onReset?: () => void;
   onSimulateTomorrow?: () => void;
 }
@@ -20,11 +22,20 @@ const STAT_LABELS: Record<string, string> = {
   resolve: 'Resolve',
 };
 
-export function CharacterMini({ character, focusSessionLogs, onReset, onSimulateTomorrow }: Props) {
+export function CharacterMini({ character, focusSessionLogs, goals, onReset, onSimulateTomorrow }: Props) {
   const [open, setOpen] = useState(false);
 
   const strongest = STAT_LABELS[character.strongestStat] ?? character.strongestStat;
   const weakest = STAT_LABELS[character.weakestStat] ?? character.weakestStat;
+
+  const weeklyGoalSummary = (() => {
+    if (!goals || goals.length === 0) return null;
+    const wk = currentWeekKey();
+    const weekly = goals.filter(g => g.period === 'weekly' && g.weekKey === wk && g.status !== 'archived');
+    if (weekly.length === 0) return null;
+    const done = weekly.filter(g => g.status === 'completed').length;
+    return `${done}/${weekly.length} weekly`;
+  })();
 
   return (
     <div className="character-mini card" style={{ marginBottom: 16 }}>
@@ -73,6 +84,13 @@ export function CharacterMini({ character, focusSessionLogs, onReset, onSimulate
               <div className="insight-chip-value">{Math.round(character.totalXp)}</div>
             </div>
           </div>
+
+          {weeklyGoalSummary && (
+            <div className="char-mini-goals-line">
+              <span className="char-mini-goals-label">Goals</span>
+              <span className="char-mini-goals-value">{weeklyGoalSummary} complete</span>
+            </div>
+          )}
 
           {character.xpEvents.length > 0 && (
             <>

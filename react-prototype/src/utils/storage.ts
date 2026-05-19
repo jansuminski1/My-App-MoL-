@@ -1,5 +1,6 @@
-import { TodayItem, CharacterState, FocusSessionLog } from '../types';
+import { TodayItem, CharacterState, FocusSessionLog, Goal } from '../types';
 import { mockTodayItems, mockCharacter } from '../data/mockToday';
+import { mockGoals } from '../data/mockGoals';
 import { todayDateKey } from './date';
 
 export const STORAGE_KEY = 'masters-of-life-react-prototype-v1';
@@ -11,12 +12,13 @@ export interface PrototypeState {
   items: TodayItem[];
   character: CharacterState;
   focusSessionLogs?: FocusSessionLog[];
+  goals?: Goal[];
 }
 
-export function loadPrototypeState(): { items: TodayItem[]; character: CharacterState; focusSessionLogs: FocusSessionLog[] } {
+export function loadPrototypeState(): { items: TodayItem[]; character: CharacterState; focusSessionLogs: FocusSessionLog[]; goals: Goal[] } {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
-    if (!raw) return { items: mockTodayItems, character: mockCharacter, focusSessionLogs: [] };
+    if (!raw) return { items: mockTodayItems, character: mockCharacter, focusSessionLogs: [], goals: mockGoals };
     const parsed = JSON.parse(raw) as PrototypeState;
     if (
       parsed.version !== 1 ||
@@ -24,19 +26,20 @@ export function loadPrototypeState(): { items: TodayItem[]; character: Character
       !parsed.character ||
       typeof parsed.character !== 'object'
     ) {
-      return { items: mockTodayItems, character: mockCharacter, focusSessionLogs: [] };
+      return { items: mockTodayItems, character: mockCharacter, focusSessionLogs: [], goals: mockGoals };
     }
     return {
       items: parsed.items,
       character: parsed.character,
       focusSessionLogs: parsed.focusSessionLogs ?? [],
+      goals: parsed.goals ?? [],
     };
   } catch {
-    return { items: mockTodayItems, character: mockCharacter, focusSessionLogs: [] };
+    return { items: mockTodayItems, character: mockCharacter, focusSessionLogs: [], goals: mockGoals };
   }
 }
 
-export function savePrototypeState(items: TodayItem[], character: CharacterState, focusSessionLogs: FocusSessionLog[]): void {
+export function savePrototypeState(items: TodayItem[], character: CharacterState, focusSessionLogs: FocusSessionLog[], goals: Goal[]): void {
   try {
     const state: PrototypeState = {
       version: 1,
@@ -45,6 +48,7 @@ export function savePrototypeState(items: TodayItem[], character: CharacterState
       items,
       character,
       focusSessionLogs,
+      goals,
     };
     localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
   } catch {

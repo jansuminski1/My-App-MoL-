@@ -1,9 +1,11 @@
-import { CharacterState, FocusSessionLog, LifeStats } from '../types';
+import { CharacterState, FocusSessionLog, LifeStats, Goal } from '../types';
 import { formatRelativeTime } from '../utils/todayFlow';
+import { currentWeekKey, currentMonthKey } from '../utils/date';
 
 interface Props {
   character: CharacterState;
   focusSessionLogs: FocusSessionLog[];
+  goals: Goal[];
 }
 
 const STAT_LABELS: Record<string, string> = {
@@ -28,7 +30,16 @@ const STAT_COLORS: Record<string, string> = {
   resolve:       '#ef4444',
 };
 
-export function CharacterPage({ character, focusSessionLogs }: Props) {
+export function CharacterPage({ character, focusSessionLogs, goals }: Props) {
+  const wk = currentWeekKey();
+  const mk = currentMonthKey();
+  const weeklyGoals = goals.filter(g => g.period === 'weekly' && g.weekKey === wk && g.status !== 'archived');
+  const monthlyGoals = goals.filter(g => g.period === 'monthly' && g.monthKey === mk && g.status !== 'archived');
+  const weeklyDone = weeklyGoals.filter(g => g.status === 'completed').length;
+  const monthlyDone = monthlyGoals.filter(g => g.status === 'completed').length;
+  const weeklyActive = weeklyGoals.filter(g => g.status === 'active').length;
+  const monthlyActive = monthlyGoals.filter(g => g.status === 'active').length;
+
   return (
     <div className="page character-page">
       {/* Hero card */}
@@ -67,6 +78,31 @@ export function CharacterPage({ character, focusSessionLogs }: Props) {
           </div>
         </div>
       </div>
+
+      {/* Goals summary */}
+      {(weeklyGoals.length > 0 || monthlyGoals.length > 0) && (
+        <>
+          <div className="page-section-label">Goals</div>
+          <div className="char-goals-row">
+            <div className="char-goals-chip">
+              <div className="char-goals-chip-num">{weeklyDone}/{weeklyGoals.length}</div>
+              <div className="char-goals-chip-label">Weekly done</div>
+            </div>
+            <div className="char-goals-chip">
+              <div className="char-goals-chip-num">{weeklyActive}</div>
+              <div className="char-goals-chip-label">Weekly active</div>
+            </div>
+            <div className="char-goals-chip">
+              <div className="char-goals-chip-num">{monthlyDone}/{monthlyGoals.length}</div>
+              <div className="char-goals-chip-label">Monthly done</div>
+            </div>
+            <div className="char-goals-chip">
+              <div className="char-goals-chip-num">{monthlyActive}</div>
+              <div className="char-goals-chip-label">Monthly active</div>
+            </div>
+          </div>
+        </>
+      )}
 
       {/* Stats */}
       <div className="page-section-label">Life Stats</div>
