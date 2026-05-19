@@ -64,7 +64,7 @@ export function MindPage({
     : null;
 
   return (
-    <div className="page mind-page">
+    <div className={`page mind-page${session ? ' has-session' : ''}`}>
       {session ? (
         /* ── Active session: full circular timer ── */
         <CircularFocusTimer

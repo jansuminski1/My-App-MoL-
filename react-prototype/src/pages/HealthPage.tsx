@@ -169,7 +169,7 @@ export function HealthPage({
       </div>
 
       <div className="page-section-label">Meals today</div>
-      <div className="health-section">
+      <div className="health-section health-section-meals">
         {STRUCTURED_MEALS.map(mtype => {
           const entry = todayMeals.find(m => m.type === mtype);
           return (
@@ -237,7 +237,7 @@ export function HealthPage({
       </div>
 
       <div className="page-section-label">Move your body</div>
-      <div className="health-section">
+      <div className="health-section health-section-cardio">
         {todayCardio.length === 0 && !showCardioForm && (
           <div className="health-empty">No cardio logged today</div>
         )}
@@ -295,7 +295,7 @@ export function HealthPage({
       </div>
 
       <div className="page-section-label">Body log</div>
-      <div className="health-section">
+      <div className="health-section health-section-body">
         {health.weight.length === 0 && !showWeightForm && (
           <div className="health-empty">No weight logged yet</div>
         )}
@@ -333,7 +333,7 @@ export function HealthPage({
       </div>
 
       <div className="page-section-label">Recovery check-in</div>
-      <div className="health-section">
+      <div className="health-section health-section-recovery">
         <div className="recovery-form">
           <div className="recovery-row">
             <span className="recovery-row-label">Sleep</span>

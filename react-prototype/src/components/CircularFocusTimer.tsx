@@ -15,7 +15,7 @@ interface Props {
   onCancel: () => void;
 }
 
-const CIRCUMFERENCE = 2 * Math.PI * 88; // r=88 on 200x200 viewBox
+const CIRCUMFERENCE = 2 * Math.PI * 80; // r=80 on 200x200 viewBox
 
 function formatTime(secs: number): string {
   const m = Math.floor(Math.abs(secs) / 60).toString().padStart(2, '0');
@@ -24,6 +24,13 @@ function formatTime(secs: number): string {
 }
 
 const PHASE_LABELS: Record<string, string> = { work: 'Work', recall: 'Recall', rest: 'Rest', complete: 'Done' };
+
+const PHASE_HINTS: Record<string, string> = {
+  work: 'Deep Focus',
+  recall: 'Reflect',
+  rest: 'Restore',
+  complete: 'Complete',
+};
 
 export function CircularFocusTimer({
   session, focusTags,
@@ -80,25 +87,75 @@ export function CircularFocusTimer({
     setNewTagInput('');
   }
 
+  const wrapperClass = [
+    'cft-ring-wrapper',
+    isPaused ? 'is-paused' : 'is-running',
+    `phase-${session.phase}`,
+  ].join(' ');
+
   return (
     <div className="cft-container">
       {/* Ring */}
-      <div className="cft-ring-wrapper">
+      <div className={wrapperClass}>
         <svg viewBox="0 0 200 200" className="cft-ring" aria-hidden="true">
-          <circle cx="100" cy="100" r="88" className="cft-ring-bg" />
+          <defs>
+            <linearGradient id="cft-grad-work" gradientUnits="userSpaceOnUse" x1="30" y1="20" x2="170" y2="180">
+              <stop offset="0%" stopColor="#7dd3fc" />
+              <stop offset="100%" stopColor="#1d4ed8" />
+            </linearGradient>
+            <linearGradient id="cft-grad-recall" gradientUnits="userSpaceOnUse" x1="30" y1="20" x2="170" y2="180">
+              <stop offset="0%" stopColor="#c4b5fd" />
+              <stop offset="100%" stopColor="#6d28d9" />
+            </linearGradient>
+            <linearGradient id="cft-grad-rest" gradientUnits="userSpaceOnUse" x1="30" y1="20" x2="170" y2="180">
+              <stop offset="0%" stopColor="#86efac" />
+              <stop offset="100%" stopColor="#15803d" />
+            </linearGradient>
+          </defs>
+
+          {/* Outer decorative ring */}
+          <circle cx="100" cy="100" r="94" className="cft-ring-outer-deco" />
+
+          {/* Background track */}
+          <circle cx="100" cy="100" r="80" className="cft-ring-bg" fill="none" />
+
+          {/* Glow arc (below progress) */}
           <circle
-            cx="100" cy="100" r="88"
-            className={`cft-ring-fill phase-${session.phase}`}
+            cx="100" cy="100" r="80"
+            className={`cft-ring-glow phase-${session.phase}`}
+            strokeDasharray={CIRCUMFERENCE}
+            strokeDashoffset={strokeOffset}
+            strokeLinecap="round"
+            transform="rotate(-90 100 100)"
+            style={{ transition: 'stroke-dashoffset 1s linear' }}
+          />
+
+          {/* Progress arc */}
+          <circle
+            cx="100" cy="100" r="80"
+            className="cft-ring-progress"
+            stroke={
+              session.phase === 'recall' ? 'url(#cft-grad-recall)'
+              : session.phase === 'rest' || session.phase === 'complete' ? 'url(#cft-grad-rest)'
+              : 'url(#cft-grad-work)'
+            }
             strokeDasharray={CIRCUMFERENCE}
             strokeDashoffset={strokeOffset}
             transform="rotate(-90 100 100)"
           />
+
+          {/* Inner decorative ring */}
+          <circle cx="100" cy="100" r="66" className="cft-ring-inner-deco" />
         </svg>
+
         <div className="cft-center-overlay">
           <div className="cft-phase-label">{PHASE_LABELS[session.phase]}</div>
           <div className={`cft-time${overTime ? ' over' : ''}`}>
             {overTime ? '+' : ''}{formatTime(overTime ? phaseElapsed - phaseTotalSeconds : phaseRemaining)}
           </div>
+          {!isPaused && session.phase !== 'complete' && (
+            <div className="cft-center-tag">{session.tagName ?? PHASE_HINTS[session.phase]}</div>
+          )}
           {isPaused && <div className="cft-paused-label">Paused</div>}
           {session.interruptions > 0 && (
             <div className="cft-interruptions">{session.interruptions}× interrupted</div>

@@ -4,7 +4,12 @@ function TodayIcon() {
   return (
     <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round">
       <circle cx="12" cy="12" r="9"/>
-      <path d="M8.5 12l2.5 2.5 4.5-4.5"/>
+      <circle cx="12" cy="12" r="4.5"/>
+      <circle cx="12" cy="12" r="1.5" fill="currentColor" stroke="none"/>
+      <line x1="12" y1="2" x2="12" y2="4.5"/>
+      <line x1="12" y1="19.5" x2="12" y2="22"/>
+      <line x1="2" y1="12" x2="4.5" y2="12"/>
+      <line x1="19.5" y1="12" x2="22" y2="12"/>
     </svg>
   );
 }
@@ -12,7 +17,9 @@ function TodayIcon() {
 function MindIcon() {
   return (
     <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M13 2L4 14h7l-2 8 11-12h-7z"/>
+      <circle cx="12" cy="12" r="9"/>
+      <circle cx="12" cy="12" r="5.5"/>
+      <circle cx="12" cy="12" r="2" fill="currentColor" stroke="none"/>
     </svg>
   );
 }
@@ -20,7 +27,8 @@ function MindIcon() {
 function GoalsIcon() {
   return (
     <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M2 20L8.5 6 13 14 16 10 22 20z"/>
+      <polyline points="3,20 9,7 13,14 16.5,9 21,20"/>
+      <line x1="2" y1="20" x2="22" y2="20"/>
     </svg>
   );
 }
@@ -28,7 +36,7 @@ function GoalsIcon() {
 function HealthIcon() {
   return (
     <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/>
+      <polyline points="2,12 6,12 8,6 11,18 14,9 16,13 18,12 22,12"/>
     </svg>
   );
 }
@@ -36,8 +44,8 @@ function HealthIcon() {
 function StatsIcon() {
   return (
     <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M4 20V12M8 20V5M12 20V9M16 20V7M20 20v-6"/>
-      <path d="M2 20h20"/>
+      <path d="M2.5 12 C5 6.5 7 6.5 9.5 12 C12 17.5 14 17.5 16.5 12 C19 6.5 21 6.5 21.5 12"/>
+      <circle cx="12" cy="12" r="1.5" fill="currentColor" stroke="none"/>
     </svg>
   );
 }
@@ -45,9 +53,9 @@ function StatsIcon() {
 function SelfIcon() {
   return (
     <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M12 2L21 9.5 12 22 3 9.5z"/>
-      <path d="M3 9.5h18"/>
-      <path d="M7.5 2.5L3 9.5M16.5 2.5L21 9.5"/>
+      <path d="M12 2 L20.5 7 L20.5 17 L12 22 L3.5 17 L3.5 7 Z"/>
+      <path d="M12 2 L12 22"/>
+      <path d="M3.5 7 L20.5 7"/>
     </svg>
   );
 }
@@ -85,7 +93,7 @@ export function BottomNav({ activeTab, onTabChange, hasActiveSession }: Props) {
           role="tab"
           aria-selected={activeTab === tab.id}
           aria-label={tab.label}
-          className={`bnav-item${activeTab === tab.id ? ' active' : ''}`}
+          className={`bnav-item bnav-item-${tab.id}${activeTab === tab.id ? ' active' : ''}`}
           onClick={() => onTabChange(tab.id)}
         >
           <span className="bnav-icon">
