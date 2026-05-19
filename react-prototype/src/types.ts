@@ -73,6 +73,8 @@ export interface FocusBlock {
   difficulty?: 'Easy' | 'Medium' | 'Hard';
   domain?: LifeDomain;
   linkedGoalId?: string;
+  tagId?: string;
+  tagName?: string;
 }
 
 export type TodayItem = HabitFlow | QuickTask | FocusBlock;
@@ -143,6 +145,8 @@ export interface FocusSession {
   quality: 'Low' | 'Normal' | 'High';
   reflection: string;
   entryStep?: string;
+  tagId?: string;
+  tagName?: string;
 }
 
 export type GoalPeriod = 'weekly' | 'monthly';
@@ -182,4 +186,22 @@ export interface FocusSessionLog {
   interruptions: number;
   xpAwarded: number;
   rewardKey: string;
+  tagId?: string;
+  tagName?: string;
+}
+
+export interface FocusTimerProfile {
+  id: string;
+  name: string;
+  focusMinutes: number;
+  recallMinutes: number;
+  restMinutes: number;
+  isDefault?: boolean;
+  createdAt: number;
+}
+
+export interface FocusTag {
+  id: string;
+  name: string;
+  createdAt: number;
 }

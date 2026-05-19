@@ -3,7 +3,7 @@ import { ProgressStrip } from '../components/ProgressStrip';
 import { CurrentFocusCard } from '../components/CurrentFocusCard';
 import { CharacterMini } from '../components/CharacterMini';
 import { TodayFlow } from '../components/TodayFlow';
-import { FocusSessionBanner } from '../components/FocusSessionBanner';
+import { CompactSessionBanner } from '../components/CompactSessionBanner';
 
 interface Props {
   visibleItems: TodayItem[];
@@ -17,12 +17,7 @@ interface Props {
   onToggleTask: (taskId: string) => void;
   onToggleFocusBlock: (blockId: string) => void;
   onStartFocus: (blockId: string) => void;
-  onPauseSession: () => void;
-  onResumeSession: () => void;
-  onAdvancePhase: () => void;
-  onAddInterruption: () => void;
-  onSetSessionQuality: (q: 'Low' | 'Normal' | 'High') => void;
-  onSetSessionReflection: (text: string) => void;
+  onOpenMind: () => void;
   onCancelSession: () => void;
   onReorder: (items: TodayItem[]) => void;
   onDeleteItem: (id: string) => void;
@@ -36,8 +31,7 @@ interface Props {
 export function TodayPage({
   visibleItems, currentFocus, progress, character, focusSessionLogs, goals, session,
   onToggleStep, onToggleTask, onToggleFocusBlock, onStartFocus,
-  onPauseSession, onResumeSession, onAdvancePhase, onAddInterruption,
-  onSetSessionQuality, onSetSessionReflection, onCancelSession,
+  onOpenMind, onCancelSession,
   onReorder, onDeleteItem, onAddTask, onAddFocus, onAddFlow,
   onReset, onSimulateTomorrow,
 }: Props) {
@@ -53,14 +47,9 @@ export function TodayPage({
       />
 
       {session ? (
-        <FocusSessionBanner
+        <CompactSessionBanner
           session={session}
-          onPause={onPauseSession}
-          onResume={onResumeSession}
-          onAdvancePhase={onAdvancePhase}
-          onAddInterruption={onAddInterruption}
-          onSetQuality={onSetSessionQuality}
-          onSetReflection={onSetSessionReflection}
+          onOpenMind={onOpenMind}
           onCancel={onCancelSession}
         />
       ) : showCurrentFocus ? (

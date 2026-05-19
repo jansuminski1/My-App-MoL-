@@ -20,10 +20,12 @@ interface AddData {
   entryStep: string;
   difficulty: string;
   domain: string;
+  tagId: string;
 }
 
 interface Props {
   mode: AddMode;
+  focusTags?: { id: string; name: string }[];
   onAdd: (data: AddData) => void;
   onClose: () => void;
 }
@@ -39,7 +41,7 @@ const CONFIG = {
   flow:  { label: 'Habit Flow',  submitClass: 'submit-flow',  placeholder: 'e.g. Evening Reset' },
 };
 
-export function AddModal({ mode, onAdd, onClose }: Props) {
+export function AddModal({ mode, focusTags, onAdd, onClose }: Props) {
   const [title, setTitle] = useState('');
   const [notes, setNotes] = useState('');
   const [duration, setDuration] = useState(25);
@@ -57,6 +59,7 @@ export function AddModal({ mode, onAdd, onClose }: Props) {
   const [entryStep, setEntryStep] = useState('');
   const [difficulty, setDifficulty] = useState('');
   const [domain, setDomain] = useState('');
+  const [tagId, setTagId] = useState('');
 
   const cfg = CONFIG[mode];
 
@@ -80,6 +83,7 @@ export function AddModal({ mode, onAdd, onClose }: Props) {
       entryStep: entryStep.trim(),
       difficulty: difficulty.trim(),
       domain: domain.trim(),
+      tagId: tagId.trim(),
     });
   }
 
@@ -245,6 +249,19 @@ export function AddModal({ mode, onAdd, onClose }: Props) {
                       {DOMAINS.map(d => <option key={d} value={d}>{d}</option>)}
                     </select>
                   </label>
+                  {focusTags && focusTags.length > 0 && (
+                    <label className="modal-label">
+                      Subject
+                      <select
+                        className="modal-input modal-select"
+                        value={tagId}
+                        onChange={e => setTagId(e.target.value)}
+                      >
+                        <option value="">None</option>
+                        {focusTags.map(t => <option key={t.id} value={t.id}>{t.name}</option>)}
+                      </select>
+                    </label>
+                  )}
                 </div>
               )}
             </>
