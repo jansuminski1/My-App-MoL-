@@ -24,6 +24,8 @@ import {
   type PrototypeState,
 } from './utils/storage';
 import {
+  formatFirebaseAuthError,
+  handleGoogleRedirectResult,
   loadCloudState,
   onAuthChanged,
   saveCloudState,
@@ -168,6 +170,15 @@ function App() {
   }, []);
 
   useEffect(() => {
+    handleGoogleRedirectResult().catch(error => {
+      const message = formatFirebaseAuthError(error);
+      console.error('Firebase Google redirect error:', message, error);
+      setSyncStatus('error');
+      setSyncMessage(`Sign-in failed: ${message}`);
+    });
+  }, []);
+
+  useEffect(() => {
     let cancelled = false;
     const unsubscribe = onAuthChanged(async user => {
       if (cancelled) return;
@@ -228,10 +239,15 @@ function App() {
     setSyncStatus('loading');
     setSyncMessage('Opening Google sign-in');
     try {
-      await signInWithGoogle();
-    } catch {
+      const method = await signInWithGoogle();
+      if (method === 'redirect') {
+        setSyncMessage('Redirecting to Google');
+      }
+    } catch (error) {
+      const message = formatFirebaseAuthError(error);
+      console.error('Firebase Google sign-in error:', message, error);
       setSyncStatus('error');
-      setSyncMessage('Sign-in cancelled or failed');
+      setSyncMessage(`Sign-in failed: ${message}`);
     }
   }
 
