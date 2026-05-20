@@ -37,6 +37,9 @@ const firebaseConfig = {
   appId: import.meta.env.VITE_FIREBASE_APP_ID || fallbackConfig.appId,
 };
 
+const requiredConfigKeys = ['apiKey', 'authDomain', 'projectId', 'appId'] as const;
+const missingConfigKeys = requiredConfigKeys.filter(key => !firebaseConfig[key]);
+
 const app = getApps().length ? getApps()[0] : initializeApp(firebaseConfig);
 export const auth = getAuth(app);
 export const db = getFirestore(app);
@@ -80,6 +83,37 @@ export function formatFirebaseAuthError(error: unknown): string {
   return `${code}: ${message}`;
 }
 
+export function describeFirebaseAuthError(error: unknown): string {
+  const { code, message } = firebaseErrorParts(error);
+  if (code === 'auth/operation-not-allowed') {
+    return `${code}: Google sign-in is not enabled in Firebase Authentication. Enable Google provider in Firebase Console.`;
+  }
+  if (code === 'auth/unauthorized-domain') {
+    return `${code}: This domain is not authorized in Firebase Authentication. Add the Netlify/local domain to Authorized domains.`;
+  }
+  if (code === 'auth/popup-blocked') {
+    return `${code}: Popup was blocked. The app will try redirect sign-in instead.`;
+  }
+  if (code === 'auth/popup-closed-by-user') {
+    return `${code}: Popup was closed before sign-in completed. The app will try redirect sign-in instead.`;
+  }
+  if (code === 'auth/cancelled-popup-request') {
+    return `${code}: Another popup request interrupted sign-in. Try once more or use redirect.`;
+  }
+  if (code === 'auth/operation-not-supported-in-this-environment') {
+    return `${code}: Popup sign-in is not supported here. The app will use redirect sign-in.`;
+  }
+  if (code === 'auth/missing-config') {
+    return `${code}: Missing Firebase config: ${message}`;
+  }
+  return `${code}: ${message}`;
+}
+
+export function getFirebaseConfigProblem(): string | null {
+  if (!missingConfigKeys.length) return null;
+  return `Missing Firebase config values: ${missingConfigKeys.join(', ')}`;
+}
+
 export function onAuthChanged(callback: (user: SyncUser | null) => void): Unsubscribe {
   return onAuthStateChanged(auth, user => callback(user ? {
     uid: user.uid,
@@ -89,6 +123,10 @@ export function onAuthChanged(callback: (user: SyncUser | null) => void): Unsubs
 }
 
 export async function signInWithGoogle(): Promise<'popup' | 'redirect'> {
+  const configProblem = getFirebaseConfigProblem();
+  if (configProblem) {
+    throw { code: 'auth/missing-config', message: configProblem };
+  }
   const provider = googleProvider();
   if (isMobileAuthEnvironment()) {
     await signInWithRedirect(auth, provider);
@@ -99,7 +137,7 @@ export async function signInWithGoogle(): Promise<'popup' | 'redirect'> {
     return 'popup';
   } catch (error) {
     const { code } = firebaseErrorParts(error);
-    console.error('Google sign-in popup failed:', code, error);
+    console.error('Google sign-in popup failed:', describeFirebaseAuthError(error), error);
     if (POPUP_FALLBACK_CODES.has(code)) {
       await signInWithRedirect(auth, googleProvider());
       return 'redirect';
@@ -112,7 +150,7 @@ export async function handleGoogleRedirectResult(): Promise<void> {
   try {
     await getRedirectResult(auth);
   } catch (error) {
-    console.error('Google redirect sign-in failed:', formatFirebaseAuthError(error), error);
+    console.error('Google redirect sign-in failed:', describeFirebaseAuthError(error), error);
     throw error;
   }
 }

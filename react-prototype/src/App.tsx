@@ -24,6 +24,7 @@ import {
   type PrototypeState,
 } from './utils/storage';
 import {
+  describeFirebaseAuthError,
   formatFirebaseAuthError,
   handleGoogleRedirectResult,
   loadCloudState,
@@ -171,8 +172,8 @@ function App() {
 
   useEffect(() => {
     handleGoogleRedirectResult().catch(error => {
-      const message = formatFirebaseAuthError(error);
-      console.error('Firebase Google redirect error:', message, error);
+      const message = describeFirebaseAuthError(error);
+      console.error('Firebase Google redirect error:', formatFirebaseAuthError(error), error);
       setSyncStatus('error');
       setSyncMessage(`Sign-in failed: ${message}`);
     });
@@ -244,8 +245,8 @@ function App() {
         setSyncMessage('Redirecting to Google');
       }
     } catch (error) {
-      const message = formatFirebaseAuthError(error);
-      console.error('Firebase Google sign-in error:', message, error);
+      const message = describeFirebaseAuthError(error);
+      console.error('Firebase Google sign-in error:', formatFirebaseAuthError(error), error);
       setSyncStatus('error');
       setSyncMessage(`Sign-in failed: ${message}`);
     }
@@ -990,9 +991,9 @@ function App() {
             type="button"
             className={`sync-pill sync-${syncStatus}`}
             onClick={syncUser ? handleSignOut : handleSignIn}
-            title={syncUser ? `Signed in as ${syncUser.email ?? syncUser.displayName ?? 'Google user'}` : 'Sign in to sync across devices'}
+            title={syncUser ? `Signed in as ${syncUser.email ?? syncUser.displayName ?? 'Google user'}` : syncMessage}
           >
-            {syncUser ? syncMessage : 'Sign in'}
+            {syncUser || syncStatus === 'error' ? syncMessage : 'Sign in'}
           </button>
           <span className="lvl-pill">Lvl {character.level}</span>
         </div>
