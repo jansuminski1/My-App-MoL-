@@ -7,6 +7,7 @@ interface Props {
   onPause: () => void;
   onResume: () => void;
   onAdvancePhase: () => void;
+  onExtendSession: (minutes: number) => void;
   onAddInterruption: () => void;
   onSetQuality: (q: 'Low' | 'Normal' | 'High') => void;
   onSetReflection: (text: string) => void;
@@ -15,7 +16,7 @@ interface Props {
   onCancel: () => void;
 }
 
-const CIRCUMFERENCE = 2 * Math.PI * 80; // r=80 on 200x200 viewBox
+const CIRCUMFERENCE = 2 * Math.PI * 80;
 
 function formatTime(secs: number): string {
   const m = Math.floor(Math.abs(secs) / 60).toString().padStart(2, '0');
@@ -32,9 +33,19 @@ const PHASE_HINTS: Record<string, string> = {
   complete: 'Complete',
 };
 
+function getPhaseMinutes(session: FocusSession): number {
+  if (session.segments && session.segments.length > 0) {
+    return session.segments[session.currentSegmentIndex]?.minutes ?? 0;
+  }
+  if (session.phase === 'work') return session.workMinutes;
+  if (session.phase === 'recall') return session.recallMinutes;
+  if (session.phase === 'rest') return session.restMinutes;
+  return 0;
+}
+
 export function CircularFocusTimer({
   session, focusTags,
-  onPause, onResume, onAdvancePhase, onAddInterruption,
+  onPause, onResume, onAdvancePhase, onExtendSession, onAddInterruption,
   onSetQuality, onSetReflection, onSetTag, onAddTag, onCancel,
 }: Props) {
   const [now, setNow] = useState(Date.now());
@@ -43,7 +54,7 @@ export function CircularFocusTimer({
   const onAdvancePhaseRef = useRef(onAdvancePhase);
   onAdvancePhaseRef.current = onAdvancePhase;
 
-  useEffect(() => { autoAdvancedRef.current = false; }, [session.phase]);
+  useEffect(() => { autoAdvancedRef.current = false; }, [session.phase, session.currentSegmentIndex]);
 
   useEffect(() => {
     if (session.status !== 'running') return;
@@ -54,17 +65,16 @@ export function CircularFocusTimer({
   const phaseElapsed = session.status === 'running'
     ? session.phaseElapsedSeconds + Math.floor((now - session.phaseStartedAt) / 1000)
     : session.phaseElapsedSeconds;
-  const phaseTotalSeconds = (
-    session.phase === 'work' ? session.workMinutes
-    : session.phase === 'recall' ? session.recallMinutes
-    : session.phase === 'rest' ? session.restMinutes
-    : 0
-  ) * 60;
+  const phaseTotalSeconds = getPhaseMinutes(session) * 60;
   const phaseRemaining = Math.max(0, phaseTotalSeconds - phaseElapsed);
   const overTime = session.phase === 'work' && phaseElapsed > phaseTotalSeconds;
   const progress = phaseTotalSeconds > 0 ? Math.min(1, phaseElapsed / phaseTotalSeconds) : 1;
   const isPaused = session.status === 'paused';
   const strokeOffset = CIRCUMFERENCE * (1 - progress);
+
+  // Segment progress info
+  const totalSegments = session.segments?.length ?? 0;
+  const currentSegIdx = session.currentSegmentIndex;
 
   useEffect(() => {
     if (phaseRemaining <= 0 && session.status === 'running' && !autoAdvancedRef.current) {
@@ -113,13 +123,9 @@ export function CircularFocusTimer({
             </linearGradient>
           </defs>
 
-          {/* Outer decorative ring */}
           <circle cx="100" cy="100" r="94" className="cft-ring-outer-deco" />
-
-          {/* Background track */}
           <circle cx="100" cy="100" r="80" className="cft-ring-bg" fill="none" />
 
-          {/* Glow arc (below progress) */}
           <circle
             cx="100" cy="100" r="80"
             className={`cft-ring-glow phase-${session.phase}`}
@@ -130,7 +136,6 @@ export function CircularFocusTimer({
             style={{ transition: 'stroke-dashoffset 1s linear' }}
           />
 
-          {/* Progress arc */}
           <circle
             cx="100" cy="100" r="80"
             className="cft-ring-progress"
@@ -144,7 +149,6 @@ export function CircularFocusTimer({
             transform="rotate(-90 100 100)"
           />
 
-          {/* Inner decorative ring */}
           <circle cx="100" cy="100" r="66" className="cft-ring-inner-deco" />
         </svg>
 
@@ -162,6 +166,19 @@ export function CircularFocusTimer({
           )}
         </div>
       </div>
+
+      {/* Segment progress dots */}
+      {totalSegments > 1 && (
+        <div className="cft-segment-dots">
+          {session.segments!.map((seg, i) => (
+            <span
+              key={seg.id}
+              className={`cft-seg-dot${i < currentSegIdx ? ' done' : ''}${i === currentSegIdx ? ' active' : ''} kind-${seg.kind}`}
+              title={`${seg.kind} ${seg.minutes}m`}
+            />
+          ))}
+        </div>
+      )}
 
       {/* Title + meta */}
       <div className="cft-title">{session.title}</div>
@@ -252,6 +269,9 @@ export function CircularFocusTimer({
             ) : (
               <button className="cft-btn" onClick={onPause} type="button">⏸ Pause</button>
             )}
+            <button className="cft-btn cft-btn-extend" onClick={() => onExtendSession(5)} type="button">
+              +5 min
+            </button>
             <button className="cft-btn cft-btn-interrupt" onClick={onAddInterruption} type="button">
               I got distracted{session.interruptions > 0 ? ` (${session.interruptions})` : ''}
             </button>

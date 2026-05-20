@@ -2,7 +2,7 @@ import { useState, useMemo, useCallback, useEffect, useRef } from 'react';
 import {
   TodayItem, CharacterState, FocusSession, FocusSessionLog,
   HabitFlow, QuickTask, FocusBlock, FocusType, LifeDomain, TabId,
-  Goal, GoalPeriod, FocusTimerProfile, FocusTag,
+  Goal, GoalPeriod, FocusTimerProfile, FocusTag, TimerSegment,
   HealthState, MealLog, CardioLog, WeightLog, RecoveryLog,
 } from './types';
 import { makeIdentityShort, makeStepCue, makeTinyVersion, makeFocusEntryStep } from './utils/smartDefaults';
@@ -29,6 +29,33 @@ import { AnalyticsPage } from './pages/AnalyticsPage';
 import { CharacterPage } from './pages/CharacterPage';
 
 type AddMode = 'task' | 'focus' | 'flow';
+
+function buildSessionSegments(profile: FocusTimerProfile, overrideFocusMinutes?: number): TimerSegment[] {
+  if (profile.segments && profile.segments.length > 0) {
+    if (overrideFocusMinutes === undefined) return profile.segments;
+    let firstFocusReplaced = false;
+    return profile.segments.map(seg => {
+      if (!firstFocusReplaced && seg.kind === 'focus') {
+        firstFocusReplaced = true;
+        return { ...seg, minutes: overrideFocusMinutes };
+      }
+      return seg;
+    });
+  }
+  // Legacy: build from flat fields
+  const segs: TimerSegment[] = [];
+  const focusMin = overrideFocusMinutes ?? profile.focusMinutes;
+  segs.push({ id: 'seg-focus', kind: 'focus', minutes: focusMin });
+  if (profile.recallMinutes > 0) segs.push({ id: 'seg-recall', kind: 'recall', minutes: profile.recallMinutes });
+  if (profile.restMinutes > 0) segs.push({ id: 'seg-rest', kind: 'rest', minutes: profile.restMinutes });
+  return segs;
+}
+
+function segmentPhase(seg: TimerSegment): FocusSession['phase'] {
+  if (seg.kind === 'focus') return 'work';
+  if (seg.kind === 'recall') return 'recall';
+  return 'rest';
+}
 
 function App() {
   const [activeTab, setActiveTab] = useState<TabId>('today');
@@ -260,8 +287,8 @@ function App() {
     const block = items.find(i => i.id === blockId && i.kind === 'focus-block') as FocusBlock | undefined;
     if (!block) return;
     const selectedProfile = focusTimerProfiles.find(p => p.id === selectedFocusTimerProfileId) ?? focusTimerProfiles[0];
-    const recallMinutes = selectedProfile?.recallMinutes ?? 3;
-    const restMinutes = selectedProfile?.restMinutes ?? 5;
+    const segments = buildSessionSegments(selectedProfile, block.duration);
+    const firstSeg = segments[0];
     const now = Date.now();
     setSession({
       id: `session-${now}`,
@@ -271,9 +298,11 @@ function App() {
       domain: block.domain,
       plannedMinutes: block.duration,
       workMinutes: block.duration,
-      recallMinutes,
-      restMinutes,
-      phase: 'work',
+      recallMinutes: segments.find(s => s.kind === 'recall')?.minutes ?? selectedProfile.recallMinutes,
+      restMinutes: segments.find(s => s.kind === 'rest')?.minutes ?? selectedProfile.restMinutes,
+      segments,
+      currentSegmentIndex: 0,
+      phase: firstSeg ? segmentPhase(firstSeg) : 'work',
       status: 'running',
       startedAt: now,
       phaseStartedAt: now,
@@ -310,8 +339,30 @@ function App() {
       const phaseElapsed = s.status === 'running'
         ? s.phaseElapsedSeconds + Math.floor((Date.now() - s.phaseStartedAt) / 1000)
         : s.phaseElapsedSeconds;
-      const workDoneSeconds = s.phase === 'work' ? phaseElapsed : s.workDoneSeconds;
+      const workDoneSeconds = s.phase === 'work'
+        ? s.workDoneSeconds + phaseElapsed
+        : s.workDoneSeconds;
 
+      // Segment-based advance
+      if (s.segments && s.segments.length > 0) {
+        const nextIdx = s.currentSegmentIndex + 1;
+        if (nextIdx >= s.segments.length) {
+          pendingCompletionRef.current = { ...s, phase: 'complete', workDoneSeconds };
+          return null;
+        }
+        const nextSeg = s.segments[nextIdx];
+        return {
+          ...s,
+          phase: segmentPhase(nextSeg),
+          currentSegmentIndex: nextIdx,
+          status: 'running',
+          phaseStartedAt: Date.now(),
+          phaseElapsedSeconds: 0,
+          workDoneSeconds,
+        };
+      }
+
+      // Legacy fallback (no segments)
       let nextPhase: 'recall' | 'rest' | 'complete';
       if (s.phase === 'work') {
         nextPhase = s.recallMinutes > 0 ? 'recall' : (s.restMinutes > 0 ? 'rest' : 'complete');
@@ -334,6 +385,20 @@ function App() {
         phaseElapsedSeconds: 0,
         workDoneSeconds,
       };
+    });
+  }
+
+  function extendSession(additionalMinutes: number) {
+    setSession(s => {
+      if (!s || s.phase !== 'work') return s;
+      if (s.segments && s.segments.length > 0) {
+        const idx = s.currentSegmentIndex;
+        const updatedSegments = s.segments.map((seg, i) =>
+          i === idx ? { ...seg, minutes: seg.minutes + additionalMinutes } : seg
+        );
+        return { ...s, segments: updatedSegments, workMinutes: s.workMinutes + additionalMinutes };
+      }
+      return { ...s, workMinutes: s.workMinutes + additionalMinutes };
     });
   }
 
@@ -360,7 +425,6 @@ function App() {
       if (prev.some(t => t.name.toLowerCase() === name.toLowerCase())) return prev;
       return [...prev, { id, name, createdAt: now }];
     });
-    // Also select this tag on the active session
     setSession(s => s ? { ...s, tagId: id, tagName: name } : s);
   }
 
@@ -373,11 +437,22 @@ function App() {
       focusMinutes: data.focusMinutes,
       recallMinutes: data.recallMinutes,
       restMinutes: data.restMinutes,
+      segments: [
+        { id: `${id}-focus`, kind: 'focus', minutes: data.focusMinutes },
+        ...(data.recallMinutes > 0 ? [{ id: `${id}-recall`, kind: 'recall' as const, minutes: data.recallMinutes }] : []),
+        ...(data.restMinutes > 0 ? [{ id: `${id}-rest`, kind: 'rest' as const, minutes: data.restMinutes }] : []),
+      ],
       isDefault: false,
       createdAt: now,
     };
     setFocusTimerProfiles(prev => [...prev, profile]);
     setSelectedFocusTimerProfileId(id);
+  }
+
+  function updateTimerProfile(profileId: string, updates: Partial<FocusTimerProfile>) {
+    setFocusTimerProfiles(prev => prev.map(p =>
+      p.id === profileId ? { ...p, ...updates } : p
+    ));
   }
 
   function deleteTimerProfile(profileId: string) {
@@ -391,6 +466,8 @@ function App() {
 
   function startQuickFocus() {
     const selectedProfile = focusTimerProfiles.find(p => p.id === selectedFocusTimerProfileId) ?? focusTimerProfiles[0];
+    const segments = buildSessionSegments(selectedProfile);
+    const firstSeg = segments[0];
     const now = Date.now();
     setSession({
       id: `session-${now}`,
@@ -398,11 +475,13 @@ function App() {
       title: selectedProfile?.name ?? 'Quick Focus',
       type: 'Deep Work',
       domain: undefined,
-      plannedMinutes: selectedProfile?.focusMinutes ?? 25,
-      workMinutes: selectedProfile?.focusMinutes ?? 25,
-      recallMinutes: selectedProfile?.recallMinutes ?? 3,
-      restMinutes: selectedProfile?.restMinutes ?? 5,
-      phase: 'work',
+      plannedMinutes: segments.find(s => s.kind === 'focus')?.minutes ?? selectedProfile?.focusMinutes ?? 25,
+      workMinutes: segments.find(s => s.kind === 'focus')?.minutes ?? selectedProfile?.focusMinutes ?? 25,
+      recallMinutes: segments.find(s => s.kind === 'recall')?.minutes ?? selectedProfile?.recallMinutes ?? 0,
+      restMinutes: segments.find(s => s.kind === 'rest')?.minutes ?? selectedProfile?.restMinutes ?? 5,
+      segments,
+      currentSegmentIndex: 0,
+      phase: firstSeg ? segmentPhase(firstSeg) : 'work',
       status: 'running',
       startedAt: now,
       phaseStartedAt: now,
@@ -415,6 +494,50 @@ function App() {
       tagId: undefined,
       tagName: undefined,
     });
+  }
+
+  function logManualSession(data: {
+    title: string;
+    tagId?: string;
+    tagName?: string;
+    minutes: number;
+    quality: 'Low' | 'Normal' | 'High';
+    reflection?: string;
+  }) {
+    const now = nowTs();
+    const today = todayDateKey();
+    const id = `manual-${now}`;
+    const rewardKey = `manual-focus:${today}:${id}`;
+    const xpAwarded = calculateFocusXp({
+      actualMinutes: data.minutes,
+      plannedMinutes: data.minutes,
+      type: 'Deep Work',
+      quality: data.quality,
+    });
+    const log: FocusSessionLog = {
+      id,
+      focusBlockId: `manual-${now}`,
+      title: data.title,
+      type: 'Deep Work',
+      domain: undefined,
+      plannedMinutes: data.minutes,
+      actualMinutes: data.minutes,
+      startedAt: now,
+      completedAt: now,
+      quality: data.quality,
+      reflection: data.reflection || undefined,
+      interruptions: 0,
+      xpAwarded,
+      rewardKey,
+      tagId: data.tagId,
+      tagName: data.tagName,
+    };
+    setFocusSessionLogs(prev => {
+      if (prev.some(l => l.id === log.id)) return prev;
+      return [log, ...prev.slice(0, 49)];
+    });
+    setCharacter(c => addXpEventOnce(c, xpAwarded, data.title, 'focus', rewardKey));
+    showXpFloat(`+${xpAwarded} XP — ${data.title}`);
   }
 
   function cancelSession() {
@@ -581,6 +704,7 @@ function App() {
     steps: string[]; trigger: string; identity: string; identityShort: string;
     place: string; tinyVersion: string; obstacle: string; obstaclePlan: string;
     firstAction: string; entryStep: string; difficulty: string;
+    taskTime?: string; tagId?: string; tagName?: string;
   }) {
     const now = nowTs();
     const today = todayDateKey();
@@ -591,6 +715,7 @@ function App() {
         kind: 'quick-task',
         title: data.title,
         notes: data.notes || undefined,
+        time: data.taskTime || undefined,
         completed: false,
         completedAt: null,
         dateKey: today,
@@ -616,6 +741,8 @@ function App() {
         type: focusType,
         entryStep: data.entryStep || makeFocusEntryStep(data.title, focusType),
         difficulty: data.difficulty ? (data.difficulty as FocusBlock['difficulty']) : undefined,
+        tagId: data.tagId || undefined,
+        tagName: data.tagName || undefined,
       };
       setItems(prev => [...prev, newBlock]);
     } else if (addModal === 'flow') {
@@ -705,6 +832,7 @@ function App() {
             onPause={pauseSession}
             onResume={resumeSession}
             onAdvancePhase={advancePhase}
+            onExtendSession={extendSession}
             onAddInterruption={addInterruption}
             onSetQuality={setSessionQuality}
             onSetReflection={setSessionReflection}
@@ -713,8 +841,10 @@ function App() {
             onCancelSession={cancelSession}
             onSelectProfile={setSelectedFocusTimerProfileId}
             onAddProfile={addTimerProfile}
+            onUpdateProfile={updateTimerProfile}
             onDeleteProfile={deleteTimerProfile}
             onStartQuickFocus={startQuickFocus}
+            onLogManual={logManualSession}
           />
         )}
         {activeTab === 'goals' && (
@@ -759,6 +889,7 @@ function App() {
       {addModal && (
         <AddModal
           mode={addModal}
+          focusTags={focusTags}
           onAdd={handleAdd}
           onClose={() => setAddModal(null)}
           onCustomDuration={() => { setAddModal(null); setActiveTab('mind'); }}

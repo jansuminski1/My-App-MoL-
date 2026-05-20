@@ -74,6 +74,9 @@ export function CurrentFocusCard({ focus, onToggleStep, onToggleTask, onToggleFo
           <div className="cfc-hero-label">Current Focus</div>
           <div className="current-focus-kicker">
             <span className="current-focus-type-badge task">Quick Task</span>
+            {item.time && (
+              <span className="cfc-time-badge">{item.time}</span>
+            )}
           </div>
           <h2 className="current-focus-title">{item.title}</h2>
           {item.firstAction && (

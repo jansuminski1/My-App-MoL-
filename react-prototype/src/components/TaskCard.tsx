@@ -7,6 +7,13 @@ interface Props {
   onDelete?: (taskId: string) => void;
 }
 
+function formatTime12(time: string): string {
+  const [h, m] = time.split(':').map(Number);
+  const ampm = h >= 12 ? 'pm' : 'am';
+  const h12 = h % 12 || 12;
+  return `${h12}:${String(m).padStart(2, '0')} ${ampm}`;
+}
+
 export function TaskCard({ task, isCurrent, onToggle, onDelete }: Props) {
   function handleDelete() {
     if (window.confirm(`Delete "${task.title}"?`)) onDelete?.(task.id);
@@ -25,6 +32,9 @@ export function TaskCard({ task, isCurrent, onToggle, onDelete }: Props) {
         <div className="task-title">{task.title}</div>
         {task.notes && <div className="task-notes">{task.notes}</div>}
       </div>
+      {task.time && (
+        <span className="task-time-badge">{formatTime12(task.time)}</span>
+      )}
       <span className="task-type-label">Task</span>
       {onDelete && (
         <button className="item-more-btn" onClick={handleDelete} aria-label="Delete task">

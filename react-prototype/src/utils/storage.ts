@@ -62,13 +62,25 @@ export function loadPrototypeState(): {
         health: EMPTY_HEALTH,
       };
     }
+    // Migrate: remove old presets, ensure Custom profile exists
+    const OLD_PRESET_IDS = new Set(['profile-deepwork', 'profile-pomodoro', 'profile-study', 'profile-sprint']);
+    let profiles = (parsed.focusTimerProfiles ?? DEFAULT_TIMER_PROFILES).filter(
+      p => !OLD_PRESET_IDS.has(p.id)
+    );
+    if (!profiles.some(p => p.id === 'profile-custom')) {
+      profiles = [DEFAULT_TIMER_PROFILES[0], ...profiles];
+    }
+    let selectedId = parsed.selectedFocusTimerProfileId ?? 'profile-custom';
+    if (OLD_PRESET_IDS.has(selectedId)) selectedId = 'profile-custom';
+    if (!profiles.some(p => p.id === selectedId)) selectedId = profiles[0]?.id ?? 'profile-custom';
+
     return {
       items: parsed.items,
       character: parsed.character,
       focusSessionLogs: parsed.focusSessionLogs ?? [],
       goals: parsed.goals ?? [],
-      focusTimerProfiles: parsed.focusTimerProfiles ?? DEFAULT_TIMER_PROFILES,
-      selectedFocusTimerProfileId: parsed.selectedFocusTimerProfileId ?? DEFAULT_TIMER_PROFILES[0].id,
+      focusTimerProfiles: profiles,
+      selectedFocusTimerProfileId: selectedId,
       focusTags: parsed.focusTags ?? DEFAULT_FOCUS_TAGS,
       health: parsed.health ?? EMPTY_HEALTH,
     };

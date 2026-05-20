@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { FocusType } from '../types';
+import { FocusType, FocusTag } from '../types';
 
 type AddMode = 'task' | 'focus' | 'flow';
 
@@ -19,10 +19,14 @@ interface AddData {
   firstAction: string;
   entryStep: string;
   difficulty: string;
+  taskTime?: string;
+  tagId?: string;
+  tagName?: string;
 }
 
 interface Props {
   mode: AddMode;
+  focusTags: FocusTag[];
   onAdd: (data: AddData) => void;
   onClose: () => void;
   onCustomDuration?: () => void;
@@ -38,7 +42,7 @@ const CONFIG = {
   flow:  { label: 'Habit Flow',  submitClass: 'submit-flow',  placeholder: 'e.g. Evening Reset' },
 };
 
-export function AddModal({ mode, onAdd, onClose, onCustomDuration }: Props) {
+export function AddModal({ mode, focusTags, onAdd, onClose, onCustomDuration }: Props) {
   const [title, setTitle] = useState('');
   const [notes, setNotes] = useState('');
   const [duration, setDuration] = useState(25);
@@ -55,12 +59,15 @@ export function AddModal({ mode, onAdd, onClose, onCustomDuration }: Props) {
   const [firstAction, setFirstAction] = useState('');
   const [entryStep, setEntryStep] = useState('');
   const [difficulty, setDifficulty] = useState('');
+  const [taskTime, setTaskTime] = useState('');
+  const [tagId, setTagId] = useState('');
 
   const cfg = CONFIG[mode];
 
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (!title.trim()) return;
+    const selectedTag = focusTags.find(t => t.id === tagId);
     onAdd({
       title: title.trim(),
       notes: notes.trim(),
@@ -77,6 +84,9 @@ export function AddModal({ mode, onAdd, onClose, onCustomDuration }: Props) {
       firstAction: firstAction.trim(),
       entryStep: entryStep.trim(),
       difficulty: difficulty.trim(),
+      taskTime: taskTime || undefined,
+      tagId: selectedTag?.id,
+      tagName: selectedTag?.name,
     });
   }
 
@@ -151,6 +161,30 @@ export function AddModal({ mode, onAdd, onClose, onCustomDuration }: Props) {
                   ))}
                 </div>
               </div>
+              {focusTags.length > 0 && (
+                <div className="modal-label">
+                  Subject tag
+                  <div className="modal-tag-row">
+                    <button
+                      type="button"
+                      className={`modal-tag-btn${tagId === '' ? ' selected' : ''}`}
+                      onClick={() => setTagId('')}
+                    >
+                      None
+                    </button>
+                    {focusTags.map(t => (
+                      <button
+                        key={t.id}
+                        type="button"
+                        className={`modal-tag-btn${tagId === t.id ? ' selected' : ''}`}
+                        onClick={() => setTagId(prev => prev === t.id ? '' : t.id)}
+                      >
+                        {t.name}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
             </>
           )}
 
@@ -167,6 +201,15 @@ export function AddModal({ mode, onAdd, onClose, onCustomDuration }: Props) {
 
               {advancedOpen && (
                 <div className="modal-advanced-section">
+                  <label className="modal-label">
+                    Time (optional)
+                    <input
+                      type="time"
+                      className="modal-input"
+                      value={taskTime}
+                      onChange={e => setTaskTime(e.target.value)}
+                    />
+                  </label>
                   <label className="modal-label">
                     First action
                     <input

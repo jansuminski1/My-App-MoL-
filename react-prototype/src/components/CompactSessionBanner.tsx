@@ -26,12 +26,14 @@ export function CompactSessionBanner({ session, onOpenMind, onCancel }: Props) {
   const phaseElapsed = session.status === 'running'
     ? session.phaseElapsedSeconds + Math.floor((now - session.phaseStartedAt) / 1000)
     : session.phaseElapsedSeconds;
-  const phaseTotalSeconds = (
-    session.phase === 'work' ? session.workMinutes
+  const currentSeg = session.segments?.[session.currentSegmentIndex];
+  const phaseMinutes = currentSeg
+    ? currentSeg.minutes
+    : session.phase === 'work' ? session.workMinutes
     : session.phase === 'recall' ? session.recallMinutes
     : session.phase === 'rest' ? session.restMinutes
-    : 0
-  ) * 60;
+    : 0;
+  const phaseTotalSeconds = phaseMinutes * 60;
   const phaseRemaining = Math.max(0, phaseTotalSeconds - phaseElapsed);
   const isPaused = session.status === 'paused';
 

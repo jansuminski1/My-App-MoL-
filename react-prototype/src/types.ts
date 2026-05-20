@@ -46,6 +46,7 @@ export interface QuickTask {
   kind: 'quick-task';
   title: string;
   notes?: string;
+  time?: string;
   completed: boolean;
   completedAt: number | null;
   dateKey: string;
@@ -135,6 +136,8 @@ export interface FocusSession {
   workMinutes: number;
   recallMinutes: number;
   restMinutes: number;
+  segments: TimerSegment[];
+  currentSegmentIndex: number;
   phase: FocusPhase;
   status: FocusSessionStatus;
   startedAt: number;
@@ -190,12 +193,20 @@ export interface FocusSessionLog {
   tagName?: string;
 }
 
+export interface TimerSegment {
+  id: string;
+  kind: 'focus' | 'recall' | 'rest';
+  minutes: number;
+  label?: string;
+}
+
 export interface FocusTimerProfile {
   id: string;
   name: string;
   focusMinutes: number;
   recallMinutes: number;
   restMinutes: number;
+  segments?: TimerSegment[];
   isDefault?: boolean;
   createdAt: number;
 }

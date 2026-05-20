@@ -1,10 +1,20 @@
 import { FocusTimerProfile, FocusTag } from '../types';
 
 export const DEFAULT_TIMER_PROFILES: FocusTimerProfile[] = [
-  { id: 'profile-deepwork', name: 'Deep Work', focusMinutes: 60, recallMinutes: 5, restMinutes: 10, isDefault: true, createdAt: 0 },
-  { id: 'profile-pomodoro', name: 'Pomodoro', focusMinutes: 25, recallMinutes: 0, restMinutes: 5, isDefault: true, createdAt: 0 },
-  { id: 'profile-study', name: 'Study', focusMinutes: 45, recallMinutes: 5, restMinutes: 10, isDefault: true, createdAt: 0 },
-  { id: 'profile-sprint', name: 'Quick Sprint', focusMinutes: 15, recallMinutes: 2, restMinutes: 3, isDefault: true, createdAt: 0 },
+  {
+    id: 'profile-custom',
+    name: 'Custom',
+    focusMinutes: 25,
+    recallMinutes: 5,
+    restMinutes: 5,
+    segments: [
+      { id: 'seg-custom-focus', kind: 'focus', minutes: 25 },
+      { id: 'seg-custom-recall', kind: 'recall', minutes: 5 },
+      { id: 'seg-custom-rest', kind: 'rest', minutes: 5 },
+    ],
+    isDefault: true,
+    createdAt: 0,
+  },
 ];
 
 export const DEFAULT_FOCUS_TAGS: FocusTag[] = [
