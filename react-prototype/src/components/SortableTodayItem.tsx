@@ -12,6 +12,7 @@ interface Props {
   activeSessionBlockId?: string;
   firstIncompleteFlowId?: string;
   onToggleStep: (flowId: string, stepId: string) => void;
+  onSkipStep: (flowId: string, stepId: string) => void;
   onToggleTask: (taskId: string) => void;
   onToggleFocusBlock: (blockId: string) => void;
   onStartFocus: (blockId: string) => void;
@@ -26,6 +27,7 @@ export function SortableTodayItem({
   activeSessionBlockId,
   firstIncompleteFlowId,
   onToggleStep,
+  onSkipStep,
   onToggleTask,
   onToggleFocusBlock,
   onStartFocus,
@@ -69,6 +71,7 @@ export function SortableTodayItem({
           currentStepId={isCurrent ? currentFocusStepId : undefined}
           defaultExpanded={item.id === firstIncompleteFlowId}
           onToggleStep={onToggleStep}
+          onSkipStep={onSkipStep}
           onDelete={onDeleteItem}
           onUpdateFlow={onUpdateFlow}
         />

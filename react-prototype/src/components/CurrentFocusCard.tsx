@@ -7,9 +7,10 @@ interface Props {
   onToggleTask: (taskId: string) => void;
   onToggleFocusBlock: (blockId: string) => void;
   onStartFocus: (blockId: string) => void;
+  onSkipStep: (flowId: string, stepId: string) => void;
 }
 
-export function CurrentFocusCard({ focus, onToggleStep, onToggleTask, onToggleFocusBlock, onStartFocus }: Props) {
+export function CurrentFocusCard({ focus, onToggleStep, onToggleTask, onToggleFocusBlock, onStartFocus, onSkipStep }: Props) {
   const { item } = focus;
 
   if (item.kind === 'habit-flow') {
@@ -57,9 +58,14 @@ export function CurrentFocusCard({ focus, onToggleStep, onToggleTask, onToggleFo
                 <button className="btn-uncomplete" onClick={() => onToggleStep(flow.id, step.id)}>Undo</button>
               </>
             ) : (
-              <button className="btn-complete" onClick={() => onToggleStep(flow.id, step.id)}>
-                ✓ Complete Step
-              </button>
+              <>
+                <button className="btn-complete" onClick={() => onToggleStep(flow.id, step.id)}>
+                  ✓ Complete Step
+                </button>
+                <button className="btn-skip-step" onClick={() => onSkipStep(flow.id, step.id)}>
+                  Skip for today
+                </button>
+              </>
             )}
           </div>
         </div>

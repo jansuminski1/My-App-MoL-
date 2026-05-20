@@ -12,6 +12,7 @@ export interface HabitStep {
   cue: string;
   tinyMinimum: string;
   completionLog: Record<string, boolean>;
+  skippedLog?: Record<string, boolean>;
   freq: HabitFreq;
   tinyVersion?: string;
   place?: string;

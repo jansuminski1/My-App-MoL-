@@ -395,7 +395,9 @@ function App() {
           if (s.id !== stepId) return s;
           isCompleting = !s.completionLog[today];
           stepName = s.name;
-          return { ...s, completionLog: { ...s.completionLog, [today]: isCompleting } };
+          const skippedLog = { ...(s.skippedLog ?? {}) };
+          delete skippedLog[today];
+          return { ...s, completionLog: { ...s.completionLog, [today]: isCompleting }, skippedLog };
         }),
       };
     }));
@@ -405,6 +407,20 @@ function App() {
     } else {
       setCharacter(c => removeXpEventByRewardKey(c, rewardKey));
     }
+  }, []);
+
+  const skipHabitStep = useCallback((flowId: string, stepId: string) => {
+    const today = todayDateKey();
+    setItems(prev => prev.map(item => {
+      if (item.kind !== 'habit-flow' || item.id !== flowId) return item;
+      return {
+        ...item,
+        steps: item.steps.map(s => {
+          if (s.id !== stepId || s.completionLog[today]) return s;
+          return { ...s, skippedLog: { ...(s.skippedLog ?? {}), [today]: true } };
+        }),
+      };
+    }));
   }, []);
 
   const toggleTask = useCallback((taskId: string) => {
@@ -1008,6 +1024,7 @@ function App() {
             character={character}
             session={session}
             onToggleStep={toggleHabitStep}
+            onSkipStep={skipHabitStep}
             onToggleTask={toggleTask}
             onToggleFocusBlock={toggleFocusBlock}
             onStartFocus={startFocus}

@@ -61,6 +61,7 @@ interface Props {
   currentFocusStepId?: string;
   activeSessionBlockId?: string;
   onToggleStep: (flowId: string, stepId: string) => void;
+  onSkipStep: (flowId: string, stepId: string) => void;
   onToggleTask: (taskId: string) => void;
   onToggleFocusBlock: (blockId: string) => void;
   onStartFocus: (blockId: string) => void;
@@ -78,6 +79,7 @@ export function TodayFlow({
   currentFocusStepId,
   activeSessionBlockId,
   onToggleStep,
+  onSkipStep,
   onToggleTask,
   onToggleFocusBlock,
   onStartFocus,
@@ -92,7 +94,7 @@ export function TodayFlow({
 
   const today = todayDateKey();
   const firstIncompleteFlowId = items.find(
-    i => i.kind === 'habit-flow' && !i.steps.every(s => !!s.completionLog[today])
+    i => i.kind === 'habit-flow' && !i.steps.every(s => !!s.completionLog[today] || !!s.skippedLog?.[today])
   )?.id;
 
   const sensors = useSensors(
@@ -153,6 +155,7 @@ export function TodayFlow({
               activeSessionBlockId={activeSessionBlockId}
               firstIncompleteFlowId={firstIncompleteFlowId}
               onToggleStep={onToggleStep}
+              onSkipStep={onSkipStep}
               onToggleTask={onToggleTask}
               onToggleFocusBlock={onToggleFocusBlock}
               onStartFocus={onStartFocus}
@@ -183,6 +186,7 @@ export function TodayFlow({
                 currentStepId={activeItem.id === currentFocusItemId ? currentFocusStepId : undefined}
                 defaultExpanded={false}
                 onToggleStep={onToggleStep}
+                onSkipStep={onSkipStep}
               />
             )}
             {activeItem.kind === 'quick-task' && (

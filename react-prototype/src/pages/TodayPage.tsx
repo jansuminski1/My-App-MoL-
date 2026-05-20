@@ -11,6 +11,7 @@ interface Props {
   character: CharacterState;
   session: FocusSession | null;
   onToggleStep: (flowId: string, stepId: string) => void;
+  onSkipStep: (flowId: string, stepId: string) => void;
   onToggleTask: (taskId: string) => void;
   onToggleFocusBlock: (blockId: string) => void;
   onStartFocus: (blockId: string) => void;
@@ -26,7 +27,7 @@ interface Props {
 
 export function TodayPage({
   visibleItems, currentFocus, progress, character, session,
-  onToggleStep, onToggleTask, onToggleFocusBlock, onStartFocus,
+  onToggleStep, onSkipStep, onToggleTask, onToggleFocusBlock, onStartFocus,
   onOpenMind, onCancelSession,
   onUpdateFlow, onReorder, onDeleteItem, onAddTask, onAddFocus, onAddFlow,
 }: Props) {
@@ -51,6 +52,7 @@ export function TodayPage({
         <CurrentFocusCard
           focus={currentFocus}
           onToggleStep={onToggleStep}
+          onSkipStep={onSkipStep}
           onToggleTask={onToggleTask}
           onToggleFocusBlock={onToggleFocusBlock}
           onStartFocus={onStartFocus}
@@ -69,6 +71,7 @@ export function TodayPage({
         currentFocusStepId={currentFocus?.stepId}
         activeSessionBlockId={session?.focusBlockId}
         onToggleStep={onToggleStep}
+        onSkipStep={onSkipStep}
         onToggleTask={onToggleTask}
         onToggleFocusBlock={onToggleFocusBlock}
         onStartFocus={onStartFocus}

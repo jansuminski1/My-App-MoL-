@@ -5,7 +5,7 @@ export function getCurrentFocus(items: TodayItem[]): CurrentFocus | null {
   const today = todayDateKey();
   for (const item of items) {
     if (item.kind === 'habit-flow') {
-      const incompleteStep = item.steps.find(s => !s.completionLog[today]);
+      const incompleteStep = item.steps.find(s => !s.completionLog[today] && !s.skippedLog?.[today]);
       if (incompleteStep) return { item, stepId: incompleteStep.id };
     } else if (!item.completed) {
       return { item };
@@ -33,7 +33,7 @@ export function getTodayProgress(items: TodayItem[]): { completed: number; total
 export function isItemFullyComplete(item: TodayItem): boolean {
   if (item.kind === 'habit-flow') {
     const today = todayDateKey();
-    return item.steps.every(s => !!s.completionLog[today]);
+    return item.steps.every(s => !!s.completionLog[today] || !!s.skippedLog?.[today]);
   }
   return item.completed;
 }

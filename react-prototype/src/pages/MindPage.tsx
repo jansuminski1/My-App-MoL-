@@ -173,12 +173,14 @@ export function MindPage({
   // Tag management state
   const [newTagName, setNewTagName] = useState('');
   const [expandedTagColor, setExpandedTagColor] = useState<string | null>(null);
+  const [selectedManagedTagId, setSelectedManagedTagId] = useState<string>('');
 
   const activeProfile = focusTimerProfiles.find(p => p.id === selectedProfileId) ?? focusTimerProfiles[0];
   const segments: TimerSegment[] = activeProfile?.segments ?? [];
   const selectedSegment = segments.find(s => s.id === selectedSegmentId) ?? segments[0];
   const selectedSegmentIndex = selectedSegment ? segments.findIndex(s => s.id === selectedSegment.id) : -1;
   const focusSegmentCount = segments.filter(s => s.kind === 'focus').length;
+  const selectedManagedTag = focusTags.find(tag => tag.id === selectedManagedTagId) ?? focusTags[0];
 
   useEffect(() => {
     if (segments.length === 0) {
@@ -189,6 +191,16 @@ export function MindPage({
       setSelectedSegmentId(segments[0].id);
     }
   }, [segments, selectedSegmentId]);
+
+  useEffect(() => {
+    if (focusTags.length === 0) {
+      if (selectedManagedTagId) setSelectedManagedTagId('');
+      return;
+    }
+    if (!selectedManagedTagId || !focusTags.some(tag => tag.id === selectedManagedTagId)) {
+      setSelectedManagedTagId(focusTags[0].id);
+    }
+  }, [focusTags, selectedManagedTagId]);
 
   // Derived idle display values
   const firstFocusSeg = segments.find(s => s.kind === 'focus');
@@ -533,33 +545,48 @@ export function MindPage({
           {/* ── Tags ── */}
           <div className="page-section-label" style={{ marginTop: 24 }}>Tags</div>
           <div className="mind-tags-editor card">
-            {focusTags.map(tag => (
-              <div key={tag.id} className="mind-tag-row">
+            {focusTags.length > 0 && (
+              <div className="mind-tag-select-block">
+                <label className="mind-tag-select-label" htmlFor="mind-tag-select">Choose tag</label>
+                <select
+                  id="mind-tag-select"
+                  className="mind-tag-select"
+                  value={selectedManagedTag?.id ?? ''}
+                  onChange={e => { setSelectedManagedTagId(e.target.value); setExpandedTagColor(null); }}
+                >
+                  {focusTags.map(tag => (
+                    <option key={tag.id} value={tag.id}>{tag.name}</option>
+                  ))}
+                </select>
+              </div>
+            )}
+            {selectedManagedTag && (
+              <div className="mind-tag-selected-row">
                 <button
                   type="button"
                   className="mind-tag-color-btn"
-                  style={{ background: tag.color ?? '#6b7280' }}
-                  onClick={() => setExpandedTagColor(expandedTagColor === tag.id ? null : tag.id)}
+                  style={{ background: selectedManagedTag.color ?? '#6b7280' }}
+                  onClick={() => setExpandedTagColor(expandedTagColor === selectedManagedTag.id ? null : selectedManagedTag.id)}
                   aria-label="Change color"
                 />
-                <span className="mind-tag-name">{tag.name}</span>
-                <button type="button" className="mind-tag-del-btn" onClick={() => onDeleteTag(tag.id)} aria-label={`Delete ${tag.name}`}>×</button>
-                {expandedTagColor === tag.id && (
+                <span className="mind-tag-name">{selectedManagedTag.name}</span>
+                <button type="button" className="mind-tag-del-btn" onClick={() => onDeleteTag(selectedManagedTag.id)} aria-label={`Delete ${selectedManagedTag.name}`}>×</button>
+                {expandedTagColor === selectedManagedTag.id && (
                   <div className="mind-tag-palette">
                     {TAG_COLORS.map(c => (
                       <button
                         key={c}
                         type="button"
-                        className={`mind-tag-swatch${tag.color === c ? ' selected' : ''}`}
+                        className={`mind-tag-swatch${selectedManagedTag.color === c ? ' selected' : ''}`}
                         style={{ background: c }}
-                        onClick={() => { onUpdateTag(tag.id, { color: c }); setExpandedTagColor(null); }}
+                        onClick={() => { onUpdateTag(selectedManagedTag.id, { color: c }); setExpandedTagColor(null); }}
                         aria-label={c}
                       />
                     ))}
                   </div>
                 )}
               </div>
-            ))}
+            )}
             <div className="mind-tag-add-row">
               <input
                 className="mind-tag-add-input"
@@ -592,21 +619,16 @@ export function MindPage({
                 </label>
                 <div className="modal-label">
                   Tag
-                  <div className="modal-tag-row">
-                    <button type="button" className={`modal-tag-btn${manualTagId === '' ? ' selected' : ''}`} onClick={() => setManualTagId('')}>None</button>
+                  <select
+                    className="modal-input modal-select"
+                    value={manualTagId}
+                    onChange={e => setManualTagId(e.target.value)}
+                  >
+                    <option value="">None</option>
                     {focusTags.map(t => (
-                      <button
-                        key={t.id}
-                        type="button"
-                        className={`modal-tag-btn${manualTagId === t.id ? ' selected' : ''}`}
-                        style={t.color ? { '--tag-color': t.color } as React.CSSProperties : undefined}
-                        onClick={() => setManualTagId(prev => prev === t.id ? '' : t.id)}
-                      >
-                        {t.color && <span className="modal-tag-dot" style={{ background: t.color }} />}
-                        {t.name}
-                      </button>
+                      <option key={t.id} value={t.id}>{t.name}</option>
                     ))}
-                  </div>
+                  </select>
                 </div>
                 <label className="modal-label">
                   Minutes

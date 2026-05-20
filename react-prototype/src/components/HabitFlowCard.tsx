@@ -9,20 +9,22 @@ interface Props {
   currentStepId?: string;
   defaultExpanded: boolean;
   onToggleStep: (flowId: string, stepId: string) => void;
+  onSkipStep?: (flowId: string, stepId: string) => void;
   onDelete?: (flowId: string) => void;
   onUpdateFlow?: (flow: HabitFlow) => void;
 }
 
-export function HabitFlowCard({ flow, isCurrent, defaultExpanded, onToggleStep, onDelete, onUpdateFlow }: Props) {
+export function HabitFlowCard({ flow, isCurrent, defaultExpanded, onToggleStep, onSkipStep, onDelete, onUpdateFlow }: Props) {
   const [expanded, setExpanded] = useState(defaultExpanded);
   const [hoveredStep, setHoveredStep] = useState<string | null>(null);
   const [showEdit, setShowEdit] = useState(false);
 
   const today = todayDateKey();
   const doneCount = flow.steps.filter(s => !!s.completionLog[today]).length;
+  const skippedCount = flow.steps.filter(s => !!s.skippedLog?.[today]).length;
   const total = flow.steps.length;
-  const allDone = doneCount === total;
-  const firstIncompleteIdx = flow.steps.findIndex(s => !s.completionLog[today]);
+  const allDone = flow.steps.every(s => !!s.completionLog[today] || !!s.skippedLog?.[today]);
+  const firstIncompleteIdx = flow.steps.findIndex(s => !s.completionLog[today] && !s.skippedLog?.[today]);
   const activeStep = firstIncompleteIdx >= 0 ? flow.steps[firstIncompleteIdx] : null;
 
   const hasDetails = !!(flow.place || flow.obstacle || flow.obstaclePlan || flow.tinyVersion || flow.automaticityScore !== undefined);
@@ -142,13 +144,21 @@ export function HabitFlowCard({ flow, isCurrent, defaultExpanded, onToggleStep, 
             >
               ✓ Complete Step
             </button>
+            {onSkipStep && (
+              <button
+                className="habit-step-skip-btn"
+                onClick={() => onSkipStep(flow.id, activeStep.id)}
+              >
+                Skip today
+              </button>
+            )}
           </div>
         </div>
       )}
 
       {expanded && allDone && (
         <div className="habit-step-panel done">
-          <span>✓ All {total} steps complete</span>
+          <span>{doneCount === total ? `✓ All ${total} steps complete` : `${skippedCount} skipped, ${doneCount} complete today`}</span>
         </div>
       )}
 
