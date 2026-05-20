@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { FocusSession, FocusSessionLog, FocusTimerProfile, FocusTag, TimerSegment } from '../types';
 import { CircularFocusTimer } from '../components/CircularFocusTimer';
 import { formatRelativeTime } from '../utils/todayFlow';
@@ -44,6 +44,7 @@ const CIRCUMFERENCE = 2 * Math.PI * 80;
 const MAX_DRAG_MINUTES = 120;
 const QUALITY_LABEL: Record<string, string> = { Low: 'Low', Normal: 'Good', High: 'Deep' };
 const KIND_LABEL: Record<string, string> = { focus: 'Focus', recall: 'Recall', rest: 'Rest' };
+const SEGMENT_DEFAULT_MINUTES: Record<TimerSegment['kind'], number> = { focus: 25, recall: 5, rest: 5 };
 
 const TAG_COLORS = [
   '#ef4444', '#f97316', '#eab308', '#22c55e',
@@ -163,6 +164,7 @@ export function MindPage({
   const [manualQuality, setManualQuality] = useState<'Low' | 'Normal' | 'High'>('Normal');
   const [manualReflection, setManualReflection] = useState('');
   const [segmentDrafts, setSegmentDrafts] = useState<Record<string, string>>({});
+  const [selectedSegmentId, setSelectedSegmentId] = useState<string | null>(null);
 
   // Profile save state
   const [showSaveProfile, setShowSaveProfile] = useState(false);
@@ -174,6 +176,19 @@ export function MindPage({
 
   const activeProfile = focusTimerProfiles.find(p => p.id === selectedProfileId) ?? focusTimerProfiles[0];
   const segments: TimerSegment[] = activeProfile?.segments ?? [];
+  const selectedSegment = segments.find(s => s.id === selectedSegmentId) ?? segments[0];
+  const selectedSegmentIndex = selectedSegment ? segments.findIndex(s => s.id === selectedSegment.id) : -1;
+  const focusSegmentCount = segments.filter(s => s.kind === 'focus').length;
+
+  useEffect(() => {
+    if (segments.length === 0) {
+      if (selectedSegmentId !== null) setSelectedSegmentId(null);
+      return;
+    }
+    if (!selectedSegmentId || !segments.some(seg => seg.id === selectedSegmentId)) {
+      setSelectedSegmentId(segments[0].id);
+    }
+  }, [segments, selectedSegmentId]);
 
   // Derived idle display values
   const firstFocusSeg = segments.find(s => s.kind === 'focus');
@@ -230,18 +245,41 @@ export function MindPage({
     setSegmentDrafts(prev => { const next = { ...prev }; delete next[segId]; return next; });
   }
 
+  function updateSegmentKind(segId: string, kind: TimerSegment['kind']) {
+    if (!activeProfile) return;
+    const current = segments.find(s => s.id === segId);
+    if (!current) return;
+    if (current.kind === 'focus' && kind !== 'focus' && focusSegmentCount <= 1) return;
+    const newSegs = segments.map(s => s.id === segId ? { ...s, kind } : s);
+    onUpdateProfile(activeProfile.id, { segments: newSegs });
+  }
+
+  function moveSegment(segId: string, direction: -1 | 1) {
+    if (!activeProfile) return;
+    const index = segments.findIndex(s => s.id === segId);
+    const nextIndex = index + direction;
+    if (index < 0 || nextIndex < 0 || nextIndex >= segments.length) return;
+    const newSegs = [...segments];
+    const [moved] = newSegs.splice(index, 1);
+    newSegs.splice(nextIndex, 0, moved);
+    onUpdateProfile(activeProfile.id, { segments: newSegs });
+  }
+
   function removeSegment(segId: string) {
     if (!activeProfile) return;
+    const index = segments.findIndex(s => s.id === segId);
     const remaining = segments.filter(s => s.id !== segId);
     if (!remaining.some(s => s.kind === 'focus')) return;
+    const nextSelected = remaining[Math.min(index, remaining.length - 1)] ?? remaining[0];
+    setSelectedSegmentId(nextSelected?.id ?? null);
     onUpdateProfile(activeProfile.id, { segments: remaining });
   }
 
   function addSegment(kind: 'focus' | 'recall' | 'rest') {
     if (!activeProfile) return;
     const id = `seg-${kind}-${nowTs()}`;
-    const defaults = { focus: 25, recall: 5, rest: 5 };
-    const newSeg: TimerSegment = { id, kind, minutes: defaults[kind] };
+    const newSeg: TimerSegment = { id, kind, minutes: SEGMENT_DEFAULT_MINUTES[kind] };
+    setSelectedSegmentId(id);
     onUpdateProfile(activeProfile.id, { segments: [...segments, newSeg] });
   }
 
@@ -326,28 +364,36 @@ export function MindPage({
           </div>
 
           {/* ── Timer Profiles ── */}
-          <div className="page-section-label" style={{ marginTop: 24 }}>Timer Profiles</div>
-          <div className="mind-profile-chips">
-            {focusTimerProfiles.map(p => (
-              <div
-                key={p.id}
-                className={`mind-profile-chip${p.id === selectedProfileId ? ' active' : ''}`}
-                onClick={() => onSelectProfile(p.id)}
+          <div className="mind-profile-select-card card" style={{ marginTop: 24 }}>
+            <label className="mind-profile-select-label" htmlFor="mind-timer-profile">
+              Timer profile
+            </label>
+            <div className="mind-profile-select-row">
+              <select
+                id="mind-timer-profile"
+                className="mind-profile-select"
+                value={selectedProfileId}
+                onChange={e => onSelectProfile(e.target.value)}
               >
-                <span className="mind-profile-chip-name">{p.name}</span>
-                <span className="mind-profile-chip-meta">
-                  {(p.segments ?? []).reduce((s, seg) => s + seg.minutes, 0)}m
-                </span>
-                {!p.isDefault && (
-                  <button
-                    type="button"
-                    className="mind-profile-chip-del"
-                    onClick={e => { e.stopPropagation(); onDeleteProfile(p.id); }}
-                    aria-label={`Delete ${p.name}`}
-                  >×</button>
-                )}
-              </div>
-            ))}
+                {focusTimerProfiles.map(p => {
+                  const profileMinutes = (p.segments ?? []).reduce((s, seg) => s + seg.minutes, 0);
+                  return (
+                    <option key={p.id} value={p.id}>
+                      {p.name} - {profileMinutes}m
+                    </option>
+                  );
+                })}
+              </select>
+              {activeProfile && !activeProfile.isDefault && (
+                <button
+                  type="button"
+                  className="mind-profile-delete-current"
+                  onClick={() => onDeleteProfile(activeProfile.id)}
+                >
+                  Delete
+                </button>
+              )}
+            </div>
           </div>
 
           {/* ── Segment editor ── */}
@@ -375,30 +421,108 @@ export function MindPage({
               </form>
             )}
 
-            {segments.map((seg, i) => (
-              <div key={seg.id} className="mind-seg-row">
-                <span className={`mind-seg-kind kind-${seg.kind}`}>{KIND_LABEL[seg.kind]}</span>
-                <div className="mind-seg-minutes-ctrl">
-                  <button type="button" className="mind-seg-adj" onClick={() => updateSegmentMinutes(seg.id, seg.minutes - 1)} disabled={seg.minutes <= 1}>−</button>
-                  <input
-                    type="number"
-                    className="mind-seg-input"
-                    value={segmentDrafts[seg.id] ?? String(seg.minutes)}
-                    onChange={e => setSegmentDrafts(prev => ({ ...prev, [seg.id]: e.target.value }))}
-                    onBlur={() => commitSegmentDraft(seg.id)}
-                    onKeyDown={e => { if (e.key === 'Enter') (e.target as HTMLInputElement).blur(); }}
-                  />
-                  <span className="mind-seg-unit">min</span>
-                  <button type="button" className="mind-seg-adj" onClick={() => updateSegmentMinutes(seg.id, seg.minutes + 1)}>+</button>
+            <div className="mind-seq-strip" aria-label="Session sequence">
+              {segments.map((seg, i) => (
+                <div key={seg.id} className="mind-seq-chip-wrap">
+                  <button
+                    type="button"
+                    className={`mind-seq-chip kind-${seg.kind}${selectedSegment?.id === seg.id ? ' selected' : ''}`}
+                    onClick={() => setSelectedSegmentId(seg.id)}
+                    aria-pressed={selectedSegment?.id === seg.id}
+                  >
+                    <span>{KIND_LABEL[seg.kind]}</span>
+                    <strong>{seg.minutes}m</strong>
+                  </button>
+                  {i < segments.length - 1 && <span className="mind-seq-arrow" aria-hidden="true">›</span>}
                 </div>
-                {segments.filter(s => s.kind === 'focus').length > 1 || seg.kind !== 'focus' ? (
-                  <button type="button" className="mind-seg-remove" onClick={() => removeSegment(seg.id)} aria-label="Remove segment">×</button>
-                ) : (
-                  <span className="mind-seg-remove mind-seg-remove-placeholder" />
-                )}
-                {i < segments.length - 1 && <div className="mind-seg-connector" />}
+              ))}
+            </div>
+
+            {selectedSegment && (
+              <div className={`mind-selected-seg-panel kind-${selectedSegment.kind}`}>
+                <div className="mind-selected-seg-head">
+                  <div>
+                    <span className="mind-selected-seg-kicker">Selected segment</span>
+                    <strong>{KIND_LABEL[selectedSegment.kind]}</strong>
+                  </div>
+                  <span className="mind-selected-seg-index">
+                    {selectedSegmentIndex + 1} / {segments.length}
+                  </span>
+                </div>
+
+                <div className="mind-seg-type-row" aria-label="Segment type">
+                  {(['focus', 'rest', 'recall'] as TimerSegment['kind'][]).map(kind => (
+                    <button
+                      key={kind}
+                      type="button"
+                      className={`mind-seg-type-btn kind-${kind}${selectedSegment.kind === kind ? ' active' : ''}`}
+                      onClick={() => updateSegmentKind(selectedSegment.id, kind)}
+                      disabled={selectedSegment.kind === 'focus' && kind !== 'focus' && focusSegmentCount <= 1}
+                    >
+                      {KIND_LABEL[kind]}
+                    </button>
+                  ))}
+                </div>
+
+                <div className="mind-selected-seg-controls">
+                  <button
+                    type="button"
+                    className="mind-seg-adj large"
+                    onClick={() => updateSegmentMinutes(selectedSegment.id, selectedSegment.minutes - 5)}
+                    disabled={selectedSegment.minutes <= 1}
+                    aria-label="Decrease duration"
+                  >
+                    −
+                  </button>
+                  <label className="mind-selected-seg-duration">
+                    <input
+                      type="number"
+                      className="mind-seg-input large"
+                      value={segmentDrafts[selectedSegment.id] ?? String(selectedSegment.minutes)}
+                      onChange={e => setSegmentDrafts(prev => ({ ...prev, [selectedSegment.id]: e.target.value }))}
+                      onBlur={() => commitSegmentDraft(selectedSegment.id)}
+                      onKeyDown={e => { if (e.key === 'Enter') (e.target as HTMLInputElement).blur(); }}
+                    />
+                    <span>min</span>
+                  </label>
+                  <button
+                    type="button"
+                    className="mind-seg-adj large"
+                    onClick={() => updateSegmentMinutes(selectedSegment.id, selectedSegment.minutes + 5)}
+                    aria-label="Increase duration"
+                  >
+                    +
+                  </button>
+                </div>
+
+                <div className="mind-selected-seg-actions">
+                  <button
+                    type="button"
+                    className="mind-seg-move-btn"
+                    onClick={() => moveSegment(selectedSegment.id, -1)}
+                    disabled={selectedSegmentIndex <= 0}
+                  >
+                    Move left
+                  </button>
+                  <button
+                    type="button"
+                    className="mind-seg-move-btn"
+                    onClick={() => moveSegment(selectedSegment.id, 1)}
+                    disabled={selectedSegmentIndex === -1 || selectedSegmentIndex >= segments.length - 1}
+                  >
+                    Move right
+                  </button>
+                  <button
+                    type="button"
+                    className="mind-seg-delete-btn"
+                    onClick={() => removeSegment(selectedSegment.id)}
+                    disabled={selectedSegment.kind === 'focus' && focusSegmentCount <= 1}
+                  >
+                    Delete segment
+                  </button>
+                </div>
               </div>
-            ))}
+            )}
             <div className="mind-seg-add-row">
               <button type="button" className="mind-seg-add-btn focus" onClick={() => addSegment('focus')}>+ Focus</button>
               <button type="button" className="mind-seg-add-btn recall" onClick={() => addSegment('recall')}>+ Recall</button>
