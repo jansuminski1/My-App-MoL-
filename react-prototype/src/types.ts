@@ -214,6 +214,7 @@ export interface FocusTimerProfile {
 export interface FocusTag {
   id: string;
   name: string;
+  color?: string;
   createdAt: number;
 }
 

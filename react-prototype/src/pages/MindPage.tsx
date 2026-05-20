@@ -28,18 +28,27 @@ interface Props {
   onSetReflection: (text: string) => void;
   onSetTag: (tagId: string | undefined, tagName: string | undefined) => void;
   onAddTag: (name: string) => void;
+  onDeleteTag: (id: string) => void;
+  onUpdateTag: (id: string, updates: Partial<FocusTag>) => void;
   onCancelSession: () => void;
   onSelectProfile: (id: string) => void;
   onAddProfile: (data: { name: string; focusMinutes: number; recallMinutes: number; restMinutes: number }) => void;
   onUpdateProfile: (profileId: string, updates: Partial<FocusTimerProfile>) => void;
   onDeleteProfile: (id: string) => void;
+  onSaveProfile: (name: string, segments: TimerSegment[]) => void;
   onStartQuickFocus: () => void;
   onLogManual: (data: ManualLogData) => void;
 }
 
 const CIRCUMFERENCE = 2 * Math.PI * 80;
+const MAX_DRAG_MINUTES = 120;
 const QUALITY_LABEL: Record<string, string> = { Low: 'Low', Normal: 'Good', High: 'Deep' };
 const KIND_LABEL: Record<string, string> = { focus: 'Focus', recall: 'Recall', rest: 'Rest' };
+
+const TAG_COLORS = [
+  '#ef4444', '#f97316', '#eab308', '#22c55e',
+  '#06b6d4', '#3b82f6', '#8b5cf6', '#ec4899', '#6b7280',
+];
 
 function formatMinutes(minutes: number): string {
   if (minutes < 60) return `${minutes}m`;
@@ -47,8 +56,6 @@ function formatMinutes(minutes: number): string {
   const m = minutes % 60;
   return m > 0 ? `${h}h ${m}m` : `${h}h`;
 }
-
-const MAX_DRAG_MINUTES = 120;
 
 function IdleRing({
   focusMinutes,
@@ -130,14 +137,9 @@ function IdleRing({
         style={{ transition: dragging.current ? 'none' : 'stroke-dashoffset 0.25s ease' }}
       />
       <circle cx="100" cy="100" r="66" fill="none" stroke="rgba(186,230,253,0.2)" strokeWidth="1" />
-      {/* Drag handle dot */}
       <circle
-        cx={dotX}
-        cy={dotY}
-        r="11"
-        fill="#38bdf8"
-        stroke="white"
-        strokeWidth="2.5"
+        cx={dotX} cy={dotY} r="11"
+        fill="#38bdf8" stroke="white" strokeWidth="2.5"
         className="mind-idle-drag-dot"
         onMouseDown={handleMouseDown}
         onTouchStart={handleTouchStart}
@@ -149,8 +151,9 @@ function IdleRing({
 export function MindPage({
   session, focusSessionLogs, focusTags, focusTimerProfiles, selectedProfileId,
   onPause, onResume, onAdvancePhase, onExtendSession, onAddInterruption,
-  onSetQuality, onSetReflection, onSetTag, onAddTag, onCancelSession,
-  onSelectProfile, onUpdateProfile, onStartQuickFocus, onLogManual,
+  onSetQuality, onSetReflection, onSetTag, onAddTag, onDeleteTag, onUpdateTag,
+  onCancelSession, onSelectProfile, onUpdateProfile, onDeleteProfile,
+  onSaveProfile, onStartQuickFocus, onLogManual,
 }: Props) {
   const [showManualLog, setShowManualLog] = useState(false);
   const [manualTitle, setManualTitle] = useState('');
@@ -161,15 +164,23 @@ export function MindPage({
   const [manualReflection, setManualReflection] = useState('');
   const [segmentDrafts, setSegmentDrafts] = useState<Record<string, string>>({});
 
-  const customProfile = focusTimerProfiles.find(p => p.id === 'profile-custom') ?? focusTimerProfiles[0];
-  const segments: TimerSegment[] = customProfile?.segments ?? [];
+  // Profile save state
+  const [showSaveProfile, setShowSaveProfile] = useState(false);
+  const [saveProfileName, setSaveProfileName] = useState('');
+
+  // Tag management state
+  const [newTagName, setNewTagName] = useState('');
+  const [expandedTagColor, setExpandedTagColor] = useState<string | null>(null);
+
+  const activeProfile = focusTimerProfiles.find(p => p.id === selectedProfileId) ?? focusTimerProfiles[0];
+  const segments: TimerSegment[] = activeProfile?.segments ?? [];
 
   // Derived idle display values
   const firstFocusSeg = segments.find(s => s.kind === 'focus');
-  const idleFocusMinutes = firstFocusSeg?.minutes ?? customProfile?.focusMinutes ?? 25;
+  const idleFocusMinutes = firstFocusSeg?.minutes ?? activeProfile?.focusMinutes ?? 25;
   const totalProfileMinutes = segments.length > 0
     ? segments.reduce((s, seg) => s + seg.minutes, 0)
-    : (customProfile?.focusMinutes ?? 25) + (customProfile?.restMinutes ?? 5);
+    : (activeProfile?.focusMinutes ?? 25) + (activeProfile?.restMinutes ?? 5);
 
   // Subject stats
   const taggedLogs = focusSessionLogs.filter(l => l.tagName);
@@ -192,12 +203,12 @@ export function MindPage({
     : null;
 
   function setFocusMinutes(minutes: number) {
-    if (!customProfile) return;
+    if (!activeProfile) return;
     const clamped = Math.max(1, Math.min(MAX_DRAG_MINUTES, minutes));
     const newSegs = segments.map(seg =>
       seg === firstFocusSeg ? { ...seg, minutes: clamped } : seg
     );
-    onUpdateProfile(customProfile.id, { segments: newSegs, focusMinutes: clamped });
+    onUpdateProfile(activeProfile.id, { segments: newSegs, focusMinutes: clamped });
   }
 
   function adjustFocusMinutes(delta: number) {
@@ -205,10 +216,10 @@ export function MindPage({
   }
 
   function updateSegmentMinutes(segId: string, minutes: number) {
-    if (!customProfile) return;
+    if (!activeProfile) return;
     const clamped = Math.max(1, Math.min(480, Math.round(minutes)));
     const newSegs = segments.map(s => s.id === segId ? { ...s, minutes: clamped } : s);
-    onUpdateProfile(customProfile.id, { segments: newSegs });
+    onUpdateProfile(activeProfile.id, { segments: newSegs });
   }
 
   function commitSegmentDraft(segId: string) {
@@ -220,18 +231,33 @@ export function MindPage({
   }
 
   function removeSegment(segId: string) {
-    if (!customProfile) return;
+    if (!activeProfile) return;
     const remaining = segments.filter(s => s.id !== segId);
-    if (!remaining.some(s => s.kind === 'focus')) return; // must keep at least one focus
-    onUpdateProfile(customProfile.id, { segments: remaining });
+    if (!remaining.some(s => s.kind === 'focus')) return;
+    onUpdateProfile(activeProfile.id, { segments: remaining });
   }
 
   function addSegment(kind: 'focus' | 'recall' | 'rest') {
-    if (!customProfile) return;
+    if (!activeProfile) return;
     const id = `seg-${kind}-${nowTs()}`;
     const defaults = { focus: 25, recall: 5, rest: 5 };
     const newSeg: TimerSegment = { id, kind, minutes: defaults[kind] };
-    onUpdateProfile(customProfile.id, { segments: [...segments, newSeg] });
+    onUpdateProfile(activeProfile.id, { segments: [...segments, newSeg] });
+  }
+
+  function handleSaveProfile(e: React.FormEvent) {
+    e.preventDefault();
+    if (!saveProfileName.trim()) return;
+    onSaveProfile(saveProfileName.trim(), segments);
+    setSaveProfileName('');
+    setShowSaveProfile(false);
+  }
+
+  function handleAddTag() {
+    const name = newTagName.trim();
+    if (!name) return;
+    onAddTag(name);
+    setNewTagName('');
   }
 
   function handleManualSave(e: React.FormEvent) {
@@ -258,7 +284,6 @@ export function MindPage({
   return (
     <div className={`page mind-page${session ? ' has-session' : ''}`}>
       {session ? (
-        /* ── Active session: full circular timer ── */
         <CircularFocusTimer
           session={session}
           focusTags={focusTags}
@@ -274,12 +299,10 @@ export function MindPage({
           onCancel={onCancelSession}
         />
       ) : (
-        /* ── No session: idle circular timer + setup ── */
         <>
+          {/* ── Idle ring ── */}
           <div className="mind-idle-section">
             <div className="mind-idle-label-top">Ready for Deep Work</div>
-
-            {/* Circular idle timer */}
             <div className="mind-idle-ring-wrap">
               <IdleRing focusMinutes={idleFocusMinutes} onSetFocusMinutes={setFocusMinutes} />
               <div className="mind-idle-center">
@@ -292,64 +315,84 @@ export function MindPage({
                 </div>
               </div>
             </div>
-
-            {/* Duration adjust */}
             <div className="mind-idle-adjust-row">
-              <button
-                type="button"
-                className="mind-idle-adj-btn"
-                onClick={() => adjustFocusMinutes(-1)}
-                disabled={idleFocusMinutes <= 1}
-              >−</button>
+              <button type="button" className="mind-idle-adj-btn" onClick={() => adjustFocusMinutes(-1)} disabled={idleFocusMinutes <= 1}>−</button>
               <span className="mind-idle-adj-label">{idleFocusMinutes}m focus</span>
-              <button
-                type="button"
-                className="mind-idle-adj-btn"
-                onClick={() => adjustFocusMinutes(1)}
-              >+</button>
+              <button type="button" className="mind-idle-adj-btn" onClick={() => adjustFocusMinutes(1)}>+</button>
             </div>
-
-            {/* Start button */}
             <button type="button" className="mind-idle-start-btn" onClick={onStartQuickFocus}>
               ▶ Start Focus
             </button>
           </div>
 
-          {/* Segment editor for Custom profile */}
-          <div className="page-section-label" style={{ marginTop: 24 }}>Custom Timer</div>
-          <div className="mind-segment-editor card">
+          {/* ── Timer Profiles ── */}
+          <div className="page-section-label" style={{ marginTop: 24 }}>Timer Profiles</div>
+          <div className="mind-profile-chips">
+            {focusTimerProfiles.map(p => (
+              <div
+                key={p.id}
+                className={`mind-profile-chip${p.id === selectedProfileId ? ' active' : ''}`}
+                onClick={() => onSelectProfile(p.id)}
+              >
+                <span className="mind-profile-chip-name">{p.name}</span>
+                <span className="mind-profile-chip-meta">
+                  {(p.segments ?? []).reduce((s, seg) => s + seg.minutes, 0)}m
+                </span>
+                {!p.isDefault && (
+                  <button
+                    type="button"
+                    className="mind-profile-chip-del"
+                    onClick={e => { e.stopPropagation(); onDeleteProfile(p.id); }}
+                    aria-label={`Delete ${p.name}`}
+                  >×</button>
+                )}
+              </div>
+            ))}
+          </div>
+
+          {/* ── Segment editor ── */}
+          <div className="mind-segment-editor card" style={{ marginTop: 10 }}>
+            <div className="mind-seg-editor-header">
+              <span className="mind-seg-editor-title">{activeProfile?.name}</span>
+              {!showSaveProfile && (
+                <button type="button" className="mind-seg-save-btn" onClick={() => setShowSaveProfile(true)}>
+                  Save as…
+                </button>
+              )}
+            </div>
+
+            {showSaveProfile && (
+              <form className="mind-save-profile-form" onSubmit={handleSaveProfile}>
+                <input
+                  className="mind-save-profile-input"
+                  value={saveProfileName}
+                  onChange={e => setSaveProfileName(e.target.value)}
+                  placeholder="Profile name…"
+                  autoFocus
+                />
+                <button type="submit" className="mind-save-profile-confirm" disabled={!saveProfileName.trim()}>Save</button>
+                <button type="button" className="mind-save-profile-cancel" onClick={() => { setShowSaveProfile(false); setSaveProfileName(''); }}>✕</button>
+              </form>
+            )}
+
             {segments.map((seg, i) => (
               <div key={seg.id} className="mind-seg-row">
                 <span className={`mind-seg-kind kind-${seg.kind}`}>{KIND_LABEL[seg.kind]}</span>
                 <div className="mind-seg-minutes-ctrl">
-                  <button
-                    type="button"
-                    className="mind-seg-adj"
-                    onClick={() => updateSegmentMinutes(seg.id, seg.minutes - 1)}
-                    disabled={seg.minutes <= 1}
-                  >−</button>
+                  <button type="button" className="mind-seg-adj" onClick={() => updateSegmentMinutes(seg.id, seg.minutes - 1)} disabled={seg.minutes <= 1}>−</button>
                   <input
                     type="number"
                     className="mind-seg-input"
                     value={segmentDrafts[seg.id] ?? String(seg.minutes)}
                     onChange={e => setSegmentDrafts(prev => ({ ...prev, [seg.id]: e.target.value }))}
                     onBlur={() => commitSegmentDraft(seg.id)}
-                    onKeyDown={e => { if (e.key === 'Enter') { (e.target as HTMLInputElement).blur(); } }}
+                    onKeyDown={e => { if (e.key === 'Enter') (e.target as HTMLInputElement).blur(); }}
                   />
                   <span className="mind-seg-unit">min</span>
-                  <button
-                    type="button"
-                    className="mind-seg-adj"
-                    onClick={() => updateSegmentMinutes(seg.id, seg.minutes + 1)}
-                  >+</button>
+                  <button type="button" className="mind-seg-adj" onClick={() => updateSegmentMinutes(seg.id, seg.minutes + 1)}>+</button>
                 </div>
                 {segments.filter(s => s.kind === 'focus').length > 1 || seg.kind !== 'focus' ? (
-                  <button
-                    type="button"
-                    className="mind-seg-remove"
-                    onClick={() => removeSegment(seg.id)}
-                    aria-label="Remove segment"
-                  >×</button>
+                  <button type="button" className="mind-seg-remove" onClick={() => removeSegment(seg.id)} aria-label="Remove segment">×</button>
                 ) : (
                   <span className="mind-seg-remove mind-seg-remove-placeholder" />
                 )}
@@ -363,16 +406,53 @@ export function MindPage({
             </div>
           </div>
 
-          {/* Manual session log */}
+          {/* ── Tags ── */}
+          <div className="page-section-label" style={{ marginTop: 24 }}>Tags</div>
+          <div className="mind-tags-editor card">
+            {focusTags.map(tag => (
+              <div key={tag.id} className="mind-tag-row">
+                <button
+                  type="button"
+                  className="mind-tag-color-btn"
+                  style={{ background: tag.color ?? '#6b7280' }}
+                  onClick={() => setExpandedTagColor(expandedTagColor === tag.id ? null : tag.id)}
+                  aria-label="Change color"
+                />
+                <span className="mind-tag-name">{tag.name}</span>
+                <button type="button" className="mind-tag-del-btn" onClick={() => onDeleteTag(tag.id)} aria-label={`Delete ${tag.name}`}>×</button>
+                {expandedTagColor === tag.id && (
+                  <div className="mind-tag-palette">
+                    {TAG_COLORS.map(c => (
+                      <button
+                        key={c}
+                        type="button"
+                        className={`mind-tag-swatch${tag.color === c ? ' selected' : ''}`}
+                        style={{ background: c }}
+                        onClick={() => { onUpdateTag(tag.id, { color: c }); setExpandedTagColor(null); }}
+                        aria-label={c}
+                      />
+                    ))}
+                  </div>
+                )}
+              </div>
+            ))}
+            <div className="mind-tag-add-row">
+              <input
+                className="mind-tag-add-input"
+                value={newTagName}
+                onChange={e => setNewTagName(e.target.value)}
+                onKeyDown={e => { if (e.key === 'Enter') handleAddTag(); }}
+                placeholder="New tag…"
+              />
+              <button type="button" className="mind-tag-add-btn" onClick={handleAddTag} disabled={!newTagName.trim()}>+ Add</button>
+            </div>
+          </div>
+
+          {/* ── Manual session log ── */}
           <div className="mind-manual-log-area" style={{ marginTop: 20 }}>
-            <button
-              type="button"
-              className="mind-manual-log-btn"
-              onClick={() => setShowManualLog(o => !o)}
-            >
+            <button type="button" className="mind-manual-log-btn" onClick={() => setShowManualLog(o => !o)}>
               {showManualLog ? '✕ Cancel' : '✎ Log session manually'}
             </button>
-
             {showManualLog && (
               <form className="mind-manual-form card" onSubmit={handleManualSave}>
                 <div className="mind-manual-form-title">Manual Session Log</div>
@@ -387,20 +467,20 @@ export function MindPage({
                   />
                 </label>
                 <div className="modal-label">
-                  Subject tag
+                  Tag
                   <div className="modal-tag-row">
-                    <button
-                      type="button"
-                      className={`modal-tag-btn${manualTagId === '' ? ' selected' : ''}`}
-                      onClick={() => setManualTagId('')}
-                    >None</button>
+                    <button type="button" className={`modal-tag-btn${manualTagId === '' ? ' selected' : ''}`} onClick={() => setManualTagId('')}>None</button>
                     {focusTags.map(t => (
                       <button
                         key={t.id}
                         type="button"
                         className={`modal-tag-btn${manualTagId === t.id ? ' selected' : ''}`}
+                        style={t.color ? { '--tag-color': t.color } as React.CSSProperties : undefined}
                         onClick={() => setManualTagId(prev => prev === t.id ? '' : t.id)}
-                      >{t.name}</button>
+                      >
+                        {t.color && <span className="modal-tag-dot" style={{ background: t.color }} />}
+                        {t.name}
+                      </button>
                     ))}
                   </div>
                 </div>
@@ -425,12 +505,7 @@ export function MindPage({
                   Quality
                   <div className="mind-manual-quality-row">
                     {(['Low', 'Normal', 'High'] as const).map(q => (
-                      <button
-                        key={q}
-                        type="button"
-                        className={`cft-quality-btn${manualQuality === q ? ' selected' : ''}`}
-                        onClick={() => setManualQuality(q)}
-                      >{q}</button>
+                      <button key={q} type="button" className={`cft-quality-btn${manualQuality === q ? ' selected' : ''}`} onClick={() => setManualQuality(q)}>{q}</button>
                     ))}
                   </div>
                 </div>
@@ -444,49 +519,52 @@ export function MindPage({
                     rows={2}
                   />
                 </label>
-                <button
-                  type="submit"
-                  className="modal-submit"
-                  disabled={!manualTitle.trim() || manualMinutes < 1}
-                >Save Session</button>
+                <button type="submit" className="modal-submit" disabled={!manualTitle.trim() || manualMinutes < 1}>Save Session</button>
               </form>
             )}
           </div>
         </>
       )}
 
-      {/* Subject stats */}
+      {/* ── Focus by tag ── */}
       {subjectStats.length > 0 && (
         <>
-          <div className="page-section-label" style={{ marginTop: 24 }}>Focus by Subject</div>
+          <div className="page-section-label" style={{ marginTop: 24 }}>Focus by Tag</div>
           <div className="mind-subject-stats card">
-            {subjectStats.map(([subject, minutes]) => (
-              <div key={subject} className="mind-subject-row">
-                <span className="mind-subject-name">{subject}</span>
-                <div className="mind-subject-bar-track">
-                  <div
-                    className="mind-subject-bar-fill"
-                    style={{ width: `${Math.min(100, (minutes / (subjectStats[0][1] || 1)) * 100)}%` }}
-                  />
+            {subjectStats.map(([subject, minutes]) => {
+              const tag = focusTags.find(t => t.name === subject);
+              return (
+                <div key={subject} className="mind-subject-row">
+                  {tag?.color && <span className="mind-subject-dot" style={{ background: tag.color }} />}
+                  <span className="mind-subject-name">{subject}</span>
+                  <div className="mind-subject-bar-track">
+                    <div
+                      className="mind-subject-bar-fill"
+                      style={{
+                        width: `${Math.min(100, (minutes / (subjectStats[0][1] || 1)) * 100)}%`,
+                        background: tag?.color ?? undefined,
+                      }}
+                    />
+                  </div>
+                  <span className="mind-subject-time">{formatMinutes(minutes)}</span>
                 </div>
-                <span className="mind-subject-time">{formatMinutes(minutes)}</span>
-              </div>
-            ))}
+              );
+            })}
           </div>
         </>
       )}
       {taggedLogs.length === 0 && (
         <>
-          <div className="page-section-label" style={{ marginTop: 24 }}>Focus by Subject</div>
+          <div className="page-section-label" style={{ marginTop: 24 }}>Focus by Tag</div>
           <div className="page-empty-card">
             <div className="page-empty-icon">◎</div>
             <div className="page-empty-title">No tagged sessions yet</div>
-            <div className="page-empty-sub">Select a subject during your next focus session.</div>
+            <div className="page-empty-sub">Select a tag during your next focus session.</div>
           </div>
         </>
       )}
 
-      {/* Recent sessions */}
+      {/* ── Recent sessions ── */}
       <div className="page-section-label" style={{ marginTop: 24 }}>Recent Sessions</div>
       {focusSessionLogs.length === 0 ? (
         <div className="page-empty-card">
@@ -496,33 +574,45 @@ export function MindPage({
         </div>
       ) : (
         <div className="focus-log-cards">
-          {focusSessionLogs.slice(0, 8).map(log => (
-            <div key={log.id} className="focus-log-card">
-              <div className="flc-header">
-                <span className="flc-title">{log.title}</span>
-                <span className={`flc-quality quality-${log.quality.toLowerCase()}`}>
-                  {QUALITY_LABEL[log.quality]}
-                </span>
-              </div>
-              <div className="flc-meta">
-                <span>{log.actualMinutes}m · {log.type}{log.tagName ? ` · ${log.tagName}` : ''}</span>
-                <span className="flc-xp">+{log.xpAwarded} XP</span>
-              </div>
-              {(log.interruptions > 0 || log.startedAt) && (
-                <div className="flc-meta" style={{ marginTop: 2 }}>
-                  {log.interruptions > 0 && <span style={{ color: 'var(--amber)' }}>{log.interruptions} interrupt{log.interruptions !== 1 ? 's' : ''}</span>}
-                  <span style={{ color: 'var(--text-mut)' }}>{formatRelativeTime(log.startedAt)}</span>
+          {focusSessionLogs.slice(0, 8).map(log => {
+            const tag = focusTags.find(t => t.name === log.tagName);
+            return (
+              <div key={log.id} className="focus-log-card">
+                <div className="flc-header">
+                  <span className="flc-title">{log.title}</span>
+                  <span className={`flc-quality quality-${log.quality.toLowerCase()}`}>
+                    {QUALITY_LABEL[log.quality]}
+                  </span>
                 </div>
-              )}
-              {log.reflection && (
-                <div className="flc-reflection">"{log.reflection}"</div>
-              )}
-            </div>
-          ))}
+                <div className="flc-meta">
+                  <span>
+                    {log.actualMinutes}m · {log.type}
+                    {log.tagName && (
+                      <>
+                        {' · '}
+                        {tag?.color && <span className="flc-tag-dot" style={{ background: tag.color }} />}
+                        {log.tagName}
+                      </>
+                    )}
+                  </span>
+                  <span className="flc-xp">+{log.xpAwarded} XP</span>
+                </div>
+                {(log.interruptions > 0 || log.startedAt) && (
+                  <div className="flc-meta" style={{ marginTop: 2 }}>
+                    {log.interruptions > 0 && <span style={{ color: 'var(--amber)' }}>{log.interruptions} interrupt{log.interruptions !== 1 ? 's' : ''}</span>}
+                    <span style={{ color: 'var(--text-mut)' }}>{formatRelativeTime(log.startedAt)}</span>
+                  </div>
+                )}
+                {log.reflection && (
+                  <div className="flc-reflection">"{log.reflection}"</div>
+                )}
+              </div>
+            );
+          })}
         </div>
       )}
 
-      {/* Focus stats */}
+      {/* ── Focus stats ── */}
       <div className="page-section-label" style={{ marginTop: 24 }}>Focus Stats</div>
       <div className="stat-cards-grid">
         <div className="stat-card accent">

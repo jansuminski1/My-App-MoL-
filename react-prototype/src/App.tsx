@@ -428,6 +428,35 @@ function App() {
     setSession(s => s ? { ...s, tagId: id, tagName: name } : s);
   }
 
+  function deleteFocusTag(id: string) {
+    setFocusTags(prev => prev.filter(t => t.id !== id));
+    setSession(s => s?.tagId === id ? { ...s, tagId: undefined, tagName: undefined } : s);
+  }
+
+  function updateFocusTag(id: string, updates: Partial<FocusTag>) {
+    setFocusTags(prev => prev.map(t => t.id === id ? { ...t, ...updates } : t));
+  }
+
+  function saveProfileFromSegments(name: string, segments: TimerSegment[]) {
+    const now = nowTs();
+    const id = `profile-${now}`;
+    const focusSeg = segments.find(s => s.kind === 'focus');
+    const recallSeg = segments.find(s => s.kind === 'recall');
+    const restSeg = segments.find(s => s.kind === 'rest');
+    const profile: FocusTimerProfile = {
+      id,
+      name: name.trim(),
+      focusMinutes: focusSeg?.minutes ?? 25,
+      recallMinutes: recallSeg?.minutes ?? 5,
+      restMinutes: restSeg?.minutes ?? 5,
+      segments,
+      isDefault: false,
+      createdAt: now,
+    };
+    setFocusTimerProfiles(prev => [...prev, profile]);
+    setSelectedFocusTimerProfileId(id);
+  }
+
   function addTimerProfile(data: { name: string; focusMinutes: number; recallMinutes: number; restMinutes: number }) {
     const now = nowTs();
     const id = `profile-${now}`;
@@ -838,11 +867,14 @@ function App() {
             onSetReflection={setSessionReflection}
             onSetTag={setSessionTag}
             onAddTag={addFocusTag}
+            onDeleteTag={deleteFocusTag}
+            onUpdateTag={updateFocusTag}
             onCancelSession={cancelSession}
             onSelectProfile={setSelectedFocusTimerProfileId}
             onAddProfile={addTimerProfile}
             onUpdateProfile={updateTimerProfile}
             onDeleteProfile={deleteTimerProfile}
+            onSaveProfile={saveProfileFromSegments}
             onStartQuickFocus={startQuickFocus}
             onLogManual={logManualSession}
           />

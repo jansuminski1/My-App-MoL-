@@ -158,7 +158,15 @@ export function CircularFocusTimer({
             {overTime ? '+' : ''}{formatTime(overTime ? phaseElapsed - phaseTotalSeconds : phaseRemaining)}
           </div>
           {!isPaused && session.phase !== 'complete' && (
-            <div className="cft-center-tag">{session.tagName ?? PHASE_HINTS[session.phase]}</div>
+            <div className="cft-center-tag">
+              {session.tagName
+                ? <>
+                    {(() => { const tag = focusTags.find(t => t.id === session.tagId); return tag?.color ? <span className="cft-center-tag-dot" style={{ background: tag.color }} /> : null; })()}
+                    {session.tagName}
+                  </>
+                : PHASE_HINTS[session.phase]
+              }
+            </div>
           )}
           {isPaused && <div className="cft-paused-label">Paused</div>}
           {session.interruptions > 0 && (
@@ -188,9 +196,9 @@ export function CircularFocusTimer({
         <span className="cft-badge">{session.plannedMinutes}m planned</span>
       </div>
 
-      {/* Subject/tag selector */}
+      {/* Tag selector */}
       <div className="cft-subject-row">
-        <span className="cft-subject-label">Subject</span>
+        <span className="cft-subject-label">Tag</span>
         <select
           className="cft-subject-select"
           value={session.tagId ?? ''}

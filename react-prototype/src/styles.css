@@ -4418,3 +4418,217 @@ button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
   gap: 8px;
 }
 
+/* ── Profile chips ── */
+.mind-profile-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 4px;
+}
+.mind-profile-chip {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  border-radius: 20px;
+  border: 1.5px solid var(--border);
+  background: var(--surface);
+  cursor: pointer;
+  transition: all var(--transition);
+  user-select: none;
+}
+.mind-profile-chip:hover { border-color: var(--accent-border); background: var(--accent-dim); }
+.mind-profile-chip.active { border-color: var(--accent); background: var(--accent-dim); }
+.mind-profile-chip-name { font-size: 0.85rem; font-weight: 600; color: var(--text-pri); }
+.mind-profile-chip.active .mind-profile-chip-name { color: var(--accent-dark); }
+.mind-profile-chip-meta { font-size: 0.75rem; color: var(--text-mut); }
+.mind-profile-chip-del {
+  background: none; border: none; cursor: pointer;
+  color: var(--text-mut); font-size: 1rem; line-height: 1;
+  padding: 0 0 0 2px; opacity: 0.6;
+  transition: opacity var(--transition), color var(--transition);
+}
+.mind-profile-chip-del:hover { opacity: 1; color: var(--danger, #ef4444); }
+
+/* ── Segment editor header + save form ── */
+.mind-seg-editor-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 10px;
+}
+.mind-seg-editor-title {
+  font-size: 0.9rem;
+  font-weight: 700;
+  color: var(--text-sec);
+}
+.mind-seg-save-btn {
+  font-size: 0.78rem;
+  padding: 4px 10px;
+  border-radius: 6px;
+  border: 1.5px solid var(--accent-border);
+  background: var(--accent-dim);
+  color: var(--accent-dark);
+  cursor: pointer;
+  font-weight: 600;
+  transition: all var(--transition);
+}
+.mind-seg-save-btn:hover { background: var(--accent); color: white; border-color: var(--accent); }
+.mind-save-profile-form {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 12px;
+  padding: 8px 10px;
+  background: var(--accent-dim);
+  border-radius: 8px;
+  border: 1px solid var(--accent-border);
+}
+.mind-save-profile-input {
+  flex: 1;
+  padding: 6px 10px;
+  border-radius: 6px;
+  border: 1.5px solid var(--accent-border);
+  background: var(--surface);
+  color: var(--text-pri);
+  font-size: 0.88rem;
+}
+.mind-save-profile-input:focus { outline: none; border-color: var(--accent); }
+.mind-save-profile-confirm {
+  padding: 6px 14px;
+  border-radius: 6px;
+  border: none;
+  background: var(--accent);
+  color: white;
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+.mind-save-profile-confirm:disabled { opacity: 0.4; cursor: not-allowed; }
+.mind-save-profile-cancel {
+  background: none;
+  border: none;
+  color: var(--text-mut);
+  font-size: 1.1rem;
+  cursor: pointer;
+  padding: 4px 6px;
+}
+
+/* ── Tags editor ── */
+.mind-tags-editor {
+  padding: 12px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.mind-tag-row {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 7px 4px;
+  border-bottom: 1px solid var(--border-dim, rgba(0,0,0,0.06));
+}
+.mind-tag-row:last-of-type { border-bottom: none; }
+.mind-tag-color-btn {
+  width: 18px; height: 18px;
+  border-radius: 50%;
+  border: 2px solid rgba(255,255,255,0.7);
+  box-shadow: 0 0 0 1.5px rgba(0,0,0,0.15);
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: transform var(--transition);
+}
+.mind-tag-color-btn:hover { transform: scale(1.2); }
+.mind-tag-name {
+  flex: 1;
+  font-size: 0.88rem;
+  font-weight: 500;
+  color: var(--text-pri);
+}
+.mind-tag-del-btn {
+  background: none; border: none;
+  color: var(--text-mut); font-size: 1.1rem;
+  cursor: pointer; padding: 2px 6px; opacity: 0.5;
+  transition: opacity var(--transition), color var(--transition);
+}
+.mind-tag-del-btn:hover { opacity: 1; color: var(--danger, #ef4444); }
+.mind-tag-palette {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  z-index: 20;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  padding: 10px;
+  background: var(--surface);
+  border: 1.5px solid var(--border);
+  border-radius: 10px;
+  box-shadow: 0 6px 20px rgba(0,0,0,0.12);
+  width: 200px;
+}
+.mind-tag-swatch {
+  width: 24px; height: 24px;
+  border-radius: 50%;
+  border: 2.5px solid transparent;
+  cursor: pointer;
+  transition: transform var(--transition), border-color var(--transition);
+}
+.mind-tag-swatch:hover { transform: scale(1.15); }
+.mind-tag-swatch.selected { border-color: white; box-shadow: 0 0 0 2px currentColor; }
+.mind-tag-add-row {
+  display: flex;
+  gap: 8px;
+  margin-top: 8px;
+  padding-top: 8px;
+  border-top: 1px solid var(--border-dim, rgba(0,0,0,0.06));
+}
+.mind-tag-add-input {
+  flex: 1;
+  padding: 7px 10px;
+  border-radius: 7px;
+  border: 1.5px solid var(--border);
+  background: var(--bg);
+  color: var(--text-pri);
+  font-size: 0.85rem;
+}
+.mind-tag-add-input:focus { outline: none; border-color: var(--accent); }
+.mind-tag-add-btn {
+  padding: 7px 14px;
+  border-radius: 7px;
+  border: none;
+  background: var(--accent);
+  color: white;
+  font-size: 0.83rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+.mind-tag-add-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+
+/* ── Colored dots in session log + subject bar ── */
+.flc-tag-dot, .mind-subject-dot {
+  display: inline-block;
+  width: 8px; height: 8px;
+  border-radius: 50%;
+  margin-right: 4px;
+  vertical-align: middle;
+  flex-shrink: 0;
+}
+.mind-subject-row { align-items: center; }
+.modal-tag-dot {
+  display: inline-block;
+  width: 8px; height: 8px;
+  border-radius: 50%;
+  margin-right: 5px;
+  vertical-align: middle;
+  flex-shrink: 0;
+}
+.cft-center-tag-dot {
+  display: inline-block;
+  width: 7px; height: 7px;
+  border-radius: 50%;
+  margin-right: 4px;
+  vertical-align: middle;
+}
+

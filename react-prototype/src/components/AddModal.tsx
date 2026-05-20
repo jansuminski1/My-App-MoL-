@@ -163,7 +163,7 @@ export function AddModal({ mode, focusTags, onAdd, onClose, onCustomDuration }: 
               </div>
               {focusTags.length > 0 && (
                 <div className="modal-label">
-                  Subject tag
+                  Tag
                   <div className="modal-tag-row">
                     <button
                       type="button"
@@ -179,6 +179,7 @@ export function AddModal({ mode, focusTags, onAdd, onClose, onCustomDuration }: 
                         className={`modal-tag-btn${tagId === t.id ? ' selected' : ''}`}
                         onClick={() => setTagId(prev => prev === t.id ? '' : t.id)}
                       >
+                        {t.color && <span className="modal-tag-dot" style={{ background: t.color }} />}
                         {t.name}
                       </button>
                     ))}
