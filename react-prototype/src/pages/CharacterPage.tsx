@@ -6,6 +6,11 @@ interface Props {
   character: CharacterState;
   focusSessionLogs: FocusSessionLog[];
   goals: Goal[];
+  syncUser: { email: string | null; displayName: string | null } | null;
+  syncStatus: 'local' | 'signed-in' | 'loading' | 'syncing' | 'synced' | 'error';
+  syncMessage: string;
+  onSignIn: () => void;
+  onSignOut: () => void;
 }
 
 const STAT_LABELS: Record<string, string> = {
@@ -30,7 +35,16 @@ const STAT_COLORS: Record<string, string> = {
   resolve:       '#ef4444',
 };
 
-export function CharacterPage({ character, focusSessionLogs, goals }: Props) {
+export function CharacterPage({
+  character,
+  focusSessionLogs,
+  goals,
+  syncUser,
+  syncStatus,
+  syncMessage,
+  onSignIn,
+  onSignOut,
+}: Props) {
   const wk = currentWeekKey();
   const mk = currentMonthKey();
   const weeklyGoals = goals.filter(g => g.period === 'weekly' && g.weekKey === wk && g.status !== 'archived');
@@ -60,6 +74,20 @@ export function CharacterPage({ character, focusSessionLogs, goals }: Props) {
           <span className="char-xp-total">{Math.round(character.totalXp)} total</span>
           <span>next: {character.xpForNextLevel}</span>
         </div>
+      </div>
+
+      <div className="page-section-label">Sync</div>
+      <div className="sync-card card">
+        <div>
+          <div className="sync-card-title">{syncUser ? 'Cloud sync active' : 'Local only'}</div>
+          <div className="sync-card-meta">
+            {syncUser ? (syncUser.email ?? syncUser.displayName ?? 'Signed in') : 'Sign in to share this prototype across laptop, phone, and Netlify.'}
+          </div>
+          <div className={`sync-card-status sync-${syncStatus}`}>{syncMessage}</div>
+        </div>
+        <button type="button" className="sync-card-button" onClick={syncUser ? onSignOut : onSignIn}>
+          {syncUser ? 'Sign out' : 'Sign in with Google'}
+        </button>
       </div>
 
       {/* Insights */}
