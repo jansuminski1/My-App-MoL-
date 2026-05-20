@@ -1,7 +1,7 @@
 import { useState } from 'react';
-import { Goal, GoalPeriod, LifeDomain, CharacterState } from '../types';
+import type { CharacterState, Goal, GoalPeriod } from '../types';
 import { currentWeekKey, currentMonthKey } from '../utils/date';
-import { AddGoalModal, GoalFormData } from '../components/AddGoalModal';
+import type { GoalFormData } from '../components/AddGoalModal';
 
 interface Props {
   goals: Goal[];
@@ -12,79 +12,154 @@ interface Props {
   onDeleteGoal: (goalId: string) => void;
 }
 
-const DOMAIN_COLORS: Record<string, string> = {
-  Intelligence: '#0ea5e9',
-  Health:       '#16a34a',
-  Strength:     '#d97706',
-  Wealth:       '#10b981',
-  Connection:   '#8b5cf6',
-  Purpose:      '#f59e0b',
-  Consistency:  '#22c55e',
-  Resolve:      '#ef4444',
-};
-
-interface GoalCardProps {
-  goal: Goal;
-  onComplete: () => void;
-  onUncomplete: () => void;
-  onDelete: () => void;
+interface GoalSectionProps {
+  icon: string;
+  title: string;
+  subtitle: string;
+  period: GoalPeriod;
+  goals: Goal[];
+  placeholder: string;
+  emptyText: string;
+  onAddGoal: (data: GoalFormData) => void;
+  onCompleteGoal: (goalId: string) => void;
+  onUncompleteGoal: (goalId: string) => void;
+  onDeleteGoal: (goalId: string) => void;
 }
 
-function GoalCard({ goal, onComplete, onUncomplete, onDelete }: GoalCardProps) {
-  const done = goal.status === 'completed';
-  const color = DOMAIN_COLORS[goal.domain] ?? '#0ea5e9';
+function formatMonthLabel(monthKey: string): string {
+  const [year, month] = monthKey.split('-').map(Number);
+  if (!year || !month) return monthKey;
+  return new Date(year, month - 1, 1).toLocaleDateString(undefined, {
+    month: 'long',
+    year: 'numeric',
+  });
+}
+
+function formatWeekLabel(weekKey: string): string {
+  const [year, month, day] = weekKey.split('-').map(Number);
+  if (!year || !month || !day) return `Week of ${weekKey}`;
+  const start = new Date(year, month - 1, day);
+  const end = new Date(start);
+  end.setDate(start.getDate() + 6);
+  const sameMonth = start.getMonth() === end.getMonth();
+  const startLabel = start.toLocaleDateString(undefined, {
+    month: 'long',
+    day: 'numeric',
+  });
+  const endLabel = end.toLocaleDateString(undefined, {
+    month: sameMonth ? undefined : 'long',
+    day: 'numeric',
+    year: 'numeric',
+  });
+  return `Week of ${startLabel} - ${endLabel}`;
+}
+
+function GoalSection({
+  icon,
+  title,
+  subtitle,
+  period,
+  goals,
+  placeholder,
+  emptyText,
+  onAddGoal,
+  onCompleteGoal,
+  onUncompleteGoal,
+  onDeleteGoal,
+}: GoalSectionProps) {
+  const [draft, setDraft] = useState('');
+  const doneCount = goals.filter(goal => goal.status === 'completed').length;
+  const progressPercent = goals.length > 0 ? Math.round((doneCount / goals.length) * 100) : 0;
+
+  function handleAdd(e: React.FormEvent) {
+    e.preventDefault();
+    const titleValue = draft.trim();
+    if (!titleValue) return;
+    onAddGoal({
+      title: titleValue,
+      period,
+      domain: 'Purpose',
+      why: '',
+      target: '',
+      xpReward: period === 'monthly' ? 150 : 50,
+    });
+    setDraft('');
+  }
 
   return (
-    <div className={`goal-card${done ? ' goal-done' : ''}`}>
-      <div className="goal-card-top">
-        <span className="goal-domain-dot" style={{ background: color }} />
-        <span className="goal-card-title">{goal.title}</span>
-        <button className="goal-delete-btn" onClick={onDelete} title="Delete goal" type="button">✕</button>
+    <section className="goals-period-card">
+      <div className="goals-section-header">
+        <div className="goals-section-title-row">
+          <span className="goals-section-icon" aria-hidden="true">{icon}</span>
+          <h2>{title}</h2>
+        </div>
+        <div className="goals-section-subtitle">{subtitle}</div>
       </div>
 
-      <div className="goal-card-badges">
-        <span
-          className="goal-domain-badge"
-          style={{ color, borderColor: `${color}33`, background: `${color}11` }}
-        >
-          {goal.domain}
-        </span>
-        <span className="goal-xp-badge">+{goal.xpReward} XP</span>
+      <div className="goals-progress-block">
+        <div className="goals-progress-top">
+          <span>Progress</span>
+          <strong>{progressPercent}%</strong>
+        </div>
+        <div className="goals-progress-track" aria-hidden="true">
+          <div className="goals-progress-fill" style={{ width: `${progressPercent}%` }} />
+        </div>
+        <div className="goals-progress-counts">
+          <span>{doneCount} done</span>
+          <span>{goals.length} total</span>
+        </div>
       </div>
 
-      {goal.why && (
-        <div className="goal-why">
-          <span className="goal-field-label">Why it matters: </span>{goal.why}
+      {goals.length === 0 ? (
+        <p className="goals-section-empty">{emptyText}</p>
+      ) : (
+        <div className="goals-check-list">
+          {goals.map(goal => {
+            const done = goal.status === 'completed';
+            const detail = goal.target || goal.why || goal.progressNote;
+            return (
+              <div key={goal.id} className={`goals-check-row${done ? ' is-done' : ''}`}>
+                <button
+                  type="button"
+                  className="goals-check-box"
+                  onClick={() => done ? onUncompleteGoal(goal.id) : onCompleteGoal(goal.id)}
+                  aria-label={done ? `Mark ${goal.title} incomplete` : `Complete ${goal.title}`}
+                  aria-pressed={done}
+                >
+                  {done ? '✓' : ''}
+                </button>
+                <div className="goals-check-copy">
+                  <div className="goals-check-title">{goal.title}</div>
+                  {detail && <div className="goals-check-detail">{detail}</div>}
+                </div>
+                <button
+                  type="button"
+                  className="goals-check-delete"
+                  onClick={() => onDeleteGoal(goal.id)}
+                  aria-label={`Delete ${goal.title}`}
+                >
+                  ×
+                </button>
+              </div>
+            );
+          })}
         </div>
       )}
 
-      {goal.target && (
-        <div className="goal-target">{goal.target}</div>
-      )}
-
-      {goal.progressNote && (
-        <div className="goal-progress-note">{goal.progressNote}</div>
-      )}
-
-      <div className="goal-actions">
-        {done ? (
-          <>
-            <span className="goal-completed-badge">✓ Complete</span>
-            <button className="goal-uncomplete-btn" onClick={onUncomplete} type="button">Undo</button>
-          </>
-        ) : (
-          <button className="goal-complete-btn" onClick={onComplete} type="button">
-            Complete goal
-          </button>
-        )}
-      </div>
-    </div>
+      <form className="goals-inline-add" onSubmit={handleAdd}>
+        <input
+          value={draft}
+          onChange={e => setDraft(e.target.value)}
+          placeholder={placeholder}
+          aria-label={placeholder}
+        />
+        <button type="submit" disabled={!draft.trim()}>Add</button>
+      </form>
+    </section>
   );
 }
 
 export function GoalsPage({ goals, character: _character, onAddGoal, onCompleteGoal, onUncompleteGoal, onDeleteGoal }: Props) {
-  const [showModal, setShowModal] = useState(false);
-
   const weekKey = currentWeekKey();
   const monthKey = currentMonthKey();
 
@@ -96,77 +171,63 @@ export function GoalsPage({ goals, character: _character, onAddGoal, onCompleteG
     .filter(g => g.period === 'monthly' && g.monthKey === monthKey && g.status !== 'archived')
     .sort((a, b) => a.order - b.order);
 
-  const weeklyDone = weeklyGoals.filter(g => g.status === 'completed').length;
-  const monthlyDone = monthlyGoals.filter(g => g.status === 'completed').length;
-
-  function handleAdd(data: GoalFormData) {
-    onAddGoal(data);
-    setShowModal(false);
-  }
+  const completedCount = goals.filter(goal => goal.status === 'completed').length;
 
   return (
-    <div className="page goals-page">
-      <div className="goals-page-header">
-        <div className="goals-page-title">Goals</div>
-        <div className="goals-page-sub">Direction for the week and month.</div>
-        {(weeklyGoals.length > 0 || monthlyGoals.length > 0) && (
-          <div className="goals-summary-row">
-            <span className="goals-summary-chip">{weeklyDone}/{weeklyGoals.length} weekly done</span>
-            <span className="goals-summary-chip">{monthlyDone}/{monthlyGoals.length} monthly done</span>
-          </div>
-        )}
+    <div className="page goals-page goals-page-legacy">
+      <div className="goals-completed-banner">
+        <div className="goals-completed-label">
+          <span aria-hidden="true">🏆</span>
+          <strong>All-Time Completed Goals</strong>
+        </div>
+        <div className="goals-completed-count">
+          {completedCount} {completedCount === 1 ? 'goal' : 'goals'} completed
+        </div>
       </div>
 
-      <div className="page-section-label">This Week</div>
-      {weeklyGoals.length === 0 ? (
-        <div className="goals-empty-state">
-          <div className="goals-empty-icon">◇</div>
-          <div className="goals-empty-title">No weekly goals yet</div>
-          <div className="goals-empty-sub">Set your 1–3 most important goals for this week.</div>
-        </div>
-      ) : (
-        <div className="goals-list">
-          {weeklyGoals.map(goal => (
-            <GoalCard
-              key={goal.id}
-              goal={goal}
-              onComplete={() => onCompleteGoal(goal.id)}
-              onUncomplete={() => onUncompleteGoal(goal.id)}
-              onDelete={() => onDeleteGoal(goal.id)}
-            />
-          ))}
-        </div>
-      )}
+      <GoalSection
+        icon="📅"
+        title="Weekly Goals"
+        subtitle={formatWeekLabel(weekKey)}
+        period="weekly"
+        goals={weeklyGoals}
+        placeholder="Add a weekly goal..."
+        emptyText="No weekly goals yet. Add one below."
+        onAddGoal={onAddGoal}
+        onCompleteGoal={onCompleteGoal}
+        onUncompleteGoal={onUncompleteGoal}
+        onDeleteGoal={onDeleteGoal}
+      />
 
-      <div className="page-section-label" style={{ marginTop: 24 }}>This Month</div>
-      {monthlyGoals.length === 0 ? (
-        <div className="goals-empty-state">
-          <div className="goals-empty-icon">◇</div>
-          <div className="goals-empty-title">No monthly goals yet</div>
-          <div className="goals-empty-sub">What matters most this month?</div>
-        </div>
-      ) : (
-        <div className="goals-list">
-          {monthlyGoals.map(goal => (
-            <GoalCard
-              key={goal.id}
-              goal={goal}
-              onComplete={() => onCompleteGoal(goal.id)}
-              onUncomplete={() => onUncompleteGoal(goal.id)}
-              onDelete={() => onDeleteGoal(goal.id)}
-            />
-          ))}
-        </div>
-      )}
+      <GoalSection
+        icon="🗓️"
+        title="Monthly Goals"
+        subtitle={formatMonthLabel(monthKey)}
+        period="monthly"
+        goals={monthlyGoals}
+        placeholder="Add a monthly goal..."
+        emptyText="No monthly goals yet. Add one below."
+        onAddGoal={onAddGoal}
+        onCompleteGoal={onCompleteGoal}
+        onUncompleteGoal={onUncompleteGoal}
+        onDeleteGoal={onDeleteGoal}
+      />
 
-      <button className="page-add-btn" onClick={() => setShowModal(true)}>+ Goal</button>
-
-      {showModal && (
-        <AddGoalModal
-          onAdd={handleAdd}
-          onClose={() => setShowModal(false)}
-        />
-      )}
+      <div className="goals-stats-card">
+        <div className="goals-section-title-row">
+          <span className="goals-section-icon" aria-hidden="true">📈</span>
+          <h2>Goal Stats</h2>
+        </div>
+        <div className="goals-stat-line">
+          Weekly: <strong>{weeklyGoals.filter(g => g.status === 'completed').length}/{weeklyGoals.length}</strong>
+        </div>
+        <div className="goals-stat-line">
+          Monthly: <strong>{monthlyGoals.filter(g => g.status === 'completed').length}/{monthlyGoals.length}</strong>
+        </div>
+        <div className="goals-stat-muted">
+          Current cycle totals from your synced Goals data.
+        </div>
+      </div>
     </div>
   );
 }
