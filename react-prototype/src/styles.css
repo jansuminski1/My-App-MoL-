@@ -883,7 +883,8 @@ button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 
 /* Toggle header row */
 .habit-flow-header {
-  display: flex;
+  display: grid;
+  grid-template-columns: 28px minmax(0, 1fr) auto;
   align-items: flex-start;
   gap: 9px;
   padding: 9px 12px 8px 10px;
@@ -906,12 +907,22 @@ button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
   flex: 1;
   min-width: 0;
 }
-.habit-flow-header-actions {
+.habit-flow-header-rail {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 5px;
+  min-width: 48px;
+  max-width: 76px;
+  align-self: stretch;
+}
+.habit-flow-rail-top {
   display: flex;
   align-items: center;
-  gap: 6px;
-  flex-shrink: 0;
-  margin-top: 1px;
+  justify-content: flex-end;
+  gap: 5px;
+  width: 100%;
 }
 .habit-flow-title-row {
   display: flex;
@@ -940,6 +951,8 @@ button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
   align-items: center;
   flex-wrap: wrap;
   gap: 0;
+  width: 100%;
+  padding-right: 4px;
 }
 .habit-node-wrap { display: flex; align-items: center; }
 .habit-node {
@@ -1030,8 +1043,9 @@ button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
   font-size: 0.7rem;
   transition: transform 0.2s ease, color 0.15s;
   flex-shrink: 0;
-  padding-top: 3px;
+  padding-top: 0;
   line-height: 1;
+  margin-top: auto;
 }
 .habit-flow-chevron.open {
   transform: rotate(180deg);
@@ -1042,10 +1056,12 @@ button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
   align-items: center;
   gap: 4px;
   font-size: 0.64rem;
-  color: var(--text-mut);
-  border: 1px solid var(--border);
+  font-weight: 750;
+  color: var(--green-dark);
+  background: var(--green-dim);
+  border: 1px solid var(--green-border);
   border-radius: 100px;
-  padding: 2px 7px;
+  padding: 3px 7px;
   margin-top: 0;
   white-space: nowrap;
 }
@@ -3855,14 +3871,16 @@ button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 .habit-flow-edit-btn {
   background: var(--surface-alt);
   border: 1px solid var(--border);
-  border-radius: var(--radius-xs);
-  padding: 5px 9px;
-  font-size: 0.70rem;
+  border-radius: 999px;
+  padding: 4px 10px;
+  font-size: 0.68rem;
   font-weight: 600;
   color: var(--text-sec);
   cursor: pointer;
   letter-spacing: 0.01em;
   transition: all var(--transition);
+  min-height: 26px;
+  touch-action: manipulation;
 }
 .habit-flow-edit-btn:hover {
   background: var(--green-dim);

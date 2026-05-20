@@ -109,10 +109,17 @@ export function HabitFlowCard({ flow, isCurrent, defaultExpanded, onToggleStep, 
 
         </div>
 
-        <div className="habit-flow-header-actions" onClick={e => e.stopPropagation()}>
-          {flow.startTime && (
-            <span className="habit-flow-time-badge">🕐 {flow.startTime}</span>
-          )}
+        <div className="habit-flow-header-rail" onClick={e => e.stopPropagation()}>
+          <div className="habit-flow-rail-top">
+            {flow.startTime && (
+              <span className="habit-flow-time-badge">🕐 {flow.startTime}</span>
+            )}
+            {onDelete && (
+              <button className="item-more-btn" onClick={handleDelete} aria-label="Delete flow">
+                ×
+              </button>
+            )}
+          </div>
           {onUpdateFlow && (
             <button
               type="button"
@@ -122,13 +129,8 @@ export function HabitFlowCard({ flow, isCurrent, defaultExpanded, onToggleStep, 
               Edit
             </button>
           )}
-          {onDelete && (
-            <button className="item-more-btn" onClick={handleDelete} aria-label="Delete flow">
-              ×
-            </button>
-          )}
+          <span className={`habit-flow-chevron${expanded ? ' open' : ''}`}>▾</span>
         </div>
-        <span className={`habit-flow-chevron${expanded ? ' open' : ''}`}>▾</span>
       </div>
 
       {/* Expanded: current step panel */}
