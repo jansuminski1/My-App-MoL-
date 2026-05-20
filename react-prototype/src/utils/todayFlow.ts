@@ -38,11 +38,34 @@ export function isItemFullyComplete(item: TodayItem): boolean {
   return item.completed;
 }
 
+export function carryOverIncompleteTasks(
+  items: TodayItem[],
+  today = todayDateKey(),
+): { items: TodayItem[]; changed: boolean } {
+  let changed = false;
+  const carriedItems = items.map(item => {
+    if (item.kind !== 'quick-task' || item.completed || !item.dateKey || item.dateKey >= today) {
+      return item;
+    }
+    changed = true;
+    const originalDateKey = item.originalDateKey ?? item.dateKey;
+    return {
+      ...item,
+      dateKey: today,
+      originalDateKey,
+      carriedFromDateKey: item.dateKey,
+      carriedCount: (item.carriedCount ?? 0) + 1,
+    };
+  });
+  return { items: carriedItems, changed };
+}
+
 // Habit flows persist across days; tasks and focus blocks are date-scoped.
 export function filterItemsForToday(items: TodayItem[]): TodayItem[] {
   const today = todayDateKey();
   return items.filter(item => {
     if (item.kind === 'habit-flow') return true;
+    if (item.kind === 'quick-task' && !item.completed && item.dateKey < today) return true;
     return item.dateKey === today;
   });
 }

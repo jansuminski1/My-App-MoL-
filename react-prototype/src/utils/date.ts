@@ -6,6 +6,15 @@ export function todayDateKey(): string {
   return `${yyyy}-${mm}-${dd}`;
 }
 
+export function formatShortDate(dateKey: string): string {
+  const [year, month, day] = dateKey.split('-').map(Number);
+  if (!year || !month || !day) return dateKey;
+  return new Date(year, month - 1, day).toLocaleDateString('en-US', {
+    month: 'short',
+    day: 'numeric',
+  });
+}
+
 export function nowTs(): number {
   return Date.now();
 }

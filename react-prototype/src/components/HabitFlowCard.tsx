@@ -45,6 +45,12 @@ export function HabitFlowCard({ flow, isCurrent, defaultExpanded, onToggleStep, 
     if (window.confirm(`Remove "${flow.title}" from Today?`)) onDelete?.(flow.id);
   }
 
+  function handleEdit(e: React.MouseEvent) {
+    e.preventDefault();
+    e.stopPropagation();
+    setShowEdit(true);
+  }
+
   return (
     <div className={`habit-flow-card${isCurrent ? ' is-current' : ''}${allDone ? ' is-complete' : ''}`}>
       {/* Always-visible header: click to expand/collapse */}
@@ -101,16 +107,27 @@ export function HabitFlowCard({ flow, isCurrent, defaultExpanded, onToggleStep, 
             <span className="habit-flow-trigger-label">Starts after:</span> {flow.trigger}
           </div>
 
+        </div>
+
+        <div className="habit-flow-header-actions" onClick={e => e.stopPropagation()}>
           {flow.startTime && (
             <span className="habit-flow-time-badge">🕐 {flow.startTime}</span>
           )}
+          {onUpdateFlow && (
+            <button
+              type="button"
+              className="habit-flow-edit-btn"
+              onClick={handleEdit}
+            >
+              Edit
+            </button>
+          )}
+          {onDelete && (
+            <button className="item-more-btn" onClick={handleDelete} aria-label="Delete flow">
+              ×
+            </button>
+          )}
         </div>
-
-        {onDelete && (
-          <button className="item-more-btn" onClick={handleDelete} aria-label="Delete flow">
-            ×
-          </button>
-        )}
         <span className={`habit-flow-chevron${expanded ? ' open' : ''}`}>▾</span>
       </div>
 
@@ -199,18 +216,6 @@ export function HabitFlowCard({ flow, isCurrent, defaultExpanded, onToggleStep, 
             )}
           </div>
         </details>
-      )}
-
-      {expanded && onUpdateFlow && (
-        <div className="habit-flow-edit-row">
-          <button
-            type="button"
-            className="habit-flow-edit-btn"
-            onClick={e => { e.stopPropagation(); setShowEdit(true); }}
-          >
-            ✎ Edit flow
-          </button>
-        </div>
       )}
 
       {showEdit && (

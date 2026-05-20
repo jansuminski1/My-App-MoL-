@@ -51,6 +51,9 @@ export interface QuickTask {
   completed: boolean;
   completedAt: number | null;
   dateKey: string;
+  originalDateKey?: string;
+  carriedFromDateKey?: string;
+  carriedCount?: number;
   createdAt: number;
   order: number;
   firstAction?: string;

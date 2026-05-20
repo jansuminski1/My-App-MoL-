@@ -1,5 +1,5 @@
 import { CurrentFocus, HabitFlow } from '../types';
-import { todayDateKey } from '../utils/date';
+import { formatShortDate, todayDateKey } from '../utils/date';
 
 interface Props {
   focus: CurrentFocus;
@@ -74,6 +74,11 @@ export function CurrentFocusCard({ focus, onToggleStep, onToggleTask, onToggleFo
   }
 
   if (item.kind === 'quick-task') {
+    const today = todayDateKey();
+    const carriedDateKey = item.originalDateKey && item.originalDateKey !== today
+      ? item.originalDateKey
+      : item.carriedFromDateKey ?? (item.dateKey < today ? item.dateKey : undefined);
+
     return (
       <div className={`current-focus-card type-task${item.completed ? ' done' : ''}`}>
         <div className="current-focus-inner">
@@ -85,6 +90,9 @@ export function CurrentFocusCard({ focus, onToggleStep, onToggleTask, onToggleFo
             )}
           </div>
           <h2 className="current-focus-title">{item.title}</h2>
+          {carriedDateKey && (
+            <p className="current-focus-carried">From {formatShortDate(carriedDateKey)}</p>
+          )}
           {item.firstAction && (
             <p className="current-focus-first-action">
               <span className="current-focus-field-label task-label">First action:</span> {item.firstAction}

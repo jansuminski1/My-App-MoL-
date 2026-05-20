@@ -14,6 +14,7 @@ import {
   getCurrentFocus, getTodayProgress, filterItemsForToday,
   addXpEventOnce, removeXpEventByRewardKey,
   habitStepRewardKey, taskRewardKey, focusBlockRewardKey,
+  carryOverIncompleteTasks,
 } from './utils/todayFlow';
 import { todayDateKey, nowTs, currentWeekKey, currentMonthKey } from './utils/date';
 import {
@@ -77,8 +78,14 @@ function segmentPhase(seg: TimerSegment): FocusSession['phase'] {
 
 function App() {
   const initialPrototypeStateRef = useRef<PrototypeState | null>(null);
+  const initialCarryoverChangedRef = useRef(false);
   if (!initialPrototypeStateRef.current) {
-    initialPrototypeStateRef.current = loadPrototypeState();
+    const loadedState = loadPrototypeState();
+    const carried = carryOverIncompleteTasks(loadedState.items);
+    initialCarryoverChangedRef.current = carried.changed;
+    initialPrototypeStateRef.current = carried.changed
+      ? { ...loadedState, items: carried.items, savedAt: Date.now(), savedAtDateKey: todayDateKey() }
+      : loadedState;
   }
   const initialPrototypeState = initialPrototypeStateRef.current;
   const [activeTab, setActiveTab] = useState<TabId>('today');
@@ -110,23 +117,27 @@ function App() {
   const progress = useMemo(() => getTodayProgress(visibleItems), [visibleItems]);
 
   const applyPrototypeState = useCallback((state: PrototypeState) => {
+    const carried = carryOverIncompleteTasks(state.items);
+    const stateToApply = carried.changed
+      ? { ...state, items: carried.items, savedAt: Date.now(), savedAtDateKey: todayDateKey() }
+      : state;
     isApplyingRemoteRef.current = true;
-    setItems(state.items);
-    setCharacter(state.character);
-    setFocusSessionLogs(state.focusSessionLogs);
-    setGoals(state.goals);
-    setFocusTimerProfiles(state.focusTimerProfiles);
-    setSelectedFocusTimerProfileId(state.selectedFocusTimerProfileId);
-    setFocusTags(state.focusTags);
-    setHealth(state.health);
-    currentPrototypeStateRef.current = savePrototypeStateObject(state);
+    setItems(stateToApply.items);
+    setCharacter(stateToApply.character);
+    setFocusSessionLogs(stateToApply.focusSessionLogs);
+    setGoals(stateToApply.goals);
+    setFocusTimerProfiles(stateToApply.focusTimerProfiles);
+    setSelectedFocusTimerProfileId(stateToApply.selectedFocusTimerProfileId);
+    setFocusTags(stateToApply.focusTags);
+    setHealth(stateToApply.health);
+    currentPrototypeStateRef.current = savePrototypeStateObject(stateToApply);
   }, []);
 
   useEffect(() => {
     if (!didSkipInitialSaveRef.current) {
       didSkipInitialSaveRef.current = true;
       currentPrototypeStateRef.current = initialPrototypeState;
-      return;
+      if (!initialCarryoverChangedRef.current) return;
     }
     if (isApplyingRemoteRef.current) {
       savePrototypeStateObject(currentPrototypeStateRef.current);
@@ -323,7 +334,18 @@ function App() {
     const yesterday = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
     setItems(prev => prev.map(item => {
       if (item.kind === 'habit-flow') return item;
-      if (item.dateKey === today) return { ...item, dateKey: yesterday };
+      if (item.dateKey === today) {
+        if (item.kind === 'quick-task') {
+          return {
+            ...item,
+            dateKey: yesterday,
+            originalDateKey: item.originalDateKey && item.originalDateKey !== today
+              ? item.originalDateKey
+              : yesterday,
+          };
+        }
+        return { ...item, dateKey: yesterday };
+      }
       return item;
     }));
     setSession(null);
@@ -432,7 +454,15 @@ function App() {
       if (item.kind !== 'quick-task' || item.id !== taskId) return item;
       isCompleting = !item.completed;
       taskTitle = item.title;
-      return { ...item, completed: !item.completed, completedAt: !item.completed ? nowTs() : null };
+      const isCarriedIntoToday = item.dateKey !== today;
+      return {
+        ...item,
+        completed: !item.completed,
+        completedAt: !item.completed ? nowTs() : null,
+        dateKey: isCompleting ? today : item.dateKey,
+        originalDateKey: isCarriedIntoToday ? (item.originalDateKey ?? item.dateKey) : item.originalDateKey,
+        carriedFromDateKey: isCarriedIntoToday ? item.dateKey : item.carriedFromDateKey,
+      };
     }));
     if (isCompleting) {
       setCharacter(c => addXpEventOnce(c, 10, taskTitle, 'task', rewardKey));
@@ -876,8 +906,8 @@ function App() {
 
   const handleReorder = useCallback((newVisibleItems: TodayItem[]) => {
     setItems(prev => {
-      const today = todayDateKey();
-      const historical = prev.filter(item => item.kind !== 'habit-flow' && item.dateKey !== today);
+      const visibleIds = new Set(newVisibleItems.map(item => item.id));
+      const historical = prev.filter(item => !visibleIds.has(item.id));
       return [...newVisibleItems, ...historical];
     });
   }, []);
@@ -926,6 +956,7 @@ function App() {
         completed: false,
         completedAt: null,
         dateKey: today,
+        originalDateKey: today,
         createdAt: now,
         order: items.filter(i => i.kind === 'quick-task').length,
         firstAction: data.firstAction || undefined,

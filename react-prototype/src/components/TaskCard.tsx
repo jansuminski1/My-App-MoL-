@@ -1,4 +1,5 @@
 import { QuickTask } from '../types';
+import { formatShortDate, todayDateKey } from '../utils/date';
 
 interface Props {
   task: QuickTask;
@@ -15,6 +16,11 @@ function formatTime12(time: string): string {
 }
 
 export function TaskCard({ task, isCurrent, onToggle, onDelete }: Props) {
+  const today = todayDateKey();
+  const carriedDateKey = task.originalDateKey && task.originalDateKey !== today
+    ? task.originalDateKey
+    : task.carriedFromDateKey ?? (task.dateKey < today ? task.dateKey : undefined);
+
   function handleDelete() {
     if (window.confirm(`Delete "${task.title}"?`)) onDelete?.(task.id);
   }
@@ -30,6 +36,9 @@ export function TaskCard({ task, isCurrent, onToggle, onDelete }: Props) {
       </button>
       <div className="task-content">
         <div className="task-title">{task.title}</div>
+        {carriedDateKey && (
+          <div className="task-carry-label">From {formatShortDate(carriedDateKey)}</div>
+        )}
         {task.notes && <div className="task-notes">{task.notes}</div>}
       </div>
       {task.time && (
