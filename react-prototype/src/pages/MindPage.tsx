@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { FocusSession, FocusSessionLog, FocusTimerProfile, FocusTag, TimerSegment } from '../types';
 import { CircularFocusTimer } from '../components/CircularFocusTimer';
 import { formatRelativeTime } from '../utils/todayFlow';
@@ -48,12 +48,68 @@ function formatMinutes(minutes: number): string {
   return m > 0 ? `${h}h ${m}m` : `${h}h`;
 }
 
-function IdleRing({ focusMinutes, totalMinutes }: { focusMinutes: number; totalMinutes: number }) {
-  const proportion = totalMinutes > 0 ? Math.min(1, focusMinutes / totalMinutes) : 1;
+const MAX_DRAG_MINUTES = 120;
+
+function IdleRing({
+  focusMinutes,
+  onSetFocusMinutes,
+}: {
+  focusMinutes: number;
+  onSetFocusMinutes: (m: number) => void;
+}) {
+  const svgRef = useRef<SVGSVGElement>(null);
+  const dragging = useRef(false);
+
+  const proportion = Math.min(1, Math.max(0.01, focusMinutes / MAX_DRAG_MINUTES));
   const strokeOffset = CIRCUMFERENCE * (1 - proportion);
+  const endAngle = -Math.PI / 2 + proportion * 2 * Math.PI;
+  const dotX = 100 + 80 * Math.cos(endAngle);
+  const dotY = 100 + 80 * Math.sin(endAngle);
+
+  function minutesFromPointer(clientX: number, clientY: number): number {
+    if (!svgRef.current) return focusMinutes;
+    const rect = svgRef.current.getBoundingClientRect();
+    const cx = rect.left + rect.width / 2;
+    const cy = rect.top + rect.height / 2;
+    let angle = Math.atan2(clientY - cy, clientX - cx) + Math.PI / 2;
+    if (angle < 0) angle += 2 * Math.PI;
+    return Math.max(1, Math.min(MAX_DRAG_MINUTES, Math.round((angle / (2 * Math.PI)) * MAX_DRAG_MINUTES)));
+  }
+
+  function handleMouseDown(e: React.MouseEvent) {
+    e.preventDefault();
+    dragging.current = true;
+    const onMove = (ev: MouseEvent) => {
+      if (!dragging.current) return;
+      onSetFocusMinutes(minutesFromPointer(ev.clientX, ev.clientY));
+    };
+    const onUp = () => {
+      dragging.current = false;
+      window.removeEventListener('mousemove', onMove);
+      window.removeEventListener('mouseup', onUp);
+    };
+    window.addEventListener('mousemove', onMove);
+    window.addEventListener('mouseup', onUp);
+  }
+
+  function handleTouchStart(e: React.TouchEvent) {
+    e.preventDefault();
+    dragging.current = true;
+    const onMove = (ev: TouchEvent) => {
+      if (!dragging.current || !ev.touches[0]) return;
+      onSetFocusMinutes(minutesFromPointer(ev.touches[0].clientX, ev.touches[0].clientY));
+    };
+    const onEnd = () => {
+      dragging.current = false;
+      window.removeEventListener('touchmove', onMove);
+      window.removeEventListener('touchend', onEnd);
+    };
+    window.addEventListener('touchmove', onMove, { passive: false });
+    window.addEventListener('touchend', onEnd);
+  }
 
   return (
-    <svg viewBox="0 0 200 200" className="mind-idle-svg" aria-hidden="true">
+    <svg ref={svgRef} viewBox="0 0 200 200" className="mind-idle-svg">
       <defs>
         <linearGradient id="idle-grad" gradientUnits="userSpaceOnUse" x1="30" y1="20" x2="170" y2="180">
           <stop offset="0%" stopColor="#7dd3fc" />
@@ -71,9 +127,21 @@ function IdleRing({ focusMinutes, totalMinutes }: { focusMinutes: number; totalM
         strokeDasharray={CIRCUMFERENCE}
         strokeDashoffset={strokeOffset}
         transform="rotate(-90 100 100)"
-        style={{ transition: 'stroke-dashoffset 0.4s ease' }}
+        style={{ transition: dragging.current ? 'none' : 'stroke-dashoffset 0.25s ease' }}
       />
       <circle cx="100" cy="100" r="66" fill="none" stroke="rgba(186,230,253,0.2)" strokeWidth="1" />
+      {/* Drag handle dot */}
+      <circle
+        cx={dotX}
+        cy={dotY}
+        r="11"
+        fill="#38bdf8"
+        stroke="white"
+        strokeWidth="2.5"
+        className="mind-idle-drag-dot"
+        onMouseDown={handleMouseDown}
+        onTouchStart={handleTouchStart}
+      />
     </svg>
   );
 }
@@ -88,8 +156,10 @@ export function MindPage({
   const [manualTitle, setManualTitle] = useState('');
   const [manualTagId, setManualTagId] = useState('');
   const [manualMinutes, setManualMinutes] = useState(25);
+  const [manualMinutesDraft, setManualMinutesDraft] = useState<string | null>(null);
   const [manualQuality, setManualQuality] = useState<'Low' | 'Normal' | 'High'>('Normal');
   const [manualReflection, setManualReflection] = useState('');
+  const [segmentDrafts, setSegmentDrafts] = useState<Record<string, string>>({});
 
   const customProfile = focusTimerProfiles.find(p => p.id === 'profile-custom') ?? focusTimerProfiles[0];
   const segments: TimerSegment[] = customProfile?.segments ?? [];
@@ -121,23 +191,32 @@ export function MindPage({
     ? (focusSessionLogs.reduce((s, l) => s + (l.quality === 'High' ? 3 : l.quality === 'Normal' ? 2 : 1), 0) / totalSessions).toFixed(1)
     : null;
 
-  function adjustFocusMinutes(delta: number) {
+  function setFocusMinutes(minutes: number) {
     if (!customProfile) return;
+    const clamped = Math.max(1, Math.min(MAX_DRAG_MINUTES, minutes));
     const newSegs = segments.map(seg =>
-      seg === firstFocusSeg
-        ? { ...seg, minutes: Math.max(5, seg.minutes + delta) }
-        : seg
+      seg === firstFocusSeg ? { ...seg, minutes: clamped } : seg
     );
-    onUpdateProfile(customProfile.id, {
-      segments: newSegs,
-      focusMinutes: Math.max(5, idleFocusMinutes + delta),
-    });
+    onUpdateProfile(customProfile.id, { segments: newSegs, focusMinutes: clamped });
+  }
+
+  function adjustFocusMinutes(delta: number) {
+    setFocusMinutes(idleFocusMinutes + delta);
   }
 
   function updateSegmentMinutes(segId: string, minutes: number) {
     if (!customProfile) return;
-    const newSegs = segments.map(s => s.id === segId ? { ...s, minutes: Math.max(1, minutes) } : s);
+    const clamped = Math.max(1, Math.min(480, Math.round(minutes)));
+    const newSegs = segments.map(s => s.id === segId ? { ...s, minutes: clamped } : s);
     onUpdateProfile(customProfile.id, { segments: newSegs });
+  }
+
+  function commitSegmentDraft(segId: string) {
+    const draft = segmentDrafts[segId];
+    if (draft === undefined) return;
+    const parsed = parseInt(draft, 10);
+    if (!isNaN(parsed)) updateSegmentMinutes(segId, parsed);
+    setSegmentDrafts(prev => { const next = { ...prev }; delete next[segId]; return next; });
   }
 
   function removeSegment(segId: string) {
@@ -170,6 +249,7 @@ export function MindPage({
     setManualTitle('');
     setManualTagId('');
     setManualMinutes(25);
+    setManualMinutesDraft(null);
     setManualQuality('Normal');
     setManualReflection('');
     setShowManualLog(false);
@@ -201,7 +281,7 @@ export function MindPage({
 
             {/* Circular idle timer */}
             <div className="mind-idle-ring-wrap">
-              <IdleRing focusMinutes={idleFocusMinutes} totalMinutes={totalProfileMinutes} />
+              <IdleRing focusMinutes={idleFocusMinutes} onSetFocusMinutes={setFocusMinutes} />
               <div className="mind-idle-center">
                 <div className="mind-idle-phase">Focus</div>
                 <div className="mind-idle-time">
@@ -218,15 +298,15 @@ export function MindPage({
               <button
                 type="button"
                 className="mind-idle-adj-btn"
-                onClick={() => adjustFocusMinutes(-5)}
-                disabled={idleFocusMinutes <= 5}
-              >−5</button>
+                onClick={() => adjustFocusMinutes(-1)}
+                disabled={idleFocusMinutes <= 1}
+              >−</button>
               <span className="mind-idle-adj-label">{idleFocusMinutes}m focus</span>
               <button
                 type="button"
                 className="mind-idle-adj-btn"
-                onClick={() => adjustFocusMinutes(5)}
-              >+5</button>
+                onClick={() => adjustFocusMinutes(1)}
+              >+</button>
             </div>
 
             {/* Start button */}
@@ -245,22 +325,22 @@ export function MindPage({
                   <button
                     type="button"
                     className="mind-seg-adj"
-                    onClick={() => updateSegmentMinutes(seg.id, seg.minutes - 5)}
-                    disabled={seg.minutes <= 5}
+                    onClick={() => updateSegmentMinutes(seg.id, seg.minutes - 1)}
+                    disabled={seg.minutes <= 1}
                   >−</button>
                   <input
                     type="number"
                     className="mind-seg-input"
-                    value={seg.minutes}
-                    min={1}
-                    max={180}
-                    onChange={e => updateSegmentMinutes(seg.id, Number(e.target.value))}
+                    value={segmentDrafts[seg.id] ?? String(seg.minutes)}
+                    onChange={e => setSegmentDrafts(prev => ({ ...prev, [seg.id]: e.target.value }))}
+                    onBlur={() => commitSegmentDraft(seg.id)}
+                    onKeyDown={e => { if (e.key === 'Enter') { (e.target as HTMLInputElement).blur(); } }}
                   />
                   <span className="mind-seg-unit">min</span>
                   <button
                     type="button"
                     className="mind-seg-adj"
-                    onClick={() => updateSegmentMinutes(seg.id, seg.minutes + 5)}
+                    onClick={() => updateSegmentMinutes(seg.id, seg.minutes + 1)}
                   >+</button>
                 </div>
                 {segments.filter(s => s.kind === 'focus').length > 1 || seg.kind !== 'focus' ? (
@@ -329,10 +409,16 @@ export function MindPage({
                   <input
                     type="number"
                     className="modal-input"
-                    min={1}
-                    max={480}
-                    value={manualMinutes}
-                    onChange={e => setManualMinutes(Number(e.target.value))}
+                    value={manualMinutesDraft ?? String(manualMinutes)}
+                    onChange={e => setManualMinutesDraft(e.target.value)}
+                    onBlur={() => {
+                      if (manualMinutesDraft !== null) {
+                        const parsed = parseInt(manualMinutesDraft, 10);
+                        if (!isNaN(parsed)) setManualMinutes(Math.max(1, Math.min(480, parsed)));
+                        setManualMinutesDraft(null);
+                      }
+                    }}
+                    onKeyDown={e => { if (e.key === 'Enter') (e.target as HTMLInputElement).blur(); }}
                   />
                 </label>
                 <div className="modal-label">

@@ -4259,6 +4259,8 @@ button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 }
 .mind-idle-start-btn:hover { background: var(--accent-dark); transform: translateY(-1px); }
 .mind-idle-start-btn:active { transform: translateY(0); }
+.mind-idle-drag-dot { cursor: grab; user-select: none; }
+.mind-idle-drag-dot:active { cursor: grabbing; }
 
 /* ── Segment editor ── */
 .mind-segment-editor {
