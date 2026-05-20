@@ -16,7 +16,21 @@ import {
   habitStepRewardKey, taskRewardKey, focusBlockRewardKey,
 } from './utils/todayFlow';
 import { todayDateKey, nowTs, currentWeekKey, currentMonthKey } from './utils/date';
-import { loadPrototypeState, savePrototypeState, clearPrototypeState } from './utils/storage';
+import {
+  loadPrototypeState,
+  savePrototypeState,
+  savePrototypeStateObject,
+  clearPrototypeState,
+  type PrototypeState,
+} from './utils/storage';
+import {
+  loadCloudState,
+  onAuthChanged,
+  saveCloudState,
+  signInWithGoogle,
+  signOutUser,
+  type SyncUser,
+} from './utils/firebaseSync';
 import { calculateFocusXp } from './utils/focusProfiles';
 import { BottomNav } from './components/BottomNav';
 import { AddModal } from './components/AddModal';
@@ -29,6 +43,7 @@ import { AnalyticsPage } from './pages/AnalyticsPage';
 import { CharacterPage } from './pages/CharacterPage';
 
 type AddMode = 'task' | 'focus' | 'flow';
+type SyncStatus = 'local' | 'signed-in' | 'loading' | 'syncing' | 'synced' | 'error';
 
 function buildSessionSegments(profile: FocusTimerProfile, overrideFocusMinutes?: number): TimerSegment[] {
   if (profile.segments && profile.segments.length > 0) {
@@ -58,32 +73,142 @@ function segmentPhase(seg: TimerSegment): FocusSession['phase'] {
 }
 
 function App() {
+  const initialPrototypeStateRef = useRef<PrototypeState | null>(null);
+  if (!initialPrototypeStateRef.current) {
+    initialPrototypeStateRef.current = loadPrototypeState();
+  }
+  const initialPrototypeState = initialPrototypeStateRef.current;
   const [activeTab, setActiveTab] = useState<TabId>('today');
-  const [items, setItems] = useState<TodayItem[]>(() => loadPrototypeState().items);
-  const [character, setCharacter] = useState<CharacterState>(() => loadPrototypeState().character);
-  const [focusSessionLogs, setFocusSessionLogs] = useState<FocusSessionLog[]>(() => loadPrototypeState().focusSessionLogs);
-  const [goals, setGoals] = useState<Goal[]>(() => loadPrototypeState().goals);
-  const [focusTimerProfiles, setFocusTimerProfiles] = useState<FocusTimerProfile[]>(() => loadPrototypeState().focusTimerProfiles);
-  const [selectedFocusTimerProfileId, setSelectedFocusTimerProfileId] = useState<string>(() => loadPrototypeState().selectedFocusTimerProfileId);
-  const [focusTags, setFocusTags] = useState<FocusTag[]>(() => loadPrototypeState().focusTags);
-  const [health, setHealth] = useState<HealthState>(() => loadPrototypeState().health);
+  const [items, setItems] = useState<TodayItem[]>(() => initialPrototypeState.items);
+  const [character, setCharacter] = useState<CharacterState>(() => initialPrototypeState.character);
+  const [focusSessionLogs, setFocusSessionLogs] = useState<FocusSessionLog[]>(() => initialPrototypeState.focusSessionLogs);
+  const [goals, setGoals] = useState<Goal[]>(() => initialPrototypeState.goals);
+  const [focusTimerProfiles, setFocusTimerProfiles] = useState<FocusTimerProfile[]>(() => initialPrototypeState.focusTimerProfiles);
+  const [selectedFocusTimerProfileId, setSelectedFocusTimerProfileId] = useState<string>(() => initialPrototypeState.selectedFocusTimerProfileId);
+  const [focusTags, setFocusTags] = useState<FocusTag[]>(() => initialPrototypeState.focusTags);
+  const [health, setHealth] = useState<HealthState>(() => initialPrototypeState.health);
   const [xpFloat, setXpFloat] = useState<string | null>(null);
   const [session, setSession] = useState<FocusSession | null>(null);
   const [addModal, setAddModal] = useState<AddMode | null>(null);
+  const [syncUser, setSyncUser] = useState<SyncUser | null>(null);
+  const [syncStatus, setSyncStatus] = useState<SyncStatus>('local');
+  const [syncMessage, setSyncMessage] = useState('Local only');
   const xpFloatTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const pendingCompletionRef = useRef<FocusSession | null>(null);
+  const currentPrototypeStateRef = useRef<PrototypeState>(initialPrototypeState);
+  const syncUserRef = useRef<SyncUser | null>(null);
+  const cloudReadyRef = useRef(false);
+  const isApplyingRemoteRef = useRef(false);
+  const didSkipInitialSaveRef = useRef(false);
+  const cloudSaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const visibleItems = useMemo(() => filterItemsForToday(items), [items]);
   const currentFocus = useMemo(() => getCurrentFocus(visibleItems), [visibleItems]);
   const progress = useMemo(() => getTodayProgress(visibleItems), [visibleItems]);
 
+  const applyPrototypeState = useCallback((state: PrototypeState) => {
+    isApplyingRemoteRef.current = true;
+    setItems(state.items);
+    setCharacter(state.character);
+    setFocusSessionLogs(state.focusSessionLogs);
+    setGoals(state.goals);
+    setFocusTimerProfiles(state.focusTimerProfiles);
+    setSelectedFocusTimerProfileId(state.selectedFocusTimerProfileId);
+    setFocusTags(state.focusTags);
+    setHealth(state.health);
+    currentPrototypeStateRef.current = savePrototypeStateObject(state);
+  }, []);
+
   useEffect(() => {
-    savePrototypeState(items, character, focusSessionLogs, goals, focusTimerProfiles, selectedFocusTimerProfileId, focusTags, health);
-  }, [items, character, focusSessionLogs, goals, focusTimerProfiles, selectedFocusTimerProfileId, focusTags, health]);
+    if (!didSkipInitialSaveRef.current) {
+      didSkipInitialSaveRef.current = true;
+      currentPrototypeStateRef.current = initialPrototypeState;
+      return;
+    }
+    if (isApplyingRemoteRef.current) {
+      savePrototypeStateObject(currentPrototypeStateRef.current);
+      isApplyingRemoteRef.current = false;
+      return;
+    }
+    const localState = savePrototypeState(
+      items,
+      character,
+      focusSessionLogs,
+      goals,
+      focusTimerProfiles,
+      selectedFocusTimerProfileId,
+      focusTags,
+      health,
+    );
+    currentPrototypeStateRef.current = localState;
+    const user = syncUserRef.current;
+    if (!user || !cloudReadyRef.current) {
+      setSyncStatus(user ? 'signed-in' : 'local');
+      setSyncMessage(user ? 'Signed in' : 'Local only');
+      return;
+    }
+    if (cloudSaveTimerRef.current) clearTimeout(cloudSaveTimerRef.current);
+    setSyncStatus('syncing');
+    setSyncMessage('Syncing');
+    cloudSaveTimerRef.current = setTimeout(() => {
+      saveCloudState(user.uid, currentPrototypeStateRef.current)
+        .then(() => {
+          setSyncStatus('synced');
+          setSyncMessage('Synced');
+        })
+        .catch(() => {
+          setSyncStatus('error');
+          setSyncMessage('Saved locally, sync error');
+        });
+    }, 900);
+  }, [items, character, focusSessionLogs, goals, focusTimerProfiles, selectedFocusTimerProfileId, focusTags, health, initialPrototypeState]);
 
   useEffect(() => {
     return () => { if (xpFloatTimer.current) clearTimeout(xpFloatTimer.current); };
   }, []);
+
+  useEffect(() => {
+    let cancelled = false;
+    const unsubscribe = onAuthChanged(async user => {
+      if (cancelled) return;
+      setSyncUser(user);
+      syncUserRef.current = user;
+      cloudReadyRef.current = false;
+      if (cloudSaveTimerRef.current) clearTimeout(cloudSaveTimerRef.current);
+      if (!user) {
+        setSyncStatus('local');
+        setSyncMessage('Local only');
+        return;
+      }
+      setSyncStatus('loading');
+      setSyncMessage('Loading cloud');
+      try {
+        const localState = currentPrototypeStateRef.current;
+        const cloudState = await loadCloudState(user.uid);
+        if (cancelled) return;
+        if (cloudState && cloudState.savedAt > localState.savedAt) {
+          applyPrototypeState(cloudState);
+          setSyncStatus('synced');
+          setSyncMessage('Cloud loaded');
+        } else {
+          await saveCloudState(user.uid, localState);
+          if (cancelled) return;
+          setSyncStatus('synced');
+          setSyncMessage(cloudState ? 'Local was newer' : 'Cloud initialized');
+        }
+        cloudReadyRef.current = true;
+      } catch {
+        if (cancelled) return;
+        setSyncStatus('error');
+        setSyncMessage('Local saved, sync error');
+      }
+    });
+    return () => {
+      cancelled = true;
+      unsubscribe();
+      if (cloudSaveTimerRef.current) clearTimeout(cloudSaveTimerRef.current);
+    };
+  }, [applyPrototypeState]);
 
   // Bare effect: process session completion queued from within setSession updater
   useEffect(() => {
@@ -97,6 +222,26 @@ function App() {
     if (xpFloatTimer.current) clearTimeout(xpFloatTimer.current);
     setXpFloat(label);
     xpFloatTimer.current = setTimeout(() => setXpFloat(null), 1900);
+  }
+
+  async function handleSignIn() {
+    setSyncStatus('loading');
+    setSyncMessage('Opening Google sign-in');
+    try {
+      await signInWithGoogle();
+    } catch {
+      setSyncStatus('error');
+      setSyncMessage('Sign-in cancelled or failed');
+    }
+  }
+
+  async function handleSignOut() {
+    try {
+      await signOutUser();
+    } catch {
+      setSyncStatus('error');
+      setSyncMessage('Sign-out failed');
+    }
   }
 
   function doFinishSession(s: FocusSession) {
@@ -825,6 +970,14 @@ function App() {
         </div>
         <div className="ash-right">
           {session && <span className="ash-session-pill">● Active</span>}
+          <button
+            type="button"
+            className={`sync-pill sync-${syncStatus}`}
+            onClick={syncUser ? handleSignOut : handleSignIn}
+            title={syncUser ? `Signed in as ${syncUser.email ?? syncUser.displayName ?? 'Google user'}` : 'Sign in to sync across devices'}
+          >
+            {syncUser ? syncMessage : 'Sign in'}
+          </button>
           <span className="lvl-pill">Lvl {character.level}</span>
         </div>
       </header>
@@ -906,7 +1059,16 @@ function App() {
           <AnalyticsPage focusSessionLogs={focusSessionLogs} character={character} />
         )}
         {activeTab === 'character' && (
-          <CharacterPage character={character} focusSessionLogs={focusSessionLogs} goals={goals} />
+          <CharacterPage
+            character={character}
+            focusSessionLogs={focusSessionLogs}
+            goals={goals}
+            syncUser={syncUser}
+            syncStatus={syncStatus}
+            syncMessage={syncMessage}
+            onSignIn={handleSignIn}
+            onSignOut={handleSignOut}
+          />
         )}
       </main>
 
