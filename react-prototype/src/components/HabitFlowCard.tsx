@@ -53,7 +53,6 @@ export function HabitFlowCard({ flow, isCurrent, defaultExpanded, onToggleStep, 
 
   return (
     <div className={`habit-flow-card${isCurrent ? ' is-current' : ''}${allDone ? ' is-complete' : ''}`}>
-      {/* Always-visible header: click to expand/collapse */}
       <div
         className="habit-flow-header"
         onClick={() => setExpanded(e => !e)}
@@ -62,15 +61,18 @@ export function HabitFlowCard({ flow, isCurrent, defaultExpanded, onToggleStep, 
         aria-expanded={expanded}
         onKeyDown={e => e.key === 'Enter' && setExpanded(x => !x)}
       >
-        <div className="habit-flow-leading" onClick={e => e.stopPropagation()}>
-          {flow.startTime && (
-            <span className="habit-flow-time-badge">🕐 {flow.startTime}</span>
-          )}
+        <div className="habit-flow-icon-wrap" aria-hidden="true">
+          <span>🌿</span>
         </div>
 
         <div className="habit-flow-header-content">
           <div className="habit-flow-title-row">
-            <span className="habit-flow-title">{flow.title}</span>
+            <div className="habit-flow-title-main">
+              <span className="habit-flow-title">{flow.title}</span>
+              {flow.startTime && (
+                <span className="habit-flow-time-badge">🕐 {flow.startTime}</span>
+              )}
+            </div>
             <span className="habit-flow-status">
               {allDone ? '✓ Done' : `${doneCount}/${total}`}
             </span>
@@ -87,7 +89,7 @@ export function HabitFlowCard({ flow, isCurrent, defaultExpanded, onToggleStep, 
                     onClick={e => handleNodeClick(e, flow.id, step.id)}
                     onMouseEnter={() => setHoveredStep(step.id)}
                     onMouseLeave={() => setHoveredStep(null)}
-                    aria-label={`${step.name} — ${state}`}
+                    aria-label={`${step.name} - ${state}`}
                   >
                     {state === 'done' ? '✓' : state === 'current' ? '·' : ''}
                   </button>
@@ -108,7 +110,6 @@ export function HabitFlowCard({ flow, isCurrent, defaultExpanded, onToggleStep, 
           <div className="habit-flow-trigger-line">
             <span className="habit-flow-trigger-label">Starts after:</span> {flow.trigger}
           </div>
-
         </div>
 
         <div className="habit-flow-header-rail" onClick={e => e.stopPropagation()}>
@@ -117,12 +118,19 @@ export function HabitFlowCard({ flow, isCurrent, defaultExpanded, onToggleStep, 
               type="button"
               className="habit-flow-edit-btn"
               onClick={handleEdit}
+              onPointerDown={e => e.stopPropagation()}
             >
               Edit
             </button>
           )}
           {onDelete && (
-            <button className="item-more-btn" onClick={handleDelete} aria-label="Delete flow">
+            <button
+              type="button"
+              className="item-more-btn"
+              onClick={handleDelete}
+              onPointerDown={e => e.stopPropagation()}
+              aria-label="Delete flow"
+            >
               ×
             </button>
           )}
@@ -135,7 +143,6 @@ export function HabitFlowCard({ flow, isCurrent, defaultExpanded, onToggleStep, 
         </div>
       </div>
 
-      {/* Expanded: current step panel */}
       {expanded && !allDone && activeStep && (
         <div className="habit-step-panel">
           <div className="habit-step-panel-label">Current Step</div>
@@ -183,7 +190,6 @@ export function HabitFlowCard({ flow, isCurrent, defaultExpanded, onToggleStep, 
         </div>
       )}
 
-      {/* Collapsible details: only shown when expanded and data exists */}
       {expanded && hasDetails && (
         <details className="habit-flow-details">
           <summary className="habit-flow-details-summary">Behavior design</summary>
