@@ -61,6 +61,10 @@ function stateDoc(uid: string) {
   return doc(db, 'users', uid, 'reactPrototype', 'main');
 }
 
+function stateDocPath(uid: string): string {
+  return `users/${uid}/reactPrototype/main`;
+}
+
 function googleProvider() {
   const provider = new GoogleAuthProvider();
   provider.setCustomParameters({ prompt: 'select_account' });
@@ -83,6 +87,45 @@ function firebaseErrorParts(error: unknown): { code: string; message: string } {
   };
 }
 
+function firebaseErrorDiagnostics(error: unknown) {
+  const { code, message } = firebaseErrorParts(error);
+  const stack = (error as { stack?: unknown })?.stack;
+  return {
+    code,
+    message,
+    stack: typeof stack === 'string' ? stack : undefined,
+  };
+}
+
+function omitUndefinedForFirestore(value: unknown, seen = new WeakSet<object>()): unknown {
+  if (value === undefined || typeof value === 'function' || typeof value === 'symbol') return undefined;
+  if (typeof value === 'number' && !Number.isFinite(value)) return null;
+  if (value instanceof Date) return value.toISOString();
+  if (value === null || typeof value !== 'object') return value;
+  if (seen.has(value)) {
+    throw {
+      code: 'sync/unsupported-state',
+      message: 'State contains a cyclic object and cannot be saved to Firestore.',
+    };
+  }
+  seen.add(value);
+  if (Array.isArray(value)) {
+    const output = value.map(item => {
+      const sanitized = omitUndefinedForFirestore(item, seen);
+      return sanitized === undefined ? null : sanitized;
+    });
+    seen.delete(value);
+    return output;
+  }
+  const output: Record<string, unknown> = {};
+  for (const [key, child] of Object.entries(value)) {
+    const sanitized = omitUndefinedForFirestore(child, seen);
+    if (sanitized !== undefined) output[key] = sanitized;
+  }
+  seen.delete(value);
+  return output;
+}
+
 function isMobileAuthEnvironment(): boolean {
   if (typeof window === 'undefined' || typeof navigator === 'undefined') return false;
   const coarsePointer = window.matchMedia?.('(pointer: coarse)').matches ?? false;
@@ -92,6 +135,23 @@ function isMobileAuthEnvironment(): boolean {
 
 export function formatFirebaseAuthError(error: unknown): string {
   const { code, message } = firebaseErrorParts(error);
+  return `${code}: ${message}`;
+}
+
+export function formatFirebaseSyncError(error: unknown): string {
+  const { code, message } = firebaseErrorParts(error);
+  if (code === 'unavailable') {
+    return `${code}: Network/offline issue while reaching Firestore. ${message}`;
+  }
+  if (code === 'permission-denied') {
+    return `${code}: Missing or insufficient Firestore permissions. ${message}`;
+  }
+  if (code === 'invalid-argument') {
+    return `${code}: Firestore rejected the saved data, often because of an unsupported value. ${message}`;
+  }
+  if (code === 'auth/missing-config') {
+    return `${code}: Missing Firebase config. ${message}`;
+  }
   return `${code}: ${message}`;
 }
 
@@ -199,17 +259,53 @@ export async function signOutUser(): Promise<void> {
 }
 
 export async function loadCloudState(uid: string): Promise<PrototypeState | null> {
-  const snap = await getDoc(stateDoc(uid));
-  if (!snap.exists()) return null;
-  const data = snap.data();
-  return normalizePrototypeState(data?.state ?? data);
+  const path = stateDocPath(uid);
+  try {
+    console.info('[sync] loadCloudState', {
+      projectId: firebaseConfig.projectId,
+      authUid: auth.currentUser?.uid ?? null,
+      path,
+    });
+    const snap = await getDoc(stateDoc(uid));
+    if (!snap.exists()) return null;
+    const data = snap.data();
+    return normalizePrototypeState(data?.state ?? data);
+  } catch (error) {
+    console.error('[sync] loadCloudState failed', {
+      projectId: firebaseConfig.projectId,
+      authUid: auth.currentUser?.uid ?? null,
+      path,
+      ...firebaseErrorDiagnostics(error),
+      error,
+    });
+    throw error;
+  }
 }
 
 export async function saveCloudState(uid: string, state: PrototypeState): Promise<void> {
-  await setDoc(stateDoc(uid), {
-    state: normalizePrototypeState(state),
-    savedAt: state.savedAt,
-    savedAtDateKey: state.savedAtDateKey,
-    updatedAt: serverTimestamp(),
-  }, { merge: true });
+  const path = stateDocPath(uid);
+  try {
+    const normalized = normalizePrototypeState(state);
+    const sanitizedState = omitUndefinedForFirestore(normalized) as PrototypeState;
+    console.info('[sync] saveCloudState', {
+      projectId: firebaseConfig.projectId,
+      authUid: auth.currentUser?.uid ?? null,
+      path,
+    });
+    await setDoc(stateDoc(uid), {
+      state: sanitizedState,
+      savedAt: sanitizedState.savedAt,
+      savedAtDateKey: sanitizedState.savedAtDateKey,
+      updatedAt: serverTimestamp(),
+    }, { merge: true });
+  } catch (error) {
+    console.error('[sync] saveCloudState failed', {
+      projectId: firebaseConfig.projectId,
+      authUid: auth.currentUser?.uid ?? null,
+      path,
+      ...firebaseErrorDiagnostics(error),
+      error,
+    });
+    throw error;
+  }
 }

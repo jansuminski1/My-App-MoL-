@@ -27,6 +27,7 @@ import {
 import {
   describeFirebaseAuthError,
   formatFirebaseAuthError,
+  formatFirebaseSyncError,
   handleGoogleRedirectResult,
   loadCloudState,
   onAuthChanged,
@@ -171,9 +172,11 @@ function App() {
           setSyncStatus('synced');
           setSyncMessage('Synced');
         })
-        .catch(() => {
+        .catch(error => {
+          const message = formatFirebaseSyncError(error);
+          console.error('[sync] debounced cloud save failed:', message, error);
           setSyncStatus('error');
-          setSyncMessage('Saved locally, sync error');
+          setSyncMessage(`Cloud save failed: ${message}`);
         });
     }, 900);
   }, [items, character, focusSessionLogs, goals, focusTimerProfiles, selectedFocusTimerProfileId, focusTags, health, initialPrototypeState]);
@@ -190,26 +193,38 @@ function App() {
       if (cloudSaveTimerRef.current) clearTimeout(cloudSaveTimerRef.current);
       setSyncStatus('loading');
       setSyncMessage('Loading cloud');
+      let cloudState: PrototypeState | null = null;
       try {
-        const localState = currentPrototypeStateRef.current;
-        const cloudState = await loadCloudState(user.uid);
+        cloudState = await loadCloudState(user.uid);
+      } catch (error) {
         if (isCancelled()) return;
-        if (cloudState && cloudState.savedAt > localState.savedAt) {
-          applyPrototypeState(cloudState);
-          setSyncStatus('synced');
-          setSyncMessage('Cloud loaded');
-        } else {
-          await saveCloudState(user.uid, localState);
-          if (isCancelled()) return;
-          setSyncStatus('synced');
-          setSyncMessage(cloudState ? 'Local was newer' : 'Cloud initialized');
-        }
+        const message = formatFirebaseSyncError(error);
+        console.error('[sync] cloud load failed after sign-in:', message, error);
+        setSyncStatus('error');
+        setSyncMessage(`Cloud load failed: ${message}`);
+        return;
+      }
+      if (isCancelled()) return;
+      const localState = currentPrototypeStateRef.current;
+      if (cloudState && cloudState.savedAt > localState.savedAt) {
+        applyPrototypeState(cloudState);
+        setSyncStatus('synced');
+        setSyncMessage('Cloud loaded');
+        cloudReadyRef.current = true;
+        return;
+      }
+      try {
+        await saveCloudState(user.uid, localState);
+        if (isCancelled()) return;
+        setSyncStatus('synced');
+        setSyncMessage(cloudState ? 'Local was newer' : 'Cloud initialized');
         cloudReadyRef.current = true;
       } catch (error) {
         if (isCancelled()) return;
-        console.error('Firebase cloud sync after sign-in failed:', error);
+        const message = formatFirebaseSyncError(error);
+        console.error('[sync] cloud save failed after sign-in:', message, error);
         setSyncStatus('error');
-        setSyncMessage('Local saved, sync error');
+        setSyncMessage(`Cloud save failed: ${message}`);
       }
   }, [applyPrototypeState]);
 

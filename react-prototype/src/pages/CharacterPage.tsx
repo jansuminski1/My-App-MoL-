@@ -53,6 +53,11 @@ export function CharacterPage({
   const monthlyDone = monthlyGoals.filter(g => g.status === 'completed').length;
   const weeklyActive = weeklyGoals.filter(g => g.status === 'active').length;
   const monthlyActive = monthlyGoals.filter(g => g.status === 'active').length;
+  const copySyncError = () => {
+    navigator.clipboard?.writeText(syncMessage).catch(() => {
+      console.error('Could not copy sync error:', syncMessage);
+    });
+  };
 
   return (
     <div className="page character-page">
@@ -85,9 +90,16 @@ export function CharacterPage({
           </div>
           <div className={`sync-card-status sync-${syncStatus}`}>{syncMessage}</div>
         </div>
-        <button type="button" className="sync-card-button" onClick={syncUser ? onSignOut : onSignIn}>
-          {syncUser ? 'Sign out' : 'Sign in with Google'}
-        </button>
+        <div className="sync-card-actions">
+          {syncStatus === 'error' && (
+            <button type="button" className="sync-card-button secondary" onClick={copySyncError}>
+              Copy sync error
+            </button>
+          )}
+          <button type="button" className="sync-card-button" onClick={syncUser ? onSignOut : onSignIn}>
+            {syncUser ? 'Sign out' : 'Sign in with Google'}
+          </button>
+        </div>
       </div>
 
       {/* Insights */}

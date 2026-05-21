@@ -4049,6 +4049,16 @@ button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
   background: rgba(255, 255, 255, 0.72);
   font-size: 0.68rem;
   font-weight: 800;
+  max-width: 100%;
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+
+.sync-card-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  align-items: flex-end;
 }
 
 .sync-card-button {
@@ -4060,6 +4070,11 @@ button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
   font-size: 0.72rem;
   font-weight: 850;
   white-space: nowrap;
+}
+.sync-card-button.secondary {
+  border-color: var(--border);
+  background: var(--surface-alt);
+  color: var(--text-sec);
 }
 
 /* ── Mind page "focus chamber" ambient ── */
