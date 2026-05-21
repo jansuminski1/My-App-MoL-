@@ -126,13 +126,6 @@ function omitUndefinedForFirestore(value: unknown, seen = new WeakSet<object>())
   return output;
 }
 
-function isMobileAuthEnvironment(): boolean {
-  if (typeof window === 'undefined' || typeof navigator === 'undefined') return false;
-  const coarsePointer = window.matchMedia?.('(pointer: coarse)').matches ?? false;
-  const mobileUserAgent = /Android|iPhone|iPad|iPod|Mobile|IEMobile|Opera Mini/i.test(navigator.userAgent);
-  return coarsePointer || mobileUserAgent;
-}
-
 export function formatFirebaseAuthError(error: unknown): string {
   const { code, message } = firebaseErrorParts(error);
   return `${code}: ${message}`;
@@ -164,16 +157,16 @@ export function describeFirebaseAuthError(error: unknown): string {
     return `${code}: This domain is not authorized in Firebase Authentication. Add the Netlify/local domain to Authorized domains.`;
   }
   if (code === 'auth/popup-blocked') {
-    return `${code}: Popup was blocked. The app will try redirect sign-in instead.`;
+    return `${code}: Popup was blocked. Use Try redirect sign-in.`;
   }
   if (code === 'auth/popup-closed-by-user') {
-    return `${code}: Popup was closed before sign-in completed. The app will try redirect sign-in instead.`;
+    return `${code}: Popup was closed before sign-in completed. You can use Try redirect sign-in.`;
   }
   if (code === 'auth/cancelled-popup-request') {
     return `${code}: Another popup request interrupted sign-in. Try once more or use redirect.`;
   }
   if (code === 'auth/operation-not-supported-in-this-environment') {
-    return `${code}: Popup sign-in is not supported here. The app will use redirect sign-in.`;
+    return `${code}: Popup sign-in is not supported here. Use Try redirect sign-in.`;
   }
   if (code === 'auth/missing-config') {
     return `${code}: Missing Firebase config: ${message}`;
@@ -184,6 +177,10 @@ export function describeFirebaseAuthError(error: unknown): string {
 export function getFirebaseConfigProblem(): string | null {
   if (!missingConfigKeys.length) return null;
   return `Missing Firebase config values: ${missingConfigKeys.join(', ')}`;
+}
+
+export function isRedirectFallbackAuthError(error: unknown): boolean {
+  return POPUP_FALLBACK_CODES.has(firebaseErrorParts(error).code);
 }
 
 export function onAuthChanged(callback: (user: SyncUser | null) => void): Unsubscribe {
@@ -215,31 +212,54 @@ export async function signInWithGoogle(): Promise<'popup' | 'redirect'> {
   }
   await setPersistence(auth, browserLocalPersistence);
   const provider = googleProvider();
-  if (isMobileAuthEnvironment()) {
-    markRedirectPending();
-    await signInWithRedirect(auth, provider);
-    return 'redirect';
-  }
   try {
     await signInWithPopup(auth, provider);
     return 'popup';
   } catch (error) {
-    const { code } = firebaseErrorParts(error);
     console.error('Google sign-in popup failed:', describeFirebaseAuthError(error), error);
-    if (POPUP_FALLBACK_CODES.has(code)) {
-      markRedirectPending();
-      await signInWithRedirect(auth, googleProvider());
-      return 'redirect';
-    }
     throw error;
   }
+}
+
+export async function signInWithGoogleRedirect(): Promise<void> {
+  const configProblem = getFirebaseConfigProblem();
+  if (configProblem) {
+    throw { code: 'auth/missing-config', message: configProblem };
+  }
+  await setPersistence(auth, browserLocalPersistence);
+  markRedirectPending();
+  await signInWithRedirect(auth, googleProvider());
+}
+
+function waitForRedirectAuthUser(timeoutMs = 1800): Promise<User | null> {
+  if (auth.currentUser) return Promise.resolve(auth.currentUser);
+  return new Promise(resolve => {
+    let settled = false;
+    let unsubscribe: Unsubscribe = () => {};
+    let timer: ReturnType<typeof setTimeout>;
+    const finish = (user: User | null) => {
+      if (settled) return;
+      settled = true;
+      unsubscribe();
+      clearTimeout(timer);
+      resolve(user);
+    };
+    unsubscribe = onAuthStateChanged(auth, user => {
+      if (user) finish(user);
+    });
+    timer = setTimeout(() => finish(auth.currentUser), timeoutMs);
+  });
 }
 
 export async function handleGoogleRedirectResult(): Promise<SyncUser | null> {
   const hadPendingRedirect = consumeRedirectPending();
   try {
     const result = await getRedirectResult(auth);
-    const user = result?.user ?? auth.currentUser;
+    let user = result?.user ?? auth.currentUser;
+    if (!user && hadPendingRedirect) {
+      console.info('Firebase redirect returned no immediate user; waiting for auth state.');
+      user = await waitForRedirectAuthUser();
+    }
     console.info('Firebase redirect check complete:', user ? `signed in as ${user.email ?? user.uid}` : 'no redirect user');
     if (!user && hadPendingRedirect) {
       throw {

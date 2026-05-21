@@ -29,10 +29,12 @@ import {
   formatFirebaseAuthError,
   formatFirebaseSyncError,
   handleGoogleRedirectResult,
+  isRedirectFallbackAuthError,
   loadCloudState,
   onAuthChanged,
   saveCloudState,
   signInWithGoogle,
+  signInWithGoogleRedirect,
   signOutUser,
   type SyncUser,
 } from './utils/firebaseSync';
@@ -104,6 +106,7 @@ function App() {
   const [syncUser, setSyncUser] = useState<SyncUser | null>(null);
   const [syncStatus, setSyncStatus] = useState<SyncStatus>('local');
   const [syncMessage, setSyncMessage] = useState('Local only');
+  const [showRedirectSignIn, setShowRedirectSignIn] = useState(false);
   const xpFloatTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const pendingCompletionRef = useRef<FocusSession | null>(null);
   const currentPrototypeStateRef = useRef<PrototypeState>(initialPrototypeState);
@@ -112,6 +115,7 @@ function App() {
   const isApplyingRemoteRef = useRef(false);
   const didSkipInitialSaveRef = useRef(false);
   const redirectCheckDoneRef = useRef(false);
+  const authErrorVisibleRef = useRef(false);
   const cloudSaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const visibleItems = useMemo(() => filterItemsForToday(items), [items]);
@@ -159,6 +163,7 @@ function App() {
     currentPrototypeStateRef.current = localState;
     const user = syncUserRef.current;
     if (!user || !cloudReadyRef.current) {
+      if (!user && authErrorVisibleRef.current) return;
       setSyncStatus(user ? 'signed-in' : 'local');
       setSyncMessage(user ? 'Signed in' : 'Local only');
       return;
@@ -187,6 +192,8 @@ function App() {
 
   const loadSyncForUser = useCallback(async (user: SyncUser, isCancelled: () => boolean) => {
       if (isCancelled()) return;
+      authErrorVisibleRef.current = false;
+      setShowRedirectSignIn(false);
       setSyncUser(user);
       syncUserRef.current = user;
       cloudReadyRef.current = false;
@@ -237,6 +244,8 @@ function App() {
         redirectCheckDoneRef.current = true;
         if (cancelled) return;
         if (user) {
+          authErrorVisibleRef.current = false;
+          setShowRedirectSignIn(false);
           console.info('Firebase redirect resolved user:', user.email ?? user.uid);
           if (syncUserRef.current?.uid !== user.uid) {
             void loadSyncForUser(user, () => cancelled);
@@ -251,6 +260,7 @@ function App() {
         const message = describeFirebaseAuthError(error);
         console.error('Firebase Google redirect error:', formatFirebaseAuthError(error), error);
         if (!cancelled) {
+          authErrorVisibleRef.current = true;
           setSyncStatus('error');
           setSyncMessage(`Sign-in failed: ${message}`);
         }
@@ -272,10 +282,13 @@ function App() {
           setSyncMessage('Checking sign-in');
           return;
         }
+        if (authErrorVisibleRef.current) return;
         setSyncStatus('local');
         setSyncMessage('Local only');
         return;
       }
+      authErrorVisibleRef.current = false;
+      setShowRedirectSignIn(false);
       void loadSyncForUser(user, () => cancelled);
     });
     return () => {
@@ -300,6 +313,8 @@ function App() {
   }
 
   async function handleSignIn() {
+    authErrorVisibleRef.current = false;
+    setShowRedirectSignIn(false);
     setSyncStatus('loading');
     setSyncMessage('Opening Google sign-in');
     try {
@@ -310,6 +325,24 @@ function App() {
     } catch (error) {
       const message = describeFirebaseAuthError(error);
       console.error('Firebase Google sign-in error:', formatFirebaseAuthError(error), error);
+      authErrorVisibleRef.current = true;
+      setShowRedirectSignIn(isRedirectFallbackAuthError(error));
+      setSyncStatus('error');
+      setSyncMessage(`Sign-in failed: ${message}`);
+    }
+  }
+
+  async function handleRedirectSignIn() {
+    authErrorVisibleRef.current = false;
+    setShowRedirectSignIn(false);
+    setSyncStatus('loading');
+    setSyncMessage('Redirecting to Google');
+    try {
+      await signInWithGoogleRedirect();
+    } catch (error) {
+      const message = describeFirebaseAuthError(error);
+      console.error('Firebase Google redirect start error:', formatFirebaseAuthError(error), error);
+      authErrorVisibleRef.current = true;
       setSyncStatus('error');
       setSyncMessage(`Sign-in failed: ${message}`);
     }
@@ -317,6 +350,8 @@ function App() {
 
   async function handleSignOut() {
     try {
+      authErrorVisibleRef.current = false;
+      setShowRedirectSignIn(false);
       await signOutUser();
     } catch {
       setSyncStatus('error');
@@ -1094,6 +1129,16 @@ function App() {
           >
             {syncUser || syncStatus !== 'local' ? syncMessage : 'Sign in'}
           </button>
+          {!syncUser && showRedirectSignIn && (
+            <button
+              type="button"
+              className="sync-pill sync-checking"
+              onClick={handleRedirectSignIn}
+              title="Try Google redirect sign-in"
+            >
+              Try redirect sign-in
+            </button>
+          )}
           <span className="lvl-pill">Lvl {character.level}</span>
         </div>
       </header>
@@ -1183,7 +1228,9 @@ function App() {
             syncUser={syncUser}
             syncStatus={syncStatus}
             syncMessage={syncMessage}
+            showRedirectSignIn={showRedirectSignIn}
             onSignIn={handleSignIn}
+            onRedirectSignIn={handleRedirectSignIn}
             onSignOut={handleSignOut}
           />
         )}

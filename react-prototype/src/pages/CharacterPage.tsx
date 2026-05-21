@@ -9,7 +9,9 @@ interface Props {
   syncUser: { email: string | null; displayName: string | null } | null;
   syncStatus: 'local' | 'signed-in' | 'checking' | 'loading' | 'syncing' | 'synced' | 'error';
   syncMessage: string;
+  showRedirectSignIn: boolean;
   onSignIn: () => void;
+  onRedirectSignIn: () => void;
   onSignOut: () => void;
 }
 
@@ -42,7 +44,9 @@ export function CharacterPage({
   syncUser,
   syncStatus,
   syncMessage,
+  showRedirectSignIn,
   onSignIn,
+  onRedirectSignIn,
   onSignOut,
 }: Props) {
   const wk = currentWeekKey();
@@ -94,6 +98,11 @@ export function CharacterPage({
           {syncStatus === 'error' && (
             <button type="button" className="sync-card-button secondary" onClick={copySyncError}>
               Copy sync error
+            </button>
+          )}
+          {!syncUser && showRedirectSignIn && (
+            <button type="button" className="sync-card-button secondary" onClick={onRedirectSignIn}>
+              Try redirect sign-in
             </button>
           )}
           <button type="button" className="sync-card-button" onClick={syncUser ? onSignOut : onSignIn}>
