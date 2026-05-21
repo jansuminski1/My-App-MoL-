@@ -28,6 +28,7 @@ import {
   describeFirebaseAuthError,
   formatFirebaseAuthError,
   formatFirebaseSyncError,
+  getBrowserSignInWarning,
   handleGoogleRedirectResult,
   isRedirectFallbackAuthError,
   loadCloudState,
@@ -107,6 +108,7 @@ function App() {
   const [syncStatus, setSyncStatus] = useState<SyncStatus>('local');
   const [syncMessage, setSyncMessage] = useState('Local only');
   const [showRedirectSignIn, setShowRedirectSignIn] = useState(false);
+  const [browserSignInWarning] = useState(() => getBrowserSignInWarning());
   const xpFloatTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const pendingCompletionRef = useRef<FocusSession | null>(null);
   const currentPrototypeStateRef = useRef<PrototypeState>(initialPrototypeState);
@@ -258,7 +260,7 @@ function App() {
       .catch(error => {
         redirectCheckDoneRef.current = true;
         const message = describeFirebaseAuthError(error);
-        console.error('Firebase Google redirect error:', formatFirebaseAuthError(error), error);
+        console.error('[auth] redirect result failed in app:', formatFirebaseAuthError(error), error);
         if (!cancelled) {
           authErrorVisibleRef.current = true;
           setSyncStatus('error');
@@ -272,6 +274,7 @@ function App() {
     let cancelled = false;
     const unsubscribe = onAuthChanged(user => {
       if (cancelled) return;
+      console.info('[auth] auth state changed', user ? { uid: user.uid, email: user.email } : null);
       if (!user) {
         syncUserRef.current = null;
         setSyncUser(null);
@@ -324,7 +327,7 @@ function App() {
       }
     } catch (error) {
       const message = describeFirebaseAuthError(error);
-      console.error('Firebase Google sign-in error:', formatFirebaseAuthError(error), error);
+      console.error('[auth] popup sign-in failed in app:', formatFirebaseAuthError(error), error);
       authErrorVisibleRef.current = true;
       setShowRedirectSignIn(isRedirectFallbackAuthError(error));
       setSyncStatus('error');
@@ -341,7 +344,7 @@ function App() {
       await signInWithGoogleRedirect();
     } catch (error) {
       const message = describeFirebaseAuthError(error);
-      console.error('Firebase Google redirect start error:', formatFirebaseAuthError(error), error);
+      console.error('[auth] redirect sign-in start failed in app:', formatFirebaseAuthError(error), error);
       authErrorVisibleRef.current = true;
       setSyncStatus('error');
       setSyncMessage(`Sign-in failed: ${message}`);
@@ -1229,6 +1232,7 @@ function App() {
             syncStatus={syncStatus}
             syncMessage={syncMessage}
             showRedirectSignIn={showRedirectSignIn}
+            browserSignInWarning={browserSignInWarning}
             onSignIn={handleSignIn}
             onRedirectSignIn={handleRedirectSignIn}
             onSignOut={handleSignOut}

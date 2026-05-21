@@ -10,6 +10,7 @@ interface Props {
   syncStatus: 'local' | 'signed-in' | 'checking' | 'loading' | 'syncing' | 'synced' | 'error';
   syncMessage: string;
   showRedirectSignIn: boolean;
+  browserSignInWarning: { message: string; reasons: string[] } | null;
   onSignIn: () => void;
   onRedirectSignIn: () => void;
   onSignOut: () => void;
@@ -45,6 +46,7 @@ export function CharacterPage({
   syncStatus,
   syncMessage,
   showRedirectSignIn,
+  browserSignInWarning,
   onSignIn,
   onRedirectSignIn,
   onSignOut,
@@ -93,6 +95,12 @@ export function CharacterPage({
             {syncUser ? (syncUser.email ?? syncUser.displayName ?? 'Signed in') : 'Sign in to share this prototype across laptop, phone, and Netlify.'}
           </div>
           <div className={`sync-card-status sync-${syncStatus}`}>{syncMessage}</div>
+          {!syncUser && browserSignInWarning && (
+            <div className="sync-card-warning">
+              {browserSignInWarning.message}
+              <span>{browserSignInWarning.reasons.join(', ')}</span>
+            </div>
+          )}
         </div>
         <div className="sync-card-actions">
           {syncStatus === 'error' && (

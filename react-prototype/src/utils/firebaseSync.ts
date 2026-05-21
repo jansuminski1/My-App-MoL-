@@ -57,6 +57,11 @@ const POPUP_FALLBACK_CODES = new Set([
 
 const REDIRECT_PENDING_KEY = 'mol-google-redirect-pending';
 
+export interface BrowserSignInWarning {
+  message: string;
+  reasons: string[];
+}
+
 function stateDoc(uid: string) {
   return doc(db, 'users', uid, 'reactPrototype', 'main');
 }
@@ -95,6 +100,17 @@ function firebaseErrorDiagnostics(error: unknown) {
     message,
     stack: typeof stack === 'string' ? stack : undefined,
   };
+}
+
+function canUseStorage(kind: 'localStorage' | 'sessionStorage', key: string): boolean {
+  try {
+    const storage = window[kind];
+    storage.setItem(key, '1');
+    storage.removeItem(key);
+    return true;
+  } catch {
+    return false;
+  }
 }
 
 function omitUndefinedForFirestore(value: unknown, seen = new WeakSet<object>()): unknown {
@@ -183,6 +199,32 @@ export function isRedirectFallbackAuthError(error: unknown): boolean {
   return POPUP_FALLBACK_CODES.has(firebaseErrorParts(error).code);
 }
 
+export function getBrowserSignInWarning(): BrowserSignInWarning | null {
+  if (typeof window === 'undefined' || typeof navigator === 'undefined') return null;
+  const ua = navigator.userAgent || '';
+  const reasons: string[] = [];
+  const inAppPatterns = [
+    /FBAN|FBAV|Instagram|Line\/|LinkedInApp|wv\)|; wv|WebView|GSA\/|Snapchat|TikTok/i,
+  ];
+  if (inAppPatterns.some(pattern => pattern.test(ua))) {
+    reasons.push('in-app browser or WebView detected');
+  }
+  if (!canUseStorage('localStorage', 'mol-storage-local-test')) {
+    reasons.push('localStorage is unavailable');
+  }
+  if (!canUseStorage('sessionStorage', 'mol-storage-session-test')) {
+    reasons.push('sessionStorage is unavailable');
+  }
+  if (!navigator.cookieEnabled) {
+    reasons.push('cookies are disabled');
+  }
+  if (!reasons.length) return null;
+  return {
+    reasons,
+    message: 'Phone sign-in is more reliable if you open this Netlify URL directly in Chrome/Safari, not inside another app.',
+  };
+}
+
 export function onAuthChanged(callback: (user: SyncUser | null) => void): Unsubscribe {
   return onAuthStateChanged(auth, user => callback(toSyncUser(user)));
 }
@@ -193,16 +235,28 @@ function markRedirectPending() {
   } catch {
     // Ignore storage failures; Firebase redirect can still proceed.
   }
+  try {
+    localStorage.setItem(REDIRECT_PENDING_KEY, '1');
+  } catch {
+    // Local storage may be unavailable in restricted mobile browsers.
+  }
 }
 
 function consumeRedirectPending(): boolean {
+  let wasPending = false;
   try {
-    const wasPending = sessionStorage.getItem(REDIRECT_PENDING_KEY) === '1';
+    wasPending = sessionStorage.getItem(REDIRECT_PENDING_KEY) === '1';
     sessionStorage.removeItem(REDIRECT_PENDING_KEY);
-    return wasPending;
   } catch {
-    return false;
+    // Keep checking localStorage below.
   }
+  try {
+    wasPending = localStorage.getItem(REDIRECT_PENDING_KEY) === '1' || wasPending;
+    localStorage.removeItem(REDIRECT_PENDING_KEY);
+  } catch {
+    // ignore
+  }
+  return wasPending;
 }
 
 export async function signInWithGoogle(): Promise<'popup' | 'redirect'> {
@@ -213,10 +267,19 @@ export async function signInWithGoogle(): Promise<'popup' | 'redirect'> {
   await setPersistence(auth, browserLocalPersistence);
   const provider = googleProvider();
   try {
+    console.info('[auth] popup sign-in started', { projectId: firebaseConfig.projectId });
     await signInWithPopup(auth, provider);
+    console.info('[auth] popup sign-in succeeded', {
+      uid: auth.currentUser?.uid ?? null,
+      email: auth.currentUser?.email ?? null,
+    });
     return 'popup';
   } catch (error) {
-    console.error('Google sign-in popup failed:', describeFirebaseAuthError(error), error);
+    console.error('[auth] popup sign-in failed', {
+      projectId: firebaseConfig.projectId,
+      ...firebaseErrorDiagnostics(error),
+      error,
+    });
     throw error;
   }
 }
@@ -228,10 +291,11 @@ export async function signInWithGoogleRedirect(): Promise<void> {
   }
   await setPersistence(auth, browserLocalPersistence);
   markRedirectPending();
+  console.info('[auth] redirect sign-in started', { projectId: firebaseConfig.projectId });
   await signInWithRedirect(auth, googleProvider());
 }
 
-function waitForRedirectAuthUser(timeoutMs = 1800): Promise<User | null> {
+function waitForRedirectAuthUser(timeoutMs = 3500): Promise<User | null> {
   if (auth.currentUser) return Promise.resolve(auth.currentUser);
   return new Promise(resolve => {
     let settled = false;
@@ -254,13 +318,21 @@ function waitForRedirectAuthUser(timeoutMs = 1800): Promise<User | null> {
 export async function handleGoogleRedirectResult(): Promise<SyncUser | null> {
   const hadPendingRedirect = consumeRedirectPending();
   try {
+    await setPersistence(auth, browserLocalPersistence);
     const result = await getRedirectResult(auth);
     let user = result?.user ?? auth.currentUser;
     if (!user && hadPendingRedirect) {
-      console.info('Firebase redirect returned no immediate user; waiting for auth state.');
+      console.info('[auth] redirect result empty; waiting for auth state', {
+        projectId: firebaseConfig.projectId,
+      });
       user = await waitForRedirectAuthUser();
     }
-    console.info('Firebase redirect check complete:', user ? `signed in as ${user.email ?? user.uid}` : 'no redirect user');
+    console.info('[auth] redirect result', {
+      projectId: firebaseConfig.projectId,
+      hadPendingRedirect,
+      resultUser: result?.user ? { uid: result.user.uid, email: result.user.email } : null,
+      currentUser: user ? { uid: user.uid, email: user.email } : null,
+    });
     if (!user && hadPendingRedirect) {
       throw {
         code: 'auth/no-redirect-user',
@@ -269,7 +341,11 @@ export async function handleGoogleRedirectResult(): Promise<SyncUser | null> {
     }
     return toSyncUser(user);
   } catch (error) {
-    console.error('Google redirect sign-in failed:', describeFirebaseAuthError(error), error);
+    console.error('[auth] redirect result failed', {
+      projectId: firebaseConfig.projectId,
+      ...firebaseErrorDiagnostics(error),
+      error,
+    });
     throw error;
   }
 }
@@ -284,6 +360,7 @@ export async function loadCloudState(uid: string): Promise<PrototypeState | null
     console.info('[sync] loadCloudState', {
       projectId: firebaseConfig.projectId,
       authUid: auth.currentUser?.uid ?? null,
+      authEmail: auth.currentUser?.email ?? null,
       path,
     });
     const snap = await getDoc(stateDoc(uid));
@@ -294,6 +371,7 @@ export async function loadCloudState(uid: string): Promise<PrototypeState | null
     console.error('[sync] loadCloudState failed', {
       projectId: firebaseConfig.projectId,
       authUid: auth.currentUser?.uid ?? null,
+      authEmail: auth.currentUser?.email ?? null,
       path,
       ...firebaseErrorDiagnostics(error),
       error,
@@ -310,6 +388,7 @@ export async function saveCloudState(uid: string, state: PrototypeState): Promis
     console.info('[sync] saveCloudState', {
       projectId: firebaseConfig.projectId,
       authUid: auth.currentUser?.uid ?? null,
+      authEmail: auth.currentUser?.email ?? null,
       path,
     });
     await setDoc(stateDoc(uid), {
@@ -322,6 +401,7 @@ export async function saveCloudState(uid: string, state: PrototypeState): Promis
     console.error('[sync] saveCloudState failed', {
       projectId: firebaseConfig.projectId,
       authUid: auth.currentUser?.uid ?? null,
+      authEmail: auth.currentUser?.email ?? null,
       path,
       ...firebaseErrorDiagnostics(error),
       error,
