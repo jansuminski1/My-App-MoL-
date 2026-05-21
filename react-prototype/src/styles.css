@@ -884,24 +884,23 @@ button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 /* Toggle header row */
 .habit-flow-header {
   display: grid;
-  grid-template-columns: 28px minmax(0, 1fr) auto;
+  grid-template-columns: auto minmax(0, 1fr) auto;
   align-items: flex-start;
-  gap: 9px;
+  gap: 8px;
   padding: 9px 12px 8px 10px;
   cursor: pointer;
   user-select: none;
   -webkit-tap-highlight-color: transparent;
 }
 .habit-flow-header:hover { background: rgba(22, 163, 74, 0.03); }
-.habit-flow-icon-wrap {
-  width: 28px; height: 28px;
-  border-radius: 7px;
-  background: var(--green-dim);
-  border: 1px solid var(--green-border);
-  display: flex; align-items: center; justify-content: center;
-  font-size: 14px;
+.habit-flow-leading {
+  display: flex;
+  align-items: flex-start;
   flex-shrink: 0;
-  margin-top: 1px;
+  min-width: 0;
+}
+.habit-flow-leading:empty {
+  display: none;
 }
 .habit-flow-header-content {
   flex: 1;
@@ -910,19 +909,12 @@ button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 .habit-flow-header-rail {
   display: flex;
   flex-direction: column;
-  align-items: center;
+  align-items: flex-end;
   justify-content: flex-start;
   gap: 5px;
-  min-width: 48px;
-  max-width: 76px;
+  min-width: 38px;
+  max-width: 58px;
   align-self: stretch;
-}
-.habit-flow-rail-top {
-  display: flex;
-  align-items: center;
-  justify-content: flex-end;
-  gap: 5px;
-  width: 100%;
 }
 .habit-flow-title-row {
   display: flex;
@@ -1046,6 +1038,7 @@ button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
   padding-top: 0;
   line-height: 1;
   margin-top: auto;
+  cursor: pointer;
 }
 .habit-flow-chevron.open {
   transform: rotate(180deg);
@@ -1055,14 +1048,14 @@ button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
   display: inline-flex;
   align-items: center;
   gap: 4px;
-  font-size: 0.64rem;
+  font-size: 0.62rem;
   font-weight: 750;
   color: var(--green-dark);
   background: var(--green-dim);
   border: 1px solid var(--green-border);
   border-radius: 100px;
-  padding: 3px 7px;
-  margin-top: 0;
+  padding: 4px 7px;
+  margin-top: 1px;
   white-space: nowrap;
 }
 
@@ -1803,6 +1796,10 @@ button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 }
 .modal-input:focus { border-color: var(--accent); background: white; }
 .modal-input::placeholder { color: var(--text-mut); font-weight: 400; }
+.modal-minutes-input {
+  max-width: 160px;
+  font-weight: 750;
+}
 .modal-duration-row {
   display: flex;
   gap: 7px;
@@ -2122,8 +2119,10 @@ button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 
 .sync-pill.sync-syncing,
 .sync-pill.sync-loading,
+.sync-pill.sync-checking,
 .sync-card-status.sync-syncing,
-.sync-card-status.sync-loading {
+.sync-card-status.sync-loading,
+.sync-card-status.sync-checking {
   color: #4338ca;
   border-color: rgba(79, 70, 229, 0.25);
   background: rgba(99, 102, 241, 0.10);
@@ -3872,8 +3871,8 @@ button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
   background: var(--surface-alt);
   border: 1px solid var(--border);
   border-radius: 999px;
-  padding: 4px 10px;
-  font-size: 0.68rem;
+  padding: 4px 8px;
+  font-size: 0.66rem;
   font-weight: 600;
   color: var(--text-sec);
   cursor: pointer;
@@ -4867,8 +4866,9 @@ button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
   align-items: center;
   gap: 8px;
   min-width: 0;
-  font-size: clamp(0.66rem, 2.8vw, 0.78rem);
+  font-size: clamp(0.68rem, 2.8vw, 0.80rem);
   line-height: 1.2;
+  letter-spacing: 0.01em;
 }
 
 .goals-completed-count {
@@ -4898,10 +4898,10 @@ button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 
 .goals-section-title-row h2 {
   margin: 0;
-  color: #0f2537;
-  font-size: clamp(0.72rem, 3.1vw, 0.83rem);
-  font-weight: 850;
-  letter-spacing: -0.02em;
+  color: var(--text);
+  font-size: clamp(0.82rem, 3.1vw, 0.96rem);
+  font-weight: 800;
+  letter-spacing: -0.01em;
 }
 
 .goals-section-icon {
@@ -4916,9 +4916,10 @@ button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 
 .goals-section-subtitle {
   margin-top: 4px;
-  color: #607282;
-  font-size: clamp(0.66rem, 3.0vw, 0.77rem);
-  font-style: italic;
+  color: var(--text-sec);
+  font-size: clamp(0.63rem, 2.7vw, 0.72rem);
+  font-style: normal;
+  font-weight: 500;
   line-height: 1.3;
 }
 

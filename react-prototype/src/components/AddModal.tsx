@@ -46,6 +46,7 @@ export function AddModal({ mode, focusTags, onAdd, onClose, onCustomDuration }: 
   const [title, setTitle] = useState('');
   const [notes, setNotes] = useState('');
   const [duration, setDuration] = useState(25);
+  const [durationInput, setDurationInput] = useState('25');
   const [focusType, setFocusType] = useState<FocusType>('Deep Work');
   const [steps, setSteps] = useState('');
   const [trigger, setTrigger] = useState('');
@@ -68,10 +69,14 @@ export function AddModal({ mode, focusTags, onAdd, onClose, onCustomDuration }: 
     e.preventDefault();
     if (!title.trim()) return;
     const selectedTag = focusTags.find(t => t.id === tagId);
+    const customDuration = Math.round(Number(durationInput));
+    const resolvedDuration = mode === 'focus' && Number.isFinite(customDuration)
+      ? Math.min(240, Math.max(5, customDuration))
+      : duration;
     onAdd({
       title: title.trim(),
       notes: notes.trim(),
-      duration,
+      duration: resolvedDuration,
       focusType,
       steps: steps.split(',').map(s => s.trim()).filter(Boolean),
       trigger: trigger.trim(),
@@ -132,7 +137,7 @@ export function AddModal({ mode, focusTags, onAdd, onClose, onCustomDuration }: 
                       key={d}
                       type="button"
                       className={`modal-duration-btn${duration === d ? ' selected' : ''}`}
-                      onClick={() => setDuration(d)}
+                      onClick={() => { setDuration(d); setDurationInput(String(d)); }}
                     >
                       {d} min
                     </button>
@@ -146,6 +151,31 @@ export function AddModal({ mode, focusTags, onAdd, onClose, onCustomDuration }: 
                   </button>
                 </div>
               </div>
+              <label className="modal-label">
+                Custom minutes
+                <input
+                  className="modal-input modal-minutes-input"
+                  type="number"
+                  min={5}
+                  max={240}
+                  step={5}
+                  value={durationInput}
+                  onChange={e => {
+                    setDurationInput(e.target.value);
+                    const value = Number(e.target.value);
+                    if (Number.isFinite(value)) {
+                      setDuration(Math.min(240, Math.max(5, Math.round(value))));
+                    }
+                  }}
+                  onBlur={() => {
+                    const value = Math.round(Number(durationInput));
+                    const next = Number.isFinite(value) ? Math.min(240, Math.max(5, value)) : duration;
+                    setDuration(next);
+                    setDurationInput(String(next));
+                  }}
+                  placeholder="45"
+                />
+              </label>
               <div className="modal-label">
                 Type
                 <div className="modal-type-row">

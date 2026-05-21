@@ -2,8 +2,10 @@ import { initializeApp, getApps } from 'firebase/app';
 import {
   getRedirectResult,
   getAuth,
+  browserLocalPersistence,
   GoogleAuthProvider,
   onAuthStateChanged,
+  setPersistence,
   signInWithPopup,
   signInWithRedirect,
   signOut,
@@ -53,6 +55,8 @@ const POPUP_FALLBACK_CODES = new Set([
   'auth/operation-not-supported-in-this-environment',
 ]);
 
+const REDIRECT_PENDING_KEY = 'mol-google-redirect-pending';
+
 function stateDoc(uid: string) {
   return doc(db, 'users', uid, 'reactPrototype', 'main');
 }
@@ -61,6 +65,14 @@ function googleProvider() {
   const provider = new GoogleAuthProvider();
   provider.setCustomParameters({ prompt: 'select_account' });
   return provider;
+}
+
+function toSyncUser(user: User | null): SyncUser | null {
+  return user ? {
+    uid: user.uid,
+    email: user.email,
+    displayName: user.displayName,
+  } : null;
 }
 
 function firebaseErrorParts(error: unknown): { code: string; message: string } {
@@ -115,11 +127,25 @@ export function getFirebaseConfigProblem(): string | null {
 }
 
 export function onAuthChanged(callback: (user: SyncUser | null) => void): Unsubscribe {
-  return onAuthStateChanged(auth, user => callback(user ? {
-    uid: user.uid,
-    email: user.email,
-    displayName: user.displayName,
-  } : null));
+  return onAuthStateChanged(auth, user => callback(toSyncUser(user)));
+}
+
+function markRedirectPending() {
+  try {
+    sessionStorage.setItem(REDIRECT_PENDING_KEY, '1');
+  } catch {
+    // Ignore storage failures; Firebase redirect can still proceed.
+  }
+}
+
+function consumeRedirectPending(): boolean {
+  try {
+    const wasPending = sessionStorage.getItem(REDIRECT_PENDING_KEY) === '1';
+    sessionStorage.removeItem(REDIRECT_PENDING_KEY);
+    return wasPending;
+  } catch {
+    return false;
+  }
 }
 
 export async function signInWithGoogle(): Promise<'popup' | 'redirect'> {
@@ -127,8 +153,10 @@ export async function signInWithGoogle(): Promise<'popup' | 'redirect'> {
   if (configProblem) {
     throw { code: 'auth/missing-config', message: configProblem };
   }
+  await setPersistence(auth, browserLocalPersistence);
   const provider = googleProvider();
   if (isMobileAuthEnvironment()) {
+    markRedirectPending();
     await signInWithRedirect(auth, provider);
     return 'redirect';
   }
@@ -139,6 +167,7 @@ export async function signInWithGoogle(): Promise<'popup' | 'redirect'> {
     const { code } = firebaseErrorParts(error);
     console.error('Google sign-in popup failed:', describeFirebaseAuthError(error), error);
     if (POPUP_FALLBACK_CODES.has(code)) {
+      markRedirectPending();
       await signInWithRedirect(auth, googleProvider());
       return 'redirect';
     }
@@ -146,9 +175,19 @@ export async function signInWithGoogle(): Promise<'popup' | 'redirect'> {
   }
 }
 
-export async function handleGoogleRedirectResult(): Promise<void> {
+export async function handleGoogleRedirectResult(): Promise<SyncUser | null> {
+  const hadPendingRedirect = consumeRedirectPending();
   try {
-    await getRedirectResult(auth);
+    const result = await getRedirectResult(auth);
+    const user = result?.user ?? auth.currentUser;
+    console.info('Firebase redirect check complete:', user ? `signed in as ${user.email ?? user.uid}` : 'no redirect user');
+    if (!user && hadPendingRedirect) {
+      throw {
+        code: 'auth/no-redirect-user',
+        message: 'Returned from Google sign-in without a Firebase user. Check authorized domains and browser redirect storage.',
+      };
+    }
+    return toSyncUser(user);
   } catch (error) {
     console.error('Google redirect sign-in failed:', describeFirebaseAuthError(error), error);
     throw error;

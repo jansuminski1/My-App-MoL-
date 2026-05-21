@@ -47,7 +47,7 @@ import { AnalyticsPage } from './pages/AnalyticsPage';
 import { CharacterPage } from './pages/CharacterPage';
 
 type AddMode = 'task' | 'focus' | 'flow';
-type SyncStatus = 'local' | 'signed-in' | 'loading' | 'syncing' | 'synced' | 'error';
+type SyncStatus = 'local' | 'signed-in' | 'checking' | 'loading' | 'syncing' | 'synced' | 'error';
 
 function buildSessionSegments(profile: FocusTimerProfile, overrideFocusMinutes?: number): TimerSegment[] {
   if (profile.segments && profile.segments.length > 0) {
@@ -110,6 +110,7 @@ function App() {
   const cloudReadyRef = useRef(false);
   const isApplyingRemoteRef = useRef(false);
   const didSkipInitialSaveRef = useRef(false);
+  const redirectCheckDoneRef = useRef(false);
   const cloudSaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const visibleItems = useMemo(() => filterItemsForToday(items), [items]);
@@ -181,57 +182,93 @@ function App() {
     return () => { if (xpFloatTimer.current) clearTimeout(xpFloatTimer.current); };
   }, []);
 
-  useEffect(() => {
-    handleGoogleRedirectResult().catch(error => {
-      const message = describeFirebaseAuthError(error);
-      console.error('Firebase Google redirect error:', formatFirebaseAuthError(error), error);
-      setSyncStatus('error');
-      setSyncMessage(`Sign-in failed: ${message}`);
-    });
-  }, []);
-
-  useEffect(() => {
-    let cancelled = false;
-    const unsubscribe = onAuthChanged(async user => {
-      if (cancelled) return;
+  const loadSyncForUser = useCallback(async (user: SyncUser, isCancelled: () => boolean) => {
+      if (isCancelled()) return;
       setSyncUser(user);
       syncUserRef.current = user;
       cloudReadyRef.current = false;
       if (cloudSaveTimerRef.current) clearTimeout(cloudSaveTimerRef.current);
-      if (!user) {
-        setSyncStatus('local');
-        setSyncMessage('Local only');
-        return;
-      }
       setSyncStatus('loading');
       setSyncMessage('Loading cloud');
       try {
         const localState = currentPrototypeStateRef.current;
         const cloudState = await loadCloudState(user.uid);
-        if (cancelled) return;
+        if (isCancelled()) return;
         if (cloudState && cloudState.savedAt > localState.savedAt) {
           applyPrototypeState(cloudState);
           setSyncStatus('synced');
           setSyncMessage('Cloud loaded');
         } else {
           await saveCloudState(user.uid, localState);
-          if (cancelled) return;
+          if (isCancelled()) return;
           setSyncStatus('synced');
           setSyncMessage(cloudState ? 'Local was newer' : 'Cloud initialized');
         }
         cloudReadyRef.current = true;
-      } catch {
-        if (cancelled) return;
+      } catch (error) {
+        if (isCancelled()) return;
+        console.error('Firebase cloud sync after sign-in failed:', error);
         setSyncStatus('error');
         setSyncMessage('Local saved, sync error');
       }
+  }, [applyPrototypeState]);
+
+  useEffect(() => {
+    let cancelled = false;
+    setSyncStatus('checking');
+    setSyncMessage('Checking sign-in');
+    handleGoogleRedirectResult()
+      .then(user => {
+        redirectCheckDoneRef.current = true;
+        if (cancelled) return;
+        if (user) {
+          console.info('Firebase redirect resolved user:', user.email ?? user.uid);
+          if (syncUserRef.current?.uid !== user.uid) {
+            void loadSyncForUser(user, () => cancelled);
+          }
+        } else if (!syncUserRef.current) {
+          setSyncStatus('local');
+          setSyncMessage('Local only');
+        }
+      })
+      .catch(error => {
+        redirectCheckDoneRef.current = true;
+        const message = describeFirebaseAuthError(error);
+        console.error('Firebase Google redirect error:', formatFirebaseAuthError(error), error);
+        if (!cancelled) {
+          setSyncStatus('error');
+          setSyncMessage(`Sign-in failed: ${message}`);
+        }
+      });
+    return () => { cancelled = true; };
+  }, [loadSyncForUser]);
+
+  useEffect(() => {
+    let cancelled = false;
+    const unsubscribe = onAuthChanged(user => {
+      if (cancelled) return;
+      if (!user) {
+        syncUserRef.current = null;
+        setSyncUser(null);
+        cloudReadyRef.current = false;
+        if (cloudSaveTimerRef.current) clearTimeout(cloudSaveTimerRef.current);
+        if (!redirectCheckDoneRef.current) {
+          setSyncStatus('checking');
+          setSyncMessage('Checking sign-in');
+          return;
+        }
+        setSyncStatus('local');
+        setSyncMessage('Local only');
+        return;
+      }
+      void loadSyncForUser(user, () => cancelled);
     });
     return () => {
       cancelled = true;
       unsubscribe();
       if (cloudSaveTimerRef.current) clearTimeout(cloudSaveTimerRef.current);
     };
-  }, [applyPrototypeState]);
+  }, [loadSyncForUser]);
 
   // Bare effect: process session completion queued from within setSession updater
   useEffect(() => {
@@ -1040,7 +1077,7 @@ function App() {
             onClick={syncUser ? handleSignOut : handleSignIn}
             title={syncUser ? `Signed in as ${syncUser.email ?? syncUser.displayName ?? 'Google user'}` : syncMessage}
           >
-            {syncUser || syncStatus === 'error' ? syncMessage : 'Sign in'}
+            {syncUser || syncStatus !== 'local' ? syncMessage : 'Sign in'}
           </button>
           <span className="lvl-pill">Lvl {character.level}</span>
         </div>

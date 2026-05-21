@@ -3,13 +3,13 @@ import { TabId } from '../types';
 function TodayIcon() {
   return (
     <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round">
-      <circle cx="12" cy="12" r="9"/>
-      <circle cx="12" cy="12" r="4.5"/>
-      <circle cx="12" cy="12" r="1.5" fill="currentColor" stroke="none"/>
-      <line x1="12" y1="2" x2="12" y2="4.5"/>
-      <line x1="12" y1="19.5" x2="12" y2="22"/>
-      <line x1="2" y1="12" x2="4.5" y2="12"/>
-      <line x1="19.5" y1="12" x2="22" y2="12"/>
+      <rect x="4" y="5" width="16" height="15" rx="3"/>
+      <path d="M8 3.5v3"/>
+      <path d="M16 3.5v3"/>
+      <path d="M4 9h16"/>
+      <path d="M8 13h2"/>
+      <path d="M13.5 13h2.5"/>
+      <path d="M8 16.5h5.5"/>
     </svg>
   );
 }
@@ -17,9 +17,14 @@ function TodayIcon() {
 function MindIcon() {
   return (
     <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round">
-      <circle cx="12" cy="12" r="9"/>
-      <circle cx="12" cy="12" r="5.5"/>
-      <circle cx="12" cy="12" r="2" fill="currentColor" stroke="none"/>
+      <path d="M9 4.5a3 3 0 0 0-3 3 3.2 3.2 0 0 0-1.5 5.8A3.6 3.6 0 0 0 8 18.5h1"/>
+      <path d="M15 4.5a3 3 0 0 1 3 3 3.2 3.2 0 0 1 1.5 5.8 3.6 3.6 0 0 1-3.5 5.2h-1"/>
+      <path d="M9 4.5v14"/>
+      <path d="M15 4.5v14"/>
+      <path d="M9 9h-2"/>
+      <path d="M15 9h2"/>
+      <path d="M9 13h-2.5"/>
+      <path d="M15 13h2.5"/>
     </svg>
   );
 }
@@ -44,8 +49,12 @@ function HealthIcon() {
 function StatsIcon() {
   return (
     <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M2.5 12 C5 6.5 7 6.5 9.5 12 C12 17.5 14 17.5 16.5 12 C19 6.5 21 6.5 21.5 12"/>
-      <circle cx="12" cy="12" r="1.5" fill="currentColor" stroke="none"/>
+      <path d="M4 19V5"/>
+      <path d="M4 19h16"/>
+      <rect x="7" y="11" width="2.8" height="5" rx="1"/>
+      <rect x="11.1" y="8" width="2.8" height="8" rx="1"/>
+      <rect x="15.2" y="6" width="2.8" height="10" rx="1"/>
+      <path d="M7 8.5l3.4-2.5 3.2 1.7L18 4.8"/>
     </svg>
   );
 }
@@ -53,9 +62,10 @@ function StatsIcon() {
 function SelfIcon() {
   return (
     <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M12 2 L20.5 7 L20.5 17 L12 22 L3.5 17 L3.5 7 Z"/>
-      <path d="M12 2 L12 22"/>
-      <path d="M3.5 7 L20.5 7"/>
+      <path d="M12 3.5l6.5 2.6v5.2c0 4.1-2.7 7.7-6.5 9.2-3.8-1.5-6.5-5.1-6.5-9.2V6.1L12 3.5z"/>
+      <circle cx="12" cy="10" r="2.1"/>
+      <path d="M8.8 16.1c.7-1.5 1.8-2.2 3.2-2.2s2.5.7 3.2 2.2"/>
+      <path d="M17.2 4.9l.5-1.3.5 1.3 1.3.5-1.3.5-.5 1.3-.5-1.3-1.3-.5z"/>
     </svg>
   );
 }

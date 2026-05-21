@@ -7,7 +7,7 @@ interface Props {
   focusSessionLogs: FocusSessionLog[];
   goals: Goal[];
   syncUser: { email: string | null; displayName: string | null } | null;
-  syncStatus: 'local' | 'signed-in' | 'loading' | 'syncing' | 'synced' | 'error';
+  syncStatus: 'local' | 'signed-in' | 'checking' | 'loading' | 'syncing' | 'synced' | 'error';
   syncMessage: string;
   onSignIn: () => void;
   onSignOut: () => void;

@@ -178,7 +178,7 @@ export function GoalsPage({ goals, character: _character, onAddGoal, onCompleteG
       <div className="goals-completed-banner">
         <div className="goals-completed-label">
           <span aria-hidden="true">🏆</span>
-          <strong>All-Time Completed Goals</strong>
+          <strong>Completed</strong>
         </div>
         <div className="goals-completed-count">
           {completedCount} {completedCount === 1 ? 'goal' : 'goals'} completed
@@ -187,12 +187,12 @@ export function GoalsPage({ goals, character: _character, onAddGoal, onCompleteG
 
       <GoalSection
         icon="📅"
-        title="Weekly Goals"
+        title="Weekly Direction"
         subtitle={formatWeekLabel(weekKey)}
         period="weekly"
         goals={weeklyGoals}
-        placeholder="Add a weekly goal..."
-        emptyText="No weekly goals yet. Add one below."
+        placeholder="Add weekly direction..."
+        emptyText="No weekly direction yet. Add one below."
         onAddGoal={onAddGoal}
         onCompleteGoal={onCompleteGoal}
         onUncompleteGoal={onUncompleteGoal}
@@ -201,12 +201,12 @@ export function GoalsPage({ goals, character: _character, onAddGoal, onCompleteG
 
       <GoalSection
         icon="🗓️"
-        title="Monthly Goals"
+        title="Monthly Direction"
         subtitle={formatMonthLabel(monthKey)}
         period="monthly"
         goals={monthlyGoals}
-        placeholder="Add a monthly goal..."
-        emptyText="No monthly goals yet. Add one below."
+        placeholder="Add monthly direction..."
+        emptyText="No monthly direction yet. Add one below."
         onAddGoal={onAddGoal}
         onCompleteGoal={onCompleteGoal}
         onUncompleteGoal={onUncompleteGoal}
@@ -216,7 +216,7 @@ export function GoalsPage({ goals, character: _character, onAddGoal, onCompleteG
       <div className="goals-stats-card">
         <div className="goals-section-title-row">
           <span className="goals-section-icon" aria-hidden="true">📈</span>
-          <h2>Goal Stats</h2>
+          <h2>Direction Stats</h2>
         </div>
         <div className="goals-stat-line">
           Weekly: <strong>{weeklyGoals.filter(g => g.status === 'completed').length}/{weeklyGoals.length}</strong>

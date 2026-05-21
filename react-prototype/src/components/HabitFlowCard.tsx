@@ -62,8 +62,10 @@ export function HabitFlowCard({ flow, isCurrent, defaultExpanded, onToggleStep, 
         aria-expanded={expanded}
         onKeyDown={e => e.key === 'Enter' && setExpanded(x => !x)}
       >
-        <div className="habit-flow-icon-wrap">
-          <span>🌿</span>
+        <div className="habit-flow-leading" onClick={e => e.stopPropagation()}>
+          {flow.startTime && (
+            <span className="habit-flow-time-badge">🕐 {flow.startTime}</span>
+          )}
         </div>
 
         <div className="habit-flow-header-content">
@@ -110,16 +112,6 @@ export function HabitFlowCard({ flow, isCurrent, defaultExpanded, onToggleStep, 
         </div>
 
         <div className="habit-flow-header-rail" onClick={e => e.stopPropagation()}>
-          <div className="habit-flow-rail-top">
-            {flow.startTime && (
-              <span className="habit-flow-time-badge">🕐 {flow.startTime}</span>
-            )}
-            {onDelete && (
-              <button className="item-more-btn" onClick={handleDelete} aria-label="Delete flow">
-                ×
-              </button>
-            )}
-          </div>
           {onUpdateFlow && (
             <button
               type="button"
@@ -129,7 +121,17 @@ export function HabitFlowCard({ flow, isCurrent, defaultExpanded, onToggleStep, 
               Edit
             </button>
           )}
-          <span className={`habit-flow-chevron${expanded ? ' open' : ''}`}>▾</span>
+          {onDelete && (
+            <button className="item-more-btn" onClick={handleDelete} aria-label="Delete flow">
+              ×
+            </button>
+          )}
+          <span
+            className={`habit-flow-chevron${expanded ? ' open' : ''}`}
+            onClick={e => { e.stopPropagation(); setExpanded(x => !x); }}
+          >
+            ▾
+          </span>
         </div>
       </div>
 
